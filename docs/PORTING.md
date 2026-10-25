@@ -26,8 +26,9 @@ z oryginalnych danych z wersji na Amigę. Ogólne zasady: `C:\Workprojects\Amiga
 | F5 Dźwięk | ✅ | efekty i muzyka bez spadku fps poniżej celu | 0.22: Paula 22 kHz, efekty i muzyka potwierdzone odsłuchem; ~43 fps; AHI – opcja na później |
 | F6 Wydanie | ✅ | czysta instalacja z archiwum `Settlers-0.32.lha` na Amidze 2 | 0.32 beta, 25.10.2026 |
 
-**Kandydat do wydania: 0.53** (decyzja użytkownika: zawsze najnowsza sprawdzona wersja), znacznik
-`v0.53-rc`, archiwum `releases/amiga/Settlers-0.53.lha`. Wcześniejsi: 0.52, 0.48, 0.41 (`v0.xx-rc`).
+**Kandydat do wydania: 0.54** (decyzja użytkownika: zawsze najnowsza sprawdzona wersja), znacznik
+`v0.54-rc`, archiwum `releases/amiga/Settlers-0.54.lha`. Wcześniejsi: 0.53, 0.52, 0.48, 0.41
+(`v0.xx-rc`).
 
 ## Decyzje
 
@@ -295,6 +296,7 @@ tylko 35 kroków logiki/s zamiast 50 (limit 5 kroków nadrabiania na klatkę). T
     `remove_islands` z listą.
 16. `game-init.*`, `interface.cc`: podgląd mapy generowany, gdy minie czas (okno rysuje się na żądanie).
 17. `gui.*`, `viewport.cc`: Invert scrolling w obu osiach, tylko mysz.
+18. `viewport.*`: kafelki terenu zostają przy zmianie rozmiaru widoku (powiększenie).
 
 Wszystkie jako commity w `freeserf/` (gałąź `settlers-pin`) i pliki `port/freeserf-patches/`.
 
@@ -679,6 +681,19 @@ Maska bajtowa tylko dla obrazków o krótkich odcinkach (< 4 piksele średnio: t
 odcinkami (widok powiększony składa się w Fast RAM). 800×600 scene2: ×2 30,2 → **41,3**, ×3 44,5 →
 **49,5**, ×1 32,5 bez zmian. `VERIFY` 0 przy ×2 i ×3, z przewijaniem, z okienkiem nad mapą i po
 powrocie do ×1. Przy zmianie stopnia kafelki terenu są rysowane od nowa (6 kafelków, ~0,3 s).
+
+## Zmiana powiększenia bez rysowania terenu, testy zamykania (0.54)
+
+`Viewport::layout` czyścił pamięć kafelków przy każdej zmianie rozmiaru widoku, więc każdy stopień
+powiększenia rysował od nowa wszystkie kafelki w widoku (6 kafelków, ~0,3 s). Łatka `0018`: kafelki
+zależą tylko od mapy – czyszczone tylko przy zmianie rozdzielczości ekranu (ich kopie na karcie
+należą do starego ekranu). 800×600, rolka ×1→×2→×3→×2→×1, Z, Z: dochodzą tylko 1–2 kafelki wchodzące
+pierwszy raz w kadr; `VERIFY` 0.
+
+Testy zamykania (Amiga 1, 0.54; `tools/exittest.sh` poprawiony – okno szuflady „Settlers” na
+Workbenchu nie jest już brane za grę, start przez `amiga_free.sh`): Ctrl-C w grze po 12 s ×5, w czasie
+wczytywania (3 s) ×3, przy obrazie startowym (6 s) ×3, w menu (14 s) ×3, przy ×2 i ×3 po razie –
+wszystkie bez błędu i bez pozostałego ekranu.
 
 ## Invert scrolling w obu osiach (0.53)
 

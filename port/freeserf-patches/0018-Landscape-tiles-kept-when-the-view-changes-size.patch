@@ -1,0 +1,62 @@
+From 62aedbe49ce01e74960f35ad0ca939b70031b403 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Mon, 26 Oct 2026 00:28:47 +0100
+Subject: [PATCH 18/18] Landscape tiles kept when the view changes size
+
+Viewport::layout dropped all the landscape tiles at every size change,
+so each step of the magnified map view drew all tiles in view again. The
+tiles depend on the map only; they are dropped only when the screen mode
+changes (their copies in the card's memory belong to the old screen).
+---
+ src/viewport.cc | 15 ++++++++++++++-
+ src/viewport.h  |  1 +
+ 2 files changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/src/viewport.cc b/src/viewport.cc
+index 1e92713..7526d61 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -275,7 +275,18 @@ Viewport::layout() {
+   }
+   last_width = width;
+   last_height = height;
+-  landscape_tiles.clear();
++
++  /* The tiles depend on the map only, not on the size of the view (the
++     magnified view kept them too, a redraw of all tiles in view at each
++     step). A new screen mode drops them: their copies in the card's memory
++     belong to the old screen. */
++  unsigned int sw = 0, sh = 0;
++  Graphics::get_instance().get_resolution(&sw, &sh);
++  if (sw != screen_width || sh != screen_height) {
++    screen_width = sw;
++    screen_height = sh;
++    landscape_tiles.clear();
++  }
+ }
+ 
+ void
+@@ -2721,6 +2732,8 @@ Viewport::Viewport(Interface *_interface, PMap _map)
+   offset_y = 0;
+   last_width = 0;
+   last_height = 0;
++  screen_width = 0;
++  screen_height = 0;
+   tile_use_counter = 0;
+ 
+   last_tick = 0;
+diff --git a/src/viewport.h b/src/viewport.h
+index f90012d..b968d2e 100644
+--- a/src/viewport.h
++++ b/src/viewport.h
+@@ -63,6 +63,7 @@ class Viewport : public GuiObject, public Map::Handler {
+ 
+   int offset_x, offset_y;
+   int last_width, last_height;
++  unsigned int screen_width, screen_height;
+   unsigned int layers;
+   Interface *interface;
+   unsigned int last_tick;
+-- 
+2.45.2.windows.1
+

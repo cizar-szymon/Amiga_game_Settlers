@@ -6,8 +6,15 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
-0.53 (26.10.2026) - kandydat do wydania
+0.54 (26.10.2026) - kandydat do wydania
 ----------------------------------------
+
+- Bez przyciecia przy zmianie powiekszenia (teren nie jest juz rysowany
+  od nowa, bylo ok. 0,3 s).
+
+
+0.53 (26.10.2026)
+-----------------
 
 - Options -> Advanced -> Invert scrolling odwraca przewijanie mysza
   w obu kierunkach (bylo tylko w pionie). Strzalki przewijaja zawsze

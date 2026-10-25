@@ -8,6 +8,7 @@ SCRIPT=${3:-run-fps}
 SECS=${4:-12}
 PROG=${5:-Settlers}
 R="python tools/amiga_remote.py --config $CFG"
+sh tools/amiga_free.sh "$CFG" || exit 1
 i=1
 while [ $i -le $RUNS ]; do
   $R start "Execute WorkSD:Settlers/$SCRIPT" >/dev/null
@@ -17,8 +18,11 @@ while [ $i -le $RUNS ]; do
   t=$(PYTHONIOENCODING=utf-8 timeout 30 $R titles 2>&1)
   case "$t" in
     *"Software Failure"*) echo "run $i: SOFTWARE FAILURE"; exit 1 ;;
-    *"| * Settlers"*|*"|   Settlers"*) echo "run $i: still running after Ctrl-C"; exit 2 ;;
   esac
+  # The game's own screen (a Workbench drawer named Settlers is not it).
+  if echo "$t" | grep -q "^Settlers |"; then
+    echo "run $i: still running after Ctrl-C"; exit 2
+  fi
   echo "run $i: ok"
   i=$((i + 1))
 done

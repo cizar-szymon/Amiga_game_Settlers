@@ -6,8 +6,15 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
-0.53 (26.10.2026) - release candidate
+0.54 (26.10.2026) - release candidate
 -------------------------------------
+
+- No jerk when the magnification changes (the land is no longer drawn
+  again, it took about 0.3 s).
+
+
+0.53 (26.10.2026)
+-----------------
 
 - Options -> Advanced -> Invert scrolling inverts scrolling with the mouse
   both ways (it was only up and down). The cursor keys always scroll the
