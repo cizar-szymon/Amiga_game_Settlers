@@ -1,7 +1,7 @@
 THE SETTLERS (Freeserf) for the Amiga - notes for developers
 ============================================================
 
-Version 0.32. The full description of the port, decisions and
+Version 0.33. The full description of the port, decisions and
 measurements: docs/PORTING.md in the Settlers repository (Polish).
 
 
@@ -65,6 +65,10 @@ TOOLS (tools/ in the repository)
   modinfo.py        Fxx commands of a MOD module
   make_icon.py      the icon from a frame of the game
   embed_images.py   Freeserf's resource images into port/gen/
+
+Loading saves: loadtest FILE [N] (build/amiga; loadtest-fm with the game's
+allocator) - the time of each step and the CRC of the save written after
+loading (it must not change when the loader or saver changes).
 
 Test programs (build/amiga): simtest (logic: CRC of the state after N
 steps, -c builds player 0's castle, -s saves the scene), datacheck (data:

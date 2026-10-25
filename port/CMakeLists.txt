@@ -43,6 +43,14 @@ target_link_libraries(simtest fs_game fs_tools)
 add_executable(datacheck datacheck.cc ${PLATFORM_SRC})
 target_link_libraries(datacheck fs_data fs_tools)
 
+# Loading a save, step by step; -fm with AmiXcom's size-class allocator.
+add_executable(loadtest loadtest.cc ${PLATFORM_SRC})
+target_link_libraries(loadtest fs_game fs_tools)
+if(AMIGA_CPU)
+  add_executable(loadtest-fm loadtest.cc amiga_fastmalloc.c ${PLATFORM_SRC})
+  target_link_libraries(loadtest-fm fs_game fs_tools)
+endif()
+
 if(AMIGA_CPU)
   # The game: Freeserf's GUI with the Amiga platform layer instead of SDL.
   add_library(fs_gui STATIC
@@ -62,7 +70,9 @@ if(AMIGA_CPU)
   set_source_files_properties(thirdparty/micromod/micromod.c PROPERTIES
                               COMPILE_DEFINITIONS MICROMOD_VBLANK)
 
-  add_executable(Settlers main-amiga.cc)
+  # AmiXcom's size-class allocator instead of libnix's malloc: loading a
+  # save (some 300000 small blocks) 1.0 -> 0.57 s on the Warp (loadtest).
+  add_executable(Settlers main-amiga.cc amiga_fastmalloc.c)
   target_link_libraries(Settlers fs_gui fs_game fs_data fs_tools)
 
   # Diagnostic build: the checking allocator of AmiXcom instead of libnix's

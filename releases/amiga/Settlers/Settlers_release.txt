@@ -6,6 +6,14 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.33 (25.10.2026)
+-----------------
+
+- Szybsze wczytywanie i zapisywanie gry: wczytanie ok. 4 razy szybciej
+  (2,2 -> 0,6 s), zapis ok. 7 razy szybciej (3,4 -> 0,5 s) na 68060.
+  Dotyczy tez autozapisu, szybkiego zapisu (Ctrl+Z) i F10.
+
+
 0.32 (25.10.2026) - pierwsza wersja beta
 ----------------------------------------
 

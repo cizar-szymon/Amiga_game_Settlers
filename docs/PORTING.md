@@ -274,6 +274,7 @@ tylko 35 kroków logiki/s zamiast 50 (limit 5 kroków nadrabiania na klatkę). T
    mapy), za to przy każdym przerysowaniu rodzica.
 4. `popup.cc`, `advanced-box.*`, `interface.*`: Options → Screen (Amiga), Advanced → Show FPS,
    ukryte opcje danych i języka, mniejsze okno Advanced, licznik FPS zielony na czarnym.
+5. `map.cc`, `savegame.*`: szybsze wczytywanie i zapis zapisów tekstowych (ten sam plik wyjściowy).
 
 Wszystkie jako commity w `freeserf/` (gałąź `settlers-pin`) i pliki `port/freeserf-patches/`.
 
@@ -432,6 +433,25 @@ tylko pętla gry. Zawieszony proces po Ctrl-C miał tę samą przyczynę.
 - **Nigdy:** nie dystrybuujemy danych gry; nie zmieniamy reguł gry ani AI (poza optymalizacją
   z identycznym wynikiem); nie robimy wersji AGA; nie używamy procesora ARM; nie czytamy VRAM
   w pętlach rysujących.
+
+## Wczytywanie i zapis gry (0.33)
+
+Zapis tekstowy Freeserf (126 KB, scena 1; Amiga 2). Narzędzie `loadtest` (`port/loadtest.cc`):
+czasy etapów i **CRC zapisu po wczytaniu** – musi zostać ten sam (`8eabef60` scena 1,
+`8f9c3d9f` scena 3 z 10 min gry), co sprawdza i odczyt, i zapis.
+
+| Krok | Wczytanie | Zapis |
+|---|---|---|
+| wyjście (libnix) | 2,22 s | 3,34 s |
+| alokator AmiXcom (`amiga_fastmalloc.c`) sam | 1,73 s | 3,27 s |
+| mapa: wartości sekcji raz zamiast 10 wyszukań nazwy na pole; listy bez `istringstream`; liczby zapisywane bez `ostringstream` | 1,60 s | **0,52 s** |
+| liczby czytane w 32 bitach zamiast `strtoull` (64 bity w programie na 68k) | 1,03 s | 0,52 s |
+| kawałki list budowane w miejscu (bez `substr`) | 1,03 s | 0,52 s |
+| + alokator AmiXcom w grze (0.33) | **0,57 s** | **0,47 s** |
+
+Rozkład wczytania przed zmianą mapy (sondy, z alokatorem): rozbiór tekstu i podział 408 ms, mapa
+549 ms, obiekty 125 ms. Sprawdzanie spójności: 0 ms. Łatka `0005` we Freeserf; alokator w grze bez
+wpływu na fps (43,2 w scenie z dźwiękiem), `VERIFY` 0, 4 wyjścia bez błędu.
 
 ## Wydajność (Warp1260 i Warp7060 – wydajnościowo równoważne)
 

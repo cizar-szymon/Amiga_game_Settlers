@@ -1,0 +1,287 @@
+From 2eca6b7412041d01ad8690d80fec15f87bd39a4c Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sun, 25 Oct 2026 17:21:49 +0100
+Subject: [PATCH 5/5] Faster loading and saving of text saves
+
+The map sections looked their values up for every tile (a name copied,
+lowered and searched in a map, ten times per tile), the lists were split
+with a stringstream, every number was parsed with 64-bit strtoull and
+written with its own ostringstream. On a 68060 (Warp) a save of 126 KB
+took 2.2 s to load and 3.4 s to save.
+
+Now the values are looked up once per section, lists are split with
+find(), parts built in place, numbers parsed and written in 32 bits.
+The output is byte for byte the same (CRC of a load-and-save round
+trip unchanged): saving 3.4 -> 0.5 s, loading 2.2 -> 1.0 s (0.57 s with
+the Amiga port's size-class allocator).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Uqv2KDnCV91tQsZeLq3naz
+---
+ src/map.cc      | 74 ++++++++++++++++++++++++++++++++----------------
+ src/savegame.cc | 75 ++++++++++++++++++++++++++++++++++++-------------
+ src/savegame.h  |  2 ++
+ 3 files changed, 107 insertions(+), 44 deletions(-)
+
+diff --git a/src/map.cc b/src/map.cc
+index 13b333e..9a76e1b 100644
+--- a/src/map.cc
++++ b/src/map.cc
+@@ -870,43 +870,58 @@ operator >> (SaveReaderText &reader, Map &map) {
+   reader.value("pos")[1] >> y;
+   MapPos pos = map.pos(x, y);
+ 
++  /* The values of the section looked up once: a lookup per tile (a name
++     copied, lowered and searched in a map) made loading a save take
++     seconds on a 68060. */
++  const SaveReaderTextValue &paths = reader.value("paths");
++  const SaveReaderTextValue &height = reader.value("height");
++  const SaveReaderTextValue &type_up = reader.value("type.up");
++  const SaveReaderTextValue &type_down = reader.value("type.down");
++  const SaveReaderTextValue &object = reader.value("object");
++  const SaveReaderTextValue &serf = reader.value("serf");
++  const SaveReaderTextValue &res_type = reader.value("resource.type");
++  const SaveReaderTextValue &res_amount = reader.value("resource.amount");
++  /* Older saves keep the idle serf flag in bit 7 of the object. */
++  const SaveReaderTextValue *idle_serf = nullptr;
++  if (reader.has_value("idle_serf")) idle_serf = &reader.value("idle_serf");
++
+   for (int y = 0; y < SAVE_MAP_TILE_SIZE; y++) {
+     for (int x = 0; x < SAVE_MAP_TILE_SIZE; x++) {
+       MapPos p = map.pos_add(pos, map.pos(x, y));
+       Map::GameTile &game_tile = map.game_tiles[p];
+       Map::LandscapeTile &landscape_tile = map.landscape_tiles[p];
++      size_t i = y*SAVE_MAP_TILE_SIZE+x;
+       unsigned int val;
+ 
+-      reader.value("paths")[y*SAVE_MAP_TILE_SIZE+x] >> val;
++      paths[i] >> val;
+       game_tile.paths = val & 0x3f;
+ 
+-      reader.value("height")[y*SAVE_MAP_TILE_SIZE+x] >> val;
++      height[i] >> val;
+       landscape_tile.height = val & 0x1f;
+ 
+-      reader.value("type.up")[y*SAVE_MAP_TILE_SIZE+x] >> val;
++      type_up[i] >> val;
+       landscape_tile.type_up = (Map::Terrain)val;
+ 
+-      reader.value("type.down")[y*SAVE_MAP_TILE_SIZE+x] >> val;
++      type_down[i] >> val;
+       landscape_tile.type_down = (Map::Terrain)val;
+ 
+-      try {
+-        reader.value("idle_serf")[y*SAVE_MAP_TILE_SIZE+x] >> val;
+-        game_tile.idle_serf = (val != 0);
+-        reader.value("object")[y*SAVE_MAP_TILE_SIZE+x] >> val;
++      object[i] >> val;
++      if (idle_serf != nullptr) {
+         landscape_tile.obj = (Map::Object)val;
+-      } catch (...) {
+-        reader.value("object")[y*SAVE_MAP_TILE_SIZE+x] >> val;
++        (*idle_serf)[i] >> val;
++        game_tile.idle_serf = (val != 0);
++      } else {
+         landscape_tile.obj = (Map::Object)(val & 0x7f);
+         game_tile.idle_serf = (BIT_TEST(val, 7) != 0);
+       }
+ 
+-      reader.value("serf")[y*SAVE_MAP_TILE_SIZE+x] >> val;
++      serf[i] >> val;
+       game_tile.serf = val;
+ 
+-      reader.value("resource.type")[y*SAVE_MAP_TILE_SIZE+x] >> val;
++      res_type[i] >> val;
+       landscape_tile.mineral = (Map::Minerals)val;
+ 
+-      reader.value("resource.amount")[y*SAVE_MAP_TILE_SIZE+x] >> val;
++      res_amount[i] >> val;
+       landscape_tile.resource_amount = val;
+     }
+   }
+@@ -925,24 +940,35 @@ operator << (SaveWriterText &writer, Map &map) {
+       map_writer.value("pos") << tx;
+       map_writer.value("pos") << ty;
+ 
++      /* The values looked up once per section, as in the loader. */
++      SaveWriterTextValue &height = map_writer.value("height");
++      SaveWriterTextValue &type_up = map_writer.value("type.up");
++      SaveWriterTextValue &type_down = map_writer.value("type.down");
++      SaveWriterTextValue &paths = map_writer.value("paths");
++      SaveWriterTextValue &object = map_writer.value("object");
++      SaveWriterTextValue &serf = map_writer.value("serf");
++      SaveWriterTextValue &idle_serf = map_writer.value("idle_serf");
++      SaveWriterTextValue &res_type = map_writer.value("resource.type");
++      SaveWriterTextValue &res_amount = map_writer.value("resource.amount");
++
+       for (int y = 0; y < SAVE_MAP_TILE_SIZE; y++) {
+         for (int x = 0; x < SAVE_MAP_TILE_SIZE; x++) {
+           MapPos pos = map.pos(tx+x, ty+y);
+ 
+-          map_writer.value("height") << map.get_height(pos);
+-          map_writer.value("type.up") << map.type_up(pos);
+-          map_writer.value("type.down") << map.type_down(pos);
+-          map_writer.value("paths") << map.paths(pos);
+-          map_writer.value("object") << map.get_obj(pos);
+-          map_writer.value("serf") << map.get_serf_index(pos);
+-          map_writer.value("idle_serf") << map.get_idle_serf(pos);
++          height << map.get_height(pos);
++          type_up << map.type_up(pos);
++          type_down << map.type_down(pos);
++          paths << map.paths(pos);
++          object << map.get_obj(pos);
++          serf << map.get_serf_index(pos);
++          idle_serf << map.get_idle_serf(pos);
+ 
+           if (map.is_in_water(pos)) {
+-            map_writer.value("resource.type") << 0;
+-            map_writer.value("resource.amount") << map.get_res_fish(pos);
++            res_type << 0;
++            res_amount << map.get_res_fish(pos);
+           } else {
+-            map_writer.value("resource.type") << map.get_res_type(pos);
+-            map_writer.value("resource.amount") << map.get_res_amount(pos);
++            res_type << map.get_res_type(pos);
++            res_amount << map.get_res_amount(pos);
+           }
+         }
+       }
+diff --git a/src/savegame.cc b/src/savegame.cc
+index 677285d..059c97e 100644
+--- a/src/savegame.cc
++++ b/src/savegame.cc
+@@ -328,14 +328,46 @@ SaveReaderBinary::read(size_t size) {
+   return data;
+ }
+ 
++/* The parts of a list split at the commas, without a stream: the maps of
++   a save have some 50000 numbers, and a stringstream per value made the
++   load take seconds on a 68060. Empty parts are kept, but not a last
++   empty one, as std::getline did. */
+ SaveReaderTextValue::SaveReaderTextValue(const std::string &_value)
+   : value(_value) {
+-  if (value.find(',') != std::string::npos) {
+-    std::istringstream iss(value);
+-    std::string item;
+-    while (std::getline(iss, item, ',')) {
+-      parts.emplace_back(item);
+-    }
++  size_t comma = value.find(',');
++  if (comma == std::string::npos) return;
++  parts.reserve(std::count(value.begin(), value.end(), ',') + 1);
++  size_t start = 0;
++  while (comma != std::string::npos) {
++    parts.emplace_back(value.data() + start, comma - start);
++    start = comma + 1;
++    comma = value.find(',', start);
++  }
++  if (start < value.size()) {
++    parts.emplace_back(value.data() + start, value.size() - start);
++  }
++}
++
++/* Numbers appended in decimal without a stream (an ostringstream per
++   number made the save take seconds on a 68060). */
++static void
++append_number(std::string *out, unsigned int val) {
++  char buf[12];
++  char *p = buf + sizeof(buf);
++  do {
++    *--p = static_cast<char>('0' + val % 10);
++    val /= 10;
++  } while (val != 0);
++  out->append(p, buf + sizeof(buf) - p);
++}
++
++static void
++append_number(std::string *out, int val) {
++  if (val < 0) {
++    out->push_back('-');
++    append_number(out, 0u - static_cast<unsigned int>(val));
++  } else {
++    append_number(out, static_cast<unsigned int>(val));
+   }
+ }
+ 
+@@ -350,8 +382,19 @@ SaveReaderTextValue::operator >> (int &val) const {
+ const SaveReaderTextValue&
+ SaveReaderTextValue::operator >> (unsigned int &val) const {
+   /* Not atoi(): a value over the range of int (as 4294967295) stays,
+-     whatever the size of long (32 bits on Windows). */
+-  val = static_cast<unsigned int>(std::strtoull(value.c_str(), nullptr, 10));
++     whatever the size of long (32 bits on Windows). As strtoull() and a
++     cast, but in 32 bits: strtoull's 64-bit arithmetic is done in software
++     on a 68k, and the maps of a save have some 150000 numbers. */
++  const char *p = value.c_str();
++  while (*p == ' ' || *p == '\t') p++;
++  bool negative = (*p == '-');
++  if (*p == '-' || *p == '+') p++;
++  unsigned int result = 0;
++  while (*p >= '0' && *p <= '9') {
++    result = result * 10 + static_cast<unsigned int>(*p - '0');
++    p++;
++  }
++  val = negative ? 0u - result : result;
+ 
+   return *this;
+ }
+@@ -417,9 +460,7 @@ SaveWriterTextValue::operator << (int val) {
+     value += ",";
+   }
+ 
+-  std::ostringstream ss;
+-  ss << val;
+-  value += ss.str();
++  append_number(&value, val);
+ 
+   return *this;
+ }
+@@ -430,9 +471,7 @@ SaveWriterTextValue::operator << (unsigned int val) {
+     value += ",";
+   }
+ 
+-  std::ostringstream ss;
+-  ss << val;
+-  value += ss.str();
++  append_number(&value, val);
+ 
+   return *this;
+ }
+@@ -443,9 +482,7 @@ SaveWriterTextValue::operator << (Direction val) {
+     value += ",";
+   }
+ 
+-  std::ostringstream ss;
+-  ss << static_cast<int>(val);
+-  value += ss.str();
++  append_number(&value, static_cast<int>(val));
+ 
+   return *this;
+ }
+@@ -456,9 +493,7 @@ SaveWriterTextValue::operator << (Resource::Type val) {
+     value += ",";
+   }
+ 
+-  std::ostringstream ss;
+-  ss << static_cast<int>(val);
+-  value += ss.str();
++  append_number(&value, static_cast<int>(val));
+ 
+   return *this;
+ }
+diff --git a/src/savegame.h b/src/savegame.h
+index d1161cc..67b210c 100644
+--- a/src/savegame.h
++++ b/src/savegame.h
+@@ -65,6 +65,8 @@ class SaveReaderTextValue {
+ 
+  public:
+   explicit SaveReaderTextValue(const std::string &value);
++  /* One part of a list (no commas in it). */
++  SaveReaderTextValue(const char *data, size_t size) : value(data, size) {}
+ 
+   const SaveReaderTextValue& operator >> (int &val) const;
+   const SaveReaderTextValue& operator >> (unsigned int &val) const;
+-- 
+2.45.2.windows.1
+

@@ -6,6 +6,14 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.33 (25.10.2026)
+-----------------
+
+- Faster loading and saving: loading about 4 times faster (2.2 -> 0.6 s),
+  saving about 7 times faster (3.4 -> 0.5 s) on a 68060. This also
+  helps the autosave, the quick save (Ctrl+Z) and F10.
+
+
 0.32 (25.10.2026) - first beta
 ------------------------------
 
