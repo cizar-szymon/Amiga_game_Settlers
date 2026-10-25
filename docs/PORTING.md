@@ -9,7 +9,7 @@ z oryginalnych danych z wersji na Amigę. Ogólne zasady: `C:\Workprojects\Amiga
 - AmigaOS 3.2, Picasso96, **68060 i 68040** (Warp1260 w A1200, Warp4070 w A4000), Fast RAM.
 - Własny ekran P96 **8-bit CLUT**, rozdzielczość z opcji: **640×480** (domyślnie) lub **640×400**; 800×600 do sprawdzenia pomiarem. Opcjonalnie okno na Workbenchu 16-bit.
 - Dane z oryginalnej gry na Amigę (gfxheader, gfxfast, gfxchip, gfxpics, sounds, music).
-- Pełne tempo logiki, **≥ 25 kl./s przy przewijaniu mapy** na A1200 060/50 (mierzone na sprzęcie).
+- Pełne tempo logiki, **≥ 25 kl./s przy przewijaniu mapy** na Warp1260 / Warp7060 (mierzone na sprzęcie).
 - 30 min gry z AI bez awarii, a zapis i odczyt gry działają.
 - Dźwięk i muzyka przez Paulę, AHI jako opcja.
 
@@ -22,7 +22,7 @@ z oryginalnych danych z wersji na Amigę. Ogólne zasady: `C:\Workprojects\Amiga
 | F1 Logika na 68k | ✅ | `simtest` na A1200: powtarzalne sumy kontrolne, 30 000 kroków, krok 0,6 ms | bez porównania z PC (decyzja użytkownika) |
 | F2 Dane na 68k | ✅ | `datacheck` na A1200: 2322 sprite'y, dźwięki, muzyka; arkusze obejrzane | bez porównania z PC |
 | F3 Backend Amigi | ✅ | menu, misja, drogi, kursor z gry, Tool Types i start z ikony, F9/F10 | 0.23–0.31 |
-| F4 Wydajność | ⏳ | cel fps na A1200, `VERIFY` bez różnic | Amiga 2: 9,4 → 46,3 fps w scenie gry 640×480 (0.09 → 0.20); pomiar na A1200 – czeka |
+| F4 Wydajność | ✅ | cel fps, `VERIFY` bez różnic | 9,4 → 46,3 fps w scenie gry 640×480 (0.09 → 0.20), Amiga 2; Warp1260 równoważny (decyzja użytkownika) |
 | F5 Dźwięk | ✅ | efekty i muzyka bez spadku fps poniżej celu | 0.22: Paula 22 kHz, efekty i muzyka potwierdzone odsłuchem; ~43 fps; AHI – opcja na później |
 | F6 Wydanie | ✅ | czysta instalacja z archiwum `Settlers-0.32.lha` na Amidze 2 | 0.32 beta, 25.10.2026 |
 
@@ -184,7 +184,7 @@ ptplayer), bez miksowania programowego.
 | 0 | 30 000 (10 min) | `9a62fe31` | 0,63 / 13 ms | 2× identyczne we wszystkich punktach |
 | 3 | 30 000 (10 min) | `715dff64` | 0,67 / 13 ms | 1× |
 
-  Budżet kroku przy 50 Hz to 20 ms, więc logika z AI zajmuje ok. **3% czasu 060/50**, a
+  Budżet kroku przy 50 Hz to 20 ms, więc logika z AI zajmuje ok. **3% czasu 68060 (Warp1260)**, a
   najdłuższy krok (13 ms) mieści się w jednej klatce. Po 10 min misji 0 gracz AI ma 7 budynków,
   57 osadników i 10 flag (gracz 0 to człowiek, stoi w miejscu).
 - **Do optymalizacji:** wczytanie stanu z tekstowego zapisu trwa na 060 **4,6 s**
@@ -214,7 +214,7 @@ ptplayer), bez miksowania programowego.
 - Brakujące indeksy (np. `sound` 39/90, `map_object` 137/194, `serf_torso` 469/541) to puste
   pozycje w danych Amigi: liczniki zasobów w `data.cc` są wspólne z DOS. Do sprawdzenia w F3, czy
   gra ich nie żąda.
-- **Czasy na 060/50:** wczytanie plików i rozpakowanie 2,7 s; zdekodowanie wszystkich zasobów
+- **Czasy na Warp1260 (68060):** wczytanie plików i rozpakowanie 2,7 s; zdekodowanie wszystkich zasobów
   8,1 s (najwięcej: muzyka 1,9 s, `art_box` 1,1 s, `serf_torso` 0,8 s, `map_object` 0,7 s,
   `icon` 0,6 s). Gra dekoduje sprite'y leniwie i trzyma je w pamięci podręcznej (`gfx.cc`), więc
   koszt rozłoży się na pierwsze użycia. W F3/F4: dekodować od razu do 8-bit (indeksy) i ewentualnie
@@ -287,7 +287,9 @@ Wszystkie jako commity w `freeserf/` (gałąź `settlers-pin`) i pliki `port/fre
 #### Postęp F4 (25.10.2026, Amiga 2: A4000 Warp4070, Workbench zgłasza MC68060)
 
 Amiga 1 niedostępna, pomiary na Amidze 2 (`C:/amiga-dev/amiagent-2.cfg`, ten sam układ
-`WorkSD:Settlers`). Liczby nie są wprost porównywalne z A1200 z F1–F3.
+`WorkSD:Settlers`). Według użytkownika (projektanta kart) Warp7060 i Warp1260 mają w praktyce
+tę samą wydajność (ten sam FPGA z grafiką, ten sam 68060), więc liczby z Amigi 2 obowiązują też dla
+A1200 – osobny pomiar na A1200 nie jest potrzebny.
 
 **Narzędzia pomiaru:**
 - scena: `simtest -m 0 -c -n 6000 -s WorkSD:Settlers/scene1.save` (misja 0, zamek gracza 0
@@ -431,7 +433,7 @@ tylko pętla gry. Zawieszony proces po Ctrl-C miał tę samą przyczynę.
   z identycznym wynikiem); nie robimy wersji AGA; nie używamy procesora ARM; nie czytamy VRAM
   w pętlach rysujących.
 
-## Wydajność (A1200, 060/50)
+## Wydajność (Warp1260 i Warp7060 – wydajnościowo równoważne)
 
 | Data | Zmiana | Scena | fps / czas | Uwagi |
 |---|---|---|---|---|
@@ -453,4 +455,4 @@ tylko pętla gry. Zawieszony proces po Ctrl-C miał tę samą przyczynę.
   (odstępstwo od standardu klawiszy portów, gdzie Esc kończy grę).
 - **Freeserf F10** (nowa gra) zastąpiony standardowym F10 (zapis stanu); menu nowej gry: Ctrl+N.
 - Bez tłumaczeń i bez czcionki `settlers.ttf` – teksty czcionką z danych gry, po angielsku.
-- Liczby wydajności z Amigi 2 (Warp7060, 060 @ 100 MHz) – na A1200 (060 @ 50 MHz) będą niższe.
+- Liczby wydajności z Amigi 2 (Warp7060); Warp1260 w A1200 jest wydajnościowo równoważny.

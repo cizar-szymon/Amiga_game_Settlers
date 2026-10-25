@@ -150,14 +150,15 @@ def main():
         Spacer(1, 3),
         P("Scena gry 640×480: <b>9,4 → 46,3 klatek/s</b> (bez dźwięku; z muzyką ~43), "
           "640×400: 49,9 (pułap 50), 800×600: 32,5. Logika z AI: ~0,6 ms na krok 20 ms "
-          "(68060 @ 50 MHz). Każda szybka ścieżka sprawdzona trybem <i>VERIFY</i> – 0 różnic.",
+          "(A1200, Warp1260). Każda szybka ścieżka sprawdzona trybem <i>VERIFY</i> – 0 różnic.",
           "box"),
     ]))
 
     st.append(P("Sprzęt i metoda", "h2"))
-    st.append(LI("<b>Amiga 1</b> – A1200, Warp1260, 68060 @ 50 MHz: fazy F1–F3 (logika, dane, "
-                 "pierwszy obraz). <b>Amiga 2</b> – Warp7060, 68060 @ 100 MHz (WARP Diagnostic): "
-                 "optymalizacja F4, dźwięk F5, wydanie F6. Na A1200 liczby klatek będą niższe."))
+    st.append(LI("<b>Amiga 1</b> – A1200 z Warp1260 (68060): fazy F1–F3 (logika, dane, pierwszy "
+                 "obraz). <b>Amiga 2</b> – Warp7060, 68060 @ 100 MHz (WARP Diagnostic): optymalizacja "
+                 "F4, dźwięk F5, wydanie F6. Obie karty mają w praktyce tę samą wydajność (ten sam "
+                 "FPGA z grafiką i 68060), więc liczby obowiązują dla obu."))
     st.append(LI("Pomiary zawsze na prawdziwym sprzęcie przez AmiAgenta, w tej samej scenie: zapis "
                  "gry z misji 0 z zamkiem gracza (<i>simtest -c</i>), gra biegnie od razu po "
                  "wczytaniu."))
@@ -175,7 +176,7 @@ def main():
          ["F1 Logika na 68k", "gotowe", "kompilacja bez zmian, deterministyczna; krok z AI 0,6 ms (A1200)"],
          ["F2 Dane na 68k", "gotowe", "2322 sprite'y, 39 dźwięków, 2 moduły; wczytanie 2,7 s, dekodowanie 8,1 s"],
          ["F3 Backend Amigi", "gotowe", "ekran P96 8-bit, mysz, klawiatura, kursor gry, ikona, F9/F10"],
-         ["F4 Wydajność", "gotowe*", "9,4 → 46,3 kl./s (Amiga 2); *pomiar na A1200 – gdy będzie dostępna"],
+         ["F4 Wydajność", "gotowe", "9,4 → 46,3 kl./s w scenie gry 640×480; VERIFY 0 różnic"],
          ["F5 Dźwięk", "gotowe", "Paula 22 kHz, MOD przez micromod, ~5% CPU, 0 przerw"],
          ["F6 Wydanie", "gotowe", "Settlers-0.32.lha, czysta instalacja sprawdzona"]],
         [34, 16, 130]))
@@ -217,10 +218,10 @@ def main():
     st.append(P("Logika, dane, dźwięk", "h3"))
     st.append(table(["Pomiar", "Wynik", "Maszyna"],
                     [["Krok logiki z AI (30 000 kroków = 10 min gry)", "0,6 ms śr., 13 ms maks.",
-                      "A1200 060/50"],
+                      "A1200 (Warp1260)"],
                      ["Powtarzalność (2 przebiegi, ta sama misja)", "identyczne sumy CRC",
-                      "A1200 060/50"],
-                     ["Wczytanie i dekodowanie danych Amigi", "2,7 s + 8,1 s", "A1200 060/50"],
+                      "A1200 (Warp1260)"],
+                     ["Wczytanie i dekodowanie danych Amigi", "2,7 s + 8,1 s", "A1200 (Warp1260)"],
                      ["Wczytanie zapisu tekstowego Freeserf", "4,6 s", "Amiga 2"],
                      ["Miksowanie dźwięku (bufor 512 próbek, 22 kHz)", "1,1 ms (~5% CPU), 0 przerw",
                       "Amiga 2"]],
@@ -275,7 +276,6 @@ def main():
 
     st.append(P("Co dalej", "h2"))
     for t in [
-        "Pomiar na A1200 (Warp1260, 060 @ 50 MHz), gdy Amiga 1 będzie dostępna.",
         "Gra sieciowa dla dwóch graczy (okno „Online”, lockstep przez TCP) – osobny etap.",
         "Opcjonalnie AHI (warp.audio); szybsze wczytywanie zapisów (4,6 s).",
     ]:
