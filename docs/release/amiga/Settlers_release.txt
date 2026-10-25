@@ -6,6 +6,22 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.41 (25.10.2026)
+-----------------
+
+- Tempo gry inne niz normalne widac w prawym gornym rogu ekranu (X1.5,
+  X2, X2.5, X3), tak jak licznik FPS; przy x1 i w pauzie nic.
+
+
+0.40 (25.10.2026)
+-----------------
+
+- Tempo gry klawiszami: + przyspiesza do x1,5, x2, x2,5 i x3, - zwalnia,
+  ale nie ponizej normalnego, 0 wraca do normalnego. Wczesniej + nie mialo
+  granicy (do x20), a - zatrzymywalo gre. W pauzie (P) + i - zmieniaja
+  tempo, z ktorym gra ruszy.
+
+
 0.39 (25.10.2026)
 -----------------
 

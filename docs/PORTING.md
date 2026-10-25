@@ -281,6 +281,8 @@ tylko 35 kroków logiki/s zamiast 50 (limit 5 kroków nadrabiania na klatkę). T
 8. `viewport.*`, `map.*`, `video.h`, `gfx.h`: drogi i granice w kafelkach terenu, powiadomienia
    `on_paths_changed`, sprawdzanie kafelków (`verify_tiles`).
 9. `viewport.*`: dźwięki mapy raz na fazę animacji obiektu (brzęczenie przy wysokim FPS).
+10. `game.cc`: tempo gry klawiszami ×1…×3 co ×0,5.
+11. `interface.*`, `game.h`: tempo gry w prawym górnym rogu.
 
 Wszystkie jako commity w `freeserf/` (gałąź `settlers-pin`) i pliki `port/freeserf-patches/`.
 
@@ -552,6 +554,17 @@ Obraz startowy zostaje co najmniej 4 s od pokazania (`VideoAmiga::start_picture_
 przy wyłączonej grała ok. 1 s: teraz `main` ustawia ją z `Settlers.ini` (`options/music`) przed
 `play_track`, a `PlayerMusic::play_track` wczytuje moduł także przy wyłączonej muzyce (bez grania),
 żeby późniejsze włączenie (M, Options) działało.
+
+## Tempo gry klawiszami (0.40)
+
+Freeserf: `+` dodawał 1 takt na krok (do 40, czyli ×20), `-` schodził do 0 (pauza). Łatka `0010`:
+tempo 2 (×1) do 6 (×3) co 1 (×0,5), `-` nie schodzi poniżej normalnego, w pauzie `+`/`-` zmieniają
+tempo po pauzie (`game_speed_save`), `0` jak dawniej (normalne, kończy pauzę). Koszt CPU bez zmian
+(50 kroków/s, każdy przesuwa zegar o więcej taktów). Pomiar na Amidze 1 (scena 2, klawisze przez
+AmiAgenta, takty/s z czasem odczytu): ×1 96, ×1,5 151, ×3 304 (granica), `-` 258 / 194 / 101,
+`0` 102; `-` przy ×1 bez zmian. Klawisze z klawiatury numerycznej i głównej działają tak samo.
+0.41: tempo inne niż ×1 w prawym górnym rogu (`Interface::draw_game_speed`, `X1.5`…`X3`, styl jak
+licznik FPS; przy ×1 i w pauzie nic) – sprawdzone zrzutami F9 przy ×1,5, ×2 i po `0`.
 
 ## Wydajność (Warp1260 i Warp7060 – wydajnościowo równoważne)
 

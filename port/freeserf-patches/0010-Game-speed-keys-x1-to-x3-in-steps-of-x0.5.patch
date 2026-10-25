@@ -1,0 +1,52 @@
+From beb22f5d91c9ea59f14be1aeab6e2a36510b12f8 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sun, 25 Oct 2026 21:17:25 +0100
+Subject: [PATCH 10/11] Game speed keys: x1 to x3 in steps of x0.5
+
++ added one tick per update up to 40 (x20) and - went down to 0, which
+stopped the game. Now + goes from the normal speed to x3 in steps of
+x0.5, - down to the normal speed, and in a pause both set the speed the
+game goes on with. 0 is unchanged (normal speed, ends a pause).
+---
+ src/game.cc | 18 ++++++++++++------
+ 1 file changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/src/game.cc b/src/game.cc
+index e064073..8ac0a80 100644
+--- a/src/game.cc
++++ b/src/game.cc
+@@ -858,19 +858,25 @@ Game::pause() {
+   Log::Info["game"] << "Game speed: " << game_speed;
+ }
+ 
++/* The speeds of the + and - keys: x1 (DEFAULT_GAME_SPEED) to x3 in steps
++   of x0.5; - stops at the normal speed. In a pause they change the speed
++   the game goes on with; 0 sets the normal speed (also ending a pause). */
+ void
+ Game::speed_increase() {
+-  if (game_speed < 40) {
+-    game_speed += 1;
+-    Log::Info["game"] << "Game speed: " << game_speed;
++  unsigned int &speed = (game_speed != 0) ? game_speed : game_speed_save;
++  if (speed < DEFAULT_GAME_SPEED) speed = DEFAULT_GAME_SPEED;
++  if (speed < 3 * DEFAULT_GAME_SPEED) {
++    speed += DEFAULT_GAME_SPEED / 2;
++    Log::Info["game"] << "Game speed: " << speed;
+   }
+ }
+ 
+ void
+ Game::speed_decrease() {
+-  if (game_speed >= 1) {
+-    game_speed -= 1;
+-    Log::Info["game"] << "Game speed: " << game_speed;
++  unsigned int &speed = (game_speed != 0) ? game_speed : game_speed_save;
++  if (speed > DEFAULT_GAME_SPEED) {
++    speed -= DEFAULT_GAME_SPEED / 2;
++    Log::Info["game"] << "Game speed: " << speed;
+   }
+ }
+ 
+-- 
+2.45.2.windows.1
+

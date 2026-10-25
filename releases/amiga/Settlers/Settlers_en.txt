@@ -1,7 +1,7 @@
 THE SETTLERS - Freeserf for the Amiga with a graphics card
 ==========================================================
 
-Version 0.39 (beta), 25.10.2026
+Version 0.41 (beta), 25.10.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) on an Amiga with a graphics
 card (Picasso96) and a 68040/68060, at up to 800x600. It is based on
@@ -44,7 +44,10 @@ CONTROLS
   1 ... 5                  panel buttons
   B                        building sites
   Tab                      next message
-  + / - / 0                faster / slower / normal speed
+  +                        game speed: x1.5 / x2 / x2.5 / x3
+  -                        slower, down to the normal speed
+  0                        normal speed (x1)
+                           (a speed other than x1 is shown top right)
   M / S                    music / sound effects on and off
   Ctrl+Z                   quick save
   Esc                      close a box in the game

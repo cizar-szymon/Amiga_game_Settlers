@@ -6,6 +6,23 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.41 (25.10.2026)
+-----------------
+
+- A game speed other than normal is shown in the top right corner of the
+  screen (X1.5, X2, X2.5, X3), like the frame counter; nothing at x1 and
+  in a pause.
+
+
+0.40 (25.10.2026)
+-----------------
+
+- Game speed keys: + speeds up to x1.5, x2, x2.5 and x3, - slows down but
+  not below the normal speed, 0 goes back to normal. Before, + had no
+  limit (up to x20) and - stopped the game. In a pause (P) + and - set the
+  speed the game goes on with.
+
+
 0.39 (25.10.2026)
 -----------------
 

@@ -1,0 +1,83 @@
+From fe4e113bbbda9bc0fa9cf04cf7fab365f60c7972 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sun, 25 Oct 2026 21:23:46 +0100
+Subject: [PATCH 11/11] Show the game speed in the top right corner
+
+A speed above the normal one (+ key) is drawn as X1.5 .. X3 in the top
+right corner; nothing at the normal speed and in a pause. On the Amiga
+like the frame counter, green on black.
+---
+ src/game.h       |  1 +
+ src/interface.cc | 24 ++++++++++++++++++++++++
+ src/interface.h  |  1 +
+ 3 files changed, 26 insertions(+)
+
+diff --git a/src/game.h b/src/game.h
+index b7edcd0..2fd44c8 100644
+--- a/src/game.h
++++ b/src/game.h
+@@ -134,6 +134,7 @@ class Game {
+ 
+   unsigned int get_tick() const { return tick; }
+   bool is_paused() const { return game_speed == 0; }
++  unsigned int get_speed() const { return game_speed; }
+   GameAI &get_ai_game() { return ai_game; }
+   void set_max_next_index(unsigned int value) { max_next_index = value; }
+ 
+diff --git a/src/interface.cc b/src/interface.cc
+index 5f050e1..5abea65 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -1175,6 +1175,29 @@ Interface::draw_fps(Frame *frame) {
+ #endif
+ }
+ 
++/* A game speed above the normal one (+ key) in the top right corner, as
++   X1.5 .. X3; nothing at the normal speed and in a pause. */
++void
++Interface::draw_game_speed(Frame *frame) {
++  if (!game) return;
++  unsigned int speed = game->get_speed();
++  if (speed <= DEFAULT_GAME_SPEED) return;
++
++  unsigned int tenths = speed * 10 / DEFAULT_GAME_SPEED;
++  std::string text = "X" + std::to_string(tenths / 10);
++  if (tenths % 10 != 0) text += "." + std::to_string(tenths % 10);
++#ifdef __AMIGA__
++  /* Amiga port: like the frame counter, green on black. */
++  int w = 8 * static_cast<int>(text.size()) + 4;
++  frame->fill_rect(width - w, 0, w, 11, Color::black);
++  frame->draw_string(width - w + 2, 2, text, Color::green,
++                     Color::transparent);
++#else
++  frame->draw_string(width - 8 * static_cast<int>(text.size()) - 4, 4, text,
++                     Color::black);
++#endif
++}
++
+ /* Called periodically when the game progresses. */
+ void
+ Interface::update() {
+@@ -1371,6 +1394,7 @@ Interface::handle_event(const Event *event) {
+     case Event::TypeDraw:
+       draw(reinterpret_cast<Frame*>(event->object));
+       draw_fps(reinterpret_cast<Frame*>(event->object));
++      draw_game_speed(reinterpret_cast<Frame*>(event->object));
+       break;
+     case Event::TypeInvalidate:
+       invalidate();
+diff --git a/src/interface.h b/src/interface.h
+index b4a87f0..191ff56 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -144,6 +144,7 @@ class Interface : public GuiObject, public GameManager::Handler {
+   virtual ~Interface();
+ 
+   void draw_fps(Frame *frame);
++  void draw_game_speed(Frame *frame);
+   void autosave();
+ 
+   PGame get_game() { return game; }
+-- 
+2.45.2.windows.1
+
