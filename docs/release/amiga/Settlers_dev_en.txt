@@ -1,7 +1,7 @@
 THE SETTLERS (Freeserf) for the Amiga - notes for developers
 ============================================================
 
-Version 0.36. The full description of the port, decisions and
+Version 0.37. The full description of the port, decisions and
 measurements: docs/PORTING.md in the Settlers repository (Polish).
 
 
@@ -36,8 +36,13 @@ OPTIONS (Shell and Tool Types)
   STATS=FULL       plus E-clock probes (they slow the game down!; the VIEW
                    line: ms/s of the parts of the map view) and the
                    music module written to RAM:Settlers-music0.mod
+  PATHS=SCREEN     paths and borders drawn into every frame, as Freeserf
+                   does (to compare; by default in the landscape tiles)
+  FREEZE           the loaded save paused at once (F9 shots to compare)
   VERIFY           every fast drawing path compared with the reference one,
-                   count of differences in RAM:Settlers-stats.txt (slow)
+                   count of differences in RAM:Settlers-stats.txt (slow);
+                   TILES: the landscape tiles drawn again every 50 frames
+                   and compared with the kept ones
   RENDER=VRAM|FAST compose the frame in the card's memory (default) or in
                    Fast RAM and send all of it
   LOCK=FRAME|CALL  lock the card's bitmap per frame (default) or per drawing

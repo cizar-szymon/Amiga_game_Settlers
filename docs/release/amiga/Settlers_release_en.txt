@@ -6,6 +6,15 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.37 (25.10.2026)
+-----------------
+
+- Paths and borders drawn once into the landscape tiles (again only when
+  they change), not into every frame: a game with many roads 31 -> 44
+  frames/s (640x400, 68060). Roads at the bottom edge of the screen are
+  no longer cut off.
+
+
 0.36 (25.10.2026)
 -----------------
 

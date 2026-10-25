@@ -210,6 +210,7 @@ class VideoAmiga : public Video {
      Shell window) waits for the lock, and the machine stops (0.15). */
   void release_vram();
   void compare_vram();
+  virtual bool frames_equal(const Video::Frame *a, const Video::Frame *b);
   uint8_t nearest(uint8_t r, uint8_t g, uint8_t b) const;
 };
 

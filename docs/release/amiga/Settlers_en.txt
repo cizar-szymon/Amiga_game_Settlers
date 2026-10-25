@@ -1,7 +1,7 @@
 THE SETTLERS - Freeserf for the Amiga with a graphics card
 ==========================================================
 
-Version 0.36 (beta), 25.10.2026
+Version 0.37 (beta), 25.10.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) on an Amiga with a graphics
 card (Picasso96) and a 68040/68060, at up to 800x600. It is based on

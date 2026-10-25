@@ -46,6 +46,8 @@ static std::list<std::string> data_dirs;
 static std::string save_file;
 static unsigned int width = 640, height = 480;
 static bool mode_given = false;
+/* FREEZE: the loaded game paused (screenshots to compare). */
+static bool freeze = false;
 
 /* One option, from the Shell or a Tool Type of the icon; false when it is
    not known. */
@@ -69,6 +71,11 @@ parse_option(const char *a) {
       Viewport::hear_width = static_cast<int>(w);
       Viewport::hear_height = static_cast<int>(h);
     }
+  } else if (strcasecmp(a, "FREEZE") == 0) {
+    freeze = true;
+  } else if ((v = option_value(a, "PATHS")) != nullptr) {
+    /* SCREEN: paths and borders drawn into every frame (to compare). */
+    Viewport::paths_in_tiles = strcasecmp(v, "SCREEN") != 0;
   } else if ((v = option_value(a, "DATA")) != nullptr) {
     data_dirs.push_back(v);
   } else if ((v = option_value(a, "LOAD")) != nullptr) {
@@ -92,6 +99,7 @@ parse_option(const char *a) {
     amiga_blit_mode = atoi(v);
   } else if (strcasecmp(a, "VERIFY") == 0) {
     VideoAmiga::verify = true;
+    Viewport::verify_tiles = true;
   } else if (strcasecmp(a, "STATS=FULL") == 0) {
     EventLoopAmiga::show_stats = true;
     VideoAmiga::profile = true;
@@ -125,7 +133,7 @@ main(int argc, char *argv[]) {
                       "[DATA=path] [LOAD=savefile] [NOSOUND] [SFXAREA=WxH|ALL] [FPS] "
                       "[STATS[=FULL]] "
                       "[VERIFY] [RENDER=VRAM|FAST] [LOCK=FRAME|CALL] "
-                      "[BLIT=0|1|2] [DEBUG=n]");
+                      "[BLIT=0|1|2] [PATHS=TILES|SCREEN] [FREEZE] [DEBUG=n]");
         return 5;
       }
     }
@@ -178,6 +186,7 @@ main(int argc, char *argv[]) {
       if (!game_manager.load_game(save_file)) {
         return 10;
       }
+      if (freeze) game_manager.get_current_game()->pause();
     } else if (!game_manager.start_random_game()) {
       return 10;
     }

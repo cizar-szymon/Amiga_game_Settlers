@@ -928,6 +928,12 @@ VideoAmiga::take_cursor() {
 
 /* VERIFY with VRAM: rows of the back bitmap that differ from the same
    frame drawn in fast RAM. */
+bool
+VideoAmiga::frames_equal(const Video::Frame *a, const Video::Frame *b) {
+  return a->w == b->w && a->h == b->h &&
+         std::memcmp(a->pixels, b->pixels, a->w * a->h) == 0;
+}
+
 void
 VideoAmiga::compare_vram() {
   static uint8_t row[4096];

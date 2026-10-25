@@ -1,7 +1,7 @@
 THE SETTLERS (Freeserf) na Amige - opis dla programistow
 ========================================================
 
-Wersja 0.36. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
+Wersja 0.37. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
 w repozytorium Settlers.
 
 
@@ -34,8 +34,13 @@ OPCJE (Shell i Tool Types)
   STATS=FULL       do tego sondy E-clock (spowalniaja!; linia VIEW: ms/s
                    czesci widoku mapy) i zapis muzyki do
                    RAM:Settlers-music0.mod
+  PATHS=SCREEN     drogi i granice w kazdej klatce, jak w Freeserf (do
+                   porownan; domyslnie w kafelkach terenu)
+  FREEZE           wczytany zapis od razu w pauzie (zrzuty F9 do porownan)
   VERIFY           kazda szybka sciezka rysowania porownana ze wzorcowa,
-                   licznik roznic w RAM:Settlers-stats.txt (wolno)
+                   licznik roznic w RAM:Settlers-stats.txt (wolno); TILES:
+                   kafelki terenu rysowane od nowa co 50 klatek i
+                   porownane z zapamietanymi
   RENDER=VRAM|FAST skladanie klatki w pamieci karty (domyslnie) albo w Fast
                    RAM i wysylka calosci
   LOCK=FRAME|CALL  blokada bitmapy karty na klatke (domyslnie) albo na

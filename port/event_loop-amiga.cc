@@ -386,8 +386,8 @@ EventLoopAmiga::run() {
                video.get_colors_used(), VideoAmiga::verify ? "  VERIFY" : "");
       if (VideoAmiga::verify) {
         size_t n = strlen(line);
-        snprintf(line + n, sizeof(line) - n, " %lu",
-                 (unsigned long)video.verify_errors);
+        snprintf(line + n, sizeof(line) - n, " %lu TILES %u",
+                 (unsigned long)video.verify_errors, Viewport::tile_errors);
       }
       stats_lines[0] = line;
       stats_lines[1].clear();

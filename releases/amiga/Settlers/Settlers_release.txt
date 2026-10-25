@@ -6,6 +6,15 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.37 (25.10.2026)
+-----------------
+
+- Drogi i granice rysowane raz w kafelkach terenu (od nowa tylko po
+  zmianie), a nie w kazdej klatce: gra z wieloma drogami 31 -> 44
+  klatek/s (640x400, 68060). Drogi przy dolnej krawedzi ekranu nie sa
+  juz uciete.
+
+
 0.36 (25.10.2026)
 -----------------
 

@@ -278,6 +278,8 @@ tylko 35 kroków logiki/s zamiast 50 (limit 5 kroków nadrabiania na klatkę). T
 6. `viewport.*`: efekty mapy tylko z obszaru wokół środka widoku (`hear_width/height`).
 7. `viewport.*`, `gfx.*`: szybsze rysowanie widoku (przesunięcia sprite'ów, tablice `static`, bez
    float, hash obrazków) i sonda `draw_probe`.
+8. `viewport.*`, `map.*`, `video.h`, `gfx.h`: drogi i granice w kafelkach terenu, powiadomienia
+   `on_paths_changed`, sprawdzanie kafelków (`verify_tiles`).
 
 Wszystkie jako commity w `freeserf/` (gałąź `settlers-pin`) i pliki `port/freeserf-patches/`.
 
@@ -499,6 +501,38 @@ Samo rysowanie pikseli sprite'ów (IMAGE) 273 – reszta to kod Freeserf przed r
 Scena wzorcowa scene1 (640×480 z dźwiękiem): 43,3 → **50,0** (pułap). `VERIFY` 0 różnic w obu
 scenach. Dalsze możliwości: obiekty (budynki, drzewa, flagi – teraz największa część), drogi
 (maskowane sprite'y).
+
+## Drogi i granice w kafelkach terenu (0.37, Amiga 1)
+
+Pomiar bez sond, przez pomijanie grup (tymczasowa opcja, scena 2, 640×400, 31,8 ms na klatkę):
+drogi i granice **9,3 ms** (rysowanie dróg 5,8, granic 2,0, pętla po polach 1,8), drzewa / kamienie /
+pola 9,2 (w tym cienie drzew 3,8), budynki 4,3, flagi 1,9. Wyłączenie samego wnętrza
+`VideoAmiga::draw_image` daje 50 kl./s: piksele sprite'ów w VRAM to ~15 ms na klatkę, w tym cienie
+(odczyt VRAM) 3,5 ms. `RENDER=FAST` (składanie w Fast RAM): 22,7 kl./s – gorzej niż VRAM. Sonda
+E-clock na każdy sprite przekłamuje (kilka µs na odczyt E-clock) – do takich pomiarów tylko
+pomijanie.
+
+Łatka `0008`: drogi i granice rysowane przy tworzeniu kafelka terenu
+(`draw_paths_and_borders_area` z marginesem 2 wierszy i kolumny), `Map` powiadamia
+(`on_paths_changed`) przy zmianie drogi lub właściciela pola (`set_owner`/`del_owner` tylko przy
+faktycznej zmianie – pętla terytorium woła `del_owner` dla całego kwadratu), widok unieważnia kafelki
+pola i sąsiadów. Na ekranie tylko budowana droga. `PATHS=SCREEN` – po staremu.
+
+Sprawdzenie:
+- zrzuty F9 sceny zatrzymanej (`FREEZE`) w obu trybach: 173 różne piksele – kolejność nakładania się
+  odcinków na skrzyżowaniach (zależy od wiersza, od którego zaczyna się rysowanie; Freeserf zmienia ją
+  też przy przewinięciu) i odcinki przy dolnej krawędzi, które Freeserf ucinał;
+- `VERIFY` sprawdza też kafelki (`TILES`: co 50 klatek rysowane od nowa i porównane). Scena
+  `sceneai.save` (scene1 z graczem 0 jako komputerem – buduje drogi na ekranie), 4 min: bez
+  unieważniania **30** nieaktualnych kafelków, z unieważnianiem **0**;
+- `simtest` mission 0: ta sama suma `8eabef60` (logika bez zmian).
+
+| Scena (Amiga 1, Warp1260) | 0.36 | 0.37 |
+|---|---|---|
+| scene2 640×400 | 31,3 | **44,5** |
+| scene1 640×480 z dźwiękiem | 46,2 | **50,1** (pułap) |
+
+Teraz największe są obiekty (`VIEW OBJ` 577 ms/s z sondami): drzewa z cieniami, budynki, flagi.
 
 ## Wydajność (Warp1260 i Warp7060 – wydajnościowo równoważne)
 
