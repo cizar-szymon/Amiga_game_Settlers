@@ -141,7 +141,7 @@ def main():
                             title="Settlers na Amigę RTG – raport", author="Settlers port")
     st = []
     st.append(P("Settlers (Freeserf) na Amigę RTG", "title"))
-    st.append(P("Raport zmian i pomiarów wydajności · wersja 0.32 beta · 25.10.2026", "sub"))
+    st.append(P("Raport zmian i pomiarów wydajności · wersja 0.33 beta · 25.10.2026", "sub"))
 
     st.append(boxed([
         P("<b>W skrócie.</b> The Settlers (Blue Byte 1993) działa na Amidze z kartą Picasso96 "
@@ -152,6 +152,9 @@ def main():
           "640×400: 49,9 (pułap 50), 800×600: 32,5. Logika z AI: ~0,6 ms na krok 20 ms "
           "(A1200, Warp1260). Każda szybka ścieżka sprawdzona trybem <i>VERIFY</i> – 0 różnic.",
           "box"),
+        Spacer(1, 3),
+        P("Zapisy gry (0.33): wczytanie <b>2,22 → 0,57 s</b>, zapis <b>3,34 → 0,47 s</b>; "
+          "plik zapisany po wczytaniu identyczny bajt w bajt.", "box"),
     ]))
 
     st.append(P("Sprzęt i metoda", "h2"))
@@ -178,7 +181,8 @@ def main():
          ["F3 Backend Amigi", "gotowe", "ekran P96 8-bit, mysz, klawiatura, kursor gry, ikona, F9/F10"],
          ["F4 Wydajność", "gotowe", "9,4 → 46,3 kl./s w scenie gry 640×480; VERIFY 0 różnic"],
          ["F5 Dźwięk", "gotowe", "Paula 22 kHz, MOD przez micromod, ~5% CPU, 0 przerw"],
-         ["F6 Wydanie", "gotowe", "Settlers-0.32.lha, czysta instalacja sprawdzona"]],
+         ["F6 Wydanie", "gotowe", "Settlers-0.32.lha, czysta instalacja sprawdzona"],
+         ["Zapisy (0.33)", "gotowe", "wczytanie 2,22 → 0,57 s, zapis 3,34 → 0,47 s; Settlers-0.33.lha"]],
         [34, 16, 130]))
 
     st.append(P("Wydajność obrazu", "h2"))
@@ -222,10 +226,26 @@ def main():
                      ["Powtarzalność (2 przebiegi, ta sama misja)", "identyczne sumy CRC",
                       "A1200 (Warp1260)"],
                      ["Wczytanie i dekodowanie danych Amigi", "2,7 s + 8,1 s", "A1200 (Warp1260)"],
-                     ["Wczytanie zapisu tekstowego Freeserf", "4,6 s", "Amiga 2"],
+                     ["Wczytanie / zapis gry (126 KB), 0.33", "0,57 s / 0,47 s", "Amiga 2"],
                      ["Miksowanie dźwięku (bufor 512 próbek, 22 kHz)", "1,1 ms (~5% CPU), 0 przerw",
                       "Amiga 2"]],
                     [86, 52, 42]))
+
+    st.append(P("Wczytywanie i zapis gry (0.33)", "h3"))
+    st.append(P("Zapis tekstowy Freeserf, scena 1 (126 KB), Amiga 2. Narzędzie <i>loadtest</i> mierzy "
+                "etapy i liczy CRC pliku zapisanego po wczytaniu – nie zmienił się po żadnym kroku "
+                "(scena 1 i scena 3 z 10 min gry), więc odczyt i zapis działają jak przedtem.", "small"))
+    st.append(table(["Krok", "Wczytanie", "Zapis"],
+                    [["wyjście (malloc libnix)", "2,22 s", "3,34 s"],
+                     ["alokator klas rozmiarów z AmiXcom (sam)", "1,73 s", "3,27 s"],
+                     ["mapa: wartości sekcji wyszukane raz zamiast ~147 tys. razy; listy bez "
+                      "istringstream; liczby zapisywane bez ostringstream", "1,60 s", "0,52 s"],
+                     ["liczby czytane w 32 bitach zamiast strtoull (64-bit na 68k)", "1,03 s", "0,52 s"],
+                     ["+ alokator AmiXcom w grze (0.33)", "0,57 s", "0,47 s"]],
+                    [130, 25, 25]))
+    st.append(P("Łącznie: wczytanie <b>3,9 raza</b>, zapis <b>7,1 raza</b> szybciej; dotyczy też "
+                "autozapisu, Ctrl+Z i F10. Tempo gry bez zmian (43,2 kl./s z dźwiękiem), VERIFY 0.",
+                "small"))
 
     st.append(PageBreak())
     st.append(P("Błędy znalezione na sprzęcie", "h2"))
@@ -269,15 +289,16 @@ def main():
         "0002 – make_transparent na big endian (smugi).",
         "0003 – GuiObject::use_frame: rysowanie w miejscu (dwie kopie ekranu mniej na klatkę).",
         "0004 – Options → Screen, Advanced → Show FPS, mniejsze okno Advanced.",
+        "0005 – szybsze wczytywanie i zapis zapisów tekstowych (ten sam plik wyjściowy).",
     ]:
         st.append(LI(t))
     st.append(P("Reszta portu to osobne pliki (port/): ekran, VRAM, zdarzenia, dźwięk, start z "
-                "ikony – kod Freeserf zmieniony w 4 miejscach.", "small"))
+                "ikony – kod Freeserf zmieniony w 5 miejscach.", "small"))
 
     st.append(P("Co dalej", "h2"))
     for t in [
         "Gra sieciowa dla dwóch graczy (okno „Online”, lockstep przez TCP) – osobny etap.",
-        "Opcjonalnie AHI (warp.audio); szybsze wczytywanie zapisów (4,6 s).",
+        "Opcjonalnie AHI (warp.audio).",
     ]:
         st.append(LI(t))
 
