@@ -1,0 +1,68 @@
+From faa430cf0ad055a1090229ef9c095c9b3bfc9148 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sun, 25 Oct 2026 23:31:37 +0100
+Subject: [PATCH 16/16] Make the waiting map preview when its time comes
+
+The start menu is drawn only when asked, so the preview requested after
+a click was never made and 'Making the map' stayed. Interface::update
+asks the box (update_preview) to be drawn when the time has come.
+---
+ src/game-init.cc | 9 +++++++++
+ src/game-init.h  | 5 +++++
+ src/interface.cc | 4 ++++
+ 3 files changed, 18 insertions(+)
+
+diff --git a/src/game-init.cc b/src/game-init.cc
+index e2e58f9..c1428d9 100644
+--- a/src/game-init.cc
++++ b/src/game-init.cc
+@@ -628,6 +628,15 @@ GameInitBox::handle_player_click(unsigned int player_index, int cx, int cy) {
+   return true;
+ }
+ 
++void
++GameInitBox::update_preview() {
++  if (preview_pending && game_type != GameLoad &&
++      static_cast<int>(EventLoop::get_instance().get_ticks() -
++                       preview_due) >= 0) {
++    set_redraw();
++  }
++}
++
+ void
+ GameInitBox::request_map_preview() {
+   preview_pending = true;
+diff --git a/src/game-init.h b/src/game-init.h
+index 7069629..c292b80 100644
+--- a/src/game-init.h
++++ b/src/game-init.h
+@@ -75,6 +75,11 @@ class GameInitBox : public GuiObject {
+   std::unique_ptr<Minimap> minimap;
+   std::unique_ptr<ListSavedFiles> file_list;
+ 
++ public:
++  /* Called with every update: a requested map preview whose time came
++     asks for a drawing, which makes it (a box is drawn only when asked). */
++  void update_preview();
++
+  public:
+   explicit GameInitBox(Interface *interface);
+   virtual ~GameInitBox();
+diff --git a/src/interface.cc b/src/interface.cc
+index 2336d3b..d49d61e 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -1212,6 +1212,10 @@ void
+ Interface::update() {
+   Audio::get_instance().update_sfx();
+ 
++  if (init_box != nullptr && init_box->is_displayed()) {
++    init_box->update_preview();
++  }
++
+   if (exit_to_menu) {
+     exit_to_menu = false;
+     close_popup();
+-- 
+2.45.2.windows.1
+

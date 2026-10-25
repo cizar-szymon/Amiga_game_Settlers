@@ -48,8 +48,11 @@ class Video::Image {
   uint32_t *rows;
   /* For the probes: run codes, copied and shaded pixels of the image. */
   uint32_t n_runs, n_copy, n_shade;
+  /* 0xff for each pixel with a colour, else 0: drawing into fast RAM
+     (VideoAmiga::masked_row), made at the first such drawing. */
+  uint8_t *mask;
   Image() : w(0), h(0), pixels(nullptr), runs(nullptr), rows(nullptr),
-            n_runs(0), n_copy(0), n_shade(0) {}
+            n_runs(0), n_copy(0), n_shade(0), mask(nullptr) {}
 };
 
 class ExceptionAmiga : public ExceptionVideo {

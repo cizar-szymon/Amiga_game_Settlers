@@ -6,6 +6,48 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.48 (25.10.2026) - release candidate
+-------------------------------------
+
+- Fix: after "Making the map" the map preview did not appear.
+
+
+0.47 (25.10.2026)
+-----------------
+
+- The start menu: the map preview is made only when you stop clicking
+  (MAPSIZE, mission, game type) - clicking MAPSIZE from 3 to 8 makes one
+  map instead of five (about 5 s instead of 12 s). Meanwhile the preview
+  area says "Making the map".
+- Making a map about 20% faster (MAPSIZE 8: 6.4 -> 5.3 s on a 68060), the
+  same maps as before.
+
+
+0.46 (25.10.2026)
+-----------------
+
+- The EXIT label in the settings box in small letters, like the buttons
+  beside it.
+
+
+0.45 (25.10.2026)
+-----------------
+
+- The settings box in the game: its EXIT button (was QUIT) goes back to
+  the start menu after the question instead of closing the game.
+- The start menu: the QUIT button in the bottom right corner (was a small
+  EXIT that only hid the menu) asks "Do you want to quit Settlers?" and
+  Yes closes the game.
+
+
+0.42 (25.10.2026)
+-----------------
+
+- Faster drawing of the landscape: the game starts in about 1.4 s instead
+  of 3 s (the first picture of the map), a smaller jerk when scrolling to
+  a new part of the map (about 58 instead of 75 ms per piece of land).
+
+
 0.41 (25.10.2026)
 -----------------
 

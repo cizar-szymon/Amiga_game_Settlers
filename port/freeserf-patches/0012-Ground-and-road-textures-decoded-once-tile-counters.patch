@@ -1,0 +1,192 @@
+From b659f6f7a4d4d5179ecbc0416f9615f04604b403 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sun, 25 Oct 2026 22:25:30 +0100
+Subject: [PATCH 12/16] Ground and road textures decoded once; tile counters
+
+The Amiga data source decoded a ground texture (and its mask) again for
+every texture/mask combination a landscape tile needs: about half of the
+time of a new tile. The textures and masks of the ground and the roads
+are now kept once decoded. Viewport counts the tiles it draws, their
+time, and the path/owner and height changes, for the statistics.
+
+A new tile on a 68060: 1462 -> 769 ms the first time (with the port's
+faster image creation 621 ms).
+---
+ src/data-source-amiga.cc | 36 ++++++++++++++++++++++++++++++++----
+ src/data-source-amiga.h  | 12 ++++++++++++
+ src/viewport.cc          | 10 ++++++++++
+ src/viewport.h           |  6 ++++++
+ 4 files changed, 60 insertions(+), 4 deletions(-)
+
+diff --git a/src/data-source-amiga.cc b/src/data-source-amiga.cc
+index 9bfd714..a3d124e 100644
+--- a/src/data-source-amiga.cc
++++ b/src/data-source-amiga.cc
+@@ -990,7 +990,7 @@ DataSourceAmiga::decode_texture(PBuffer data, size_t plane_size) {
+ }
+ 
+ DataSourceAmiga::PSpriteAmiga
+-DataSourceAmiga::get_ground_sprite(size_t index) {
++DataSourceAmiga::decode_ground_sprite(size_t index) {
+   PBuffer data = get_data_from_catalog(4, index, gfxchip);
+   if (!data) {
+     return nullptr;
+@@ -1005,7 +1005,7 @@ DataSourceAmiga::get_ground_sprite(size_t index) {
+    selects them the same way from a table of offsets into gfxchip block 5
+    (Amiga draw_path_segment_down @0x9e7c, offsets at 0x9f84). */
+ DataSourceAmiga::PSpriteAmiga
+-DataSourceAmiga::get_path_sprite(size_t index) {
++DataSourceAmiga::decode_path_sprite(size_t index) {
+   static const size_t offsets[] = { 0, 178, 444, 710, 976, 1242, 1420, 1774,
+                                     2128, 2482 };
+   if (index >= sizeof(offsets) / sizeof(offsets[0])) {
+@@ -1089,7 +1089,7 @@ DataSourceAmiga::apply_mask(Data::Resource res, Data::PSprite sprite,
+ }
+ 
+ Data::PSprite
+-DataSourceAmiga::get_ground_mask_sprite(size_t index) {
++DataSourceAmiga::decode_ground_mask_sprite(size_t index) {
+   PBuffer data;
+   if (index == 0) {
+     data = gfxchip->get_tail(0);
+@@ -1145,7 +1145,7 @@ DataSourceAmiga::get_mirrored_horizontaly_sprite(Data::PSprite sprite) {
+ }
+ 
+ Data::PSprite
+-DataSourceAmiga::get_path_mask_sprite(size_t index) {
++DataSourceAmiga::decode_path_mask_sprite(size_t index) {
+   PBuffer data = get_data_from_catalog(3, index, gfxchip);
+   if (!data) {
+     return nullptr;
+@@ -1624,3 +1624,31 @@ DataSourceAmiga::get_font_shadow(PBuffer data) {
+ 
+   return sprite;
+ }
++
++DataSourceAmiga::PSpriteAmiga
++DataSourceAmiga::get_ground_sprite(size_t index) {
++  auto it = ground_sprites.find(index);
++  if (it != ground_sprites.end()) return it->second;
++  return ground_sprites[index] = decode_ground_sprite(index);
++}
++
++DataSourceAmiga::PSpriteAmiga
++DataSourceAmiga::get_path_sprite(size_t index) {
++  auto it = path_sprites.find(index);
++  if (it != path_sprites.end()) return it->second;
++  return path_sprites[index] = decode_path_sprite(index);
++}
++
++Data::PSprite
++DataSourceAmiga::get_ground_mask_sprite(size_t index) {
++  auto it = ground_masks.find(index);
++  if (it != ground_masks.end()) return it->second;
++  return ground_masks[index] = decode_ground_mask_sprite(index);
++}
++
++Data::PSprite
++DataSourceAmiga::get_path_mask_sprite(size_t index) {
++  auto it = path_masks.find(index);
++  if (it != path_masks.end()) return it->second;
++  return path_masks[index] = decode_path_mask_sprite(index);
++}
+diff --git a/src/data-source-amiga.h b/src/data-source-amiga.h
+index 9ccd66e..c96bdac 100644
+--- a/src/data-source-amiga.h
++++ b/src/data-source-amiga.h
+@@ -104,6 +104,18 @@ class DataSourceAmiga : public DataSourceLegacy {
+   Data::PSprite get_ground_mask_sprite(size_t index);
+   PSpriteAmiga get_mirrored_horizontaly_sprite(Data::PSprite sprite);
+   Data::PSprite get_path_mask_sprite(size_t index);
++  /* The ground and road textures and their masks are drawn in many
++     combinations (a texture with each triangle or road mask); decoded
++     again for each, they took most of the time of a new landscape tile.
++     They are decoded once and kept. */
++  std::map<size_t, PSpriteAmiga> ground_sprites;
++  std::map<size_t, PSpriteAmiga> path_sprites;
++  std::map<size_t, Data::PSprite> ground_masks;
++  std::map<size_t, Data::PSprite> path_masks;
++  PSpriteAmiga decode_ground_sprite(size_t index);
++  PSpriteAmiga decode_path_sprite(size_t index);
++  Data::PSprite decode_ground_mask_sprite(size_t index);
++  Data::PSprite decode_path_mask_sprite(size_t index);
+   Data::PSprite get_game_object_sprite(size_t catalog, size_t index);
+   Data::PSprite get_torso_sprite(size_t index, uint8_t *palette);
+   Data::PSprite get_map_object_sprite(size_t index);
+diff --git a/src/viewport.cc b/src/viewport.cc
+index 61e1a7d..d6c7180 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -35,6 +35,7 @@
+ #include "src/gfx.h"
+ #include "src/interface.h"
+ #include "src/popup.h"
++#include "src/event_loop.h"
+ #include "src/pathfinder.h"
+ 
+ #define MAP_TILE_WIDTH   32
+@@ -317,8 +318,10 @@ Viewport::get_tile_frame(unsigned int tid, int tc, int tr) {
+     return kept;
+   }
+ 
++  unsigned int t0 = EventLoop::get_instance().get_ticks();
+   LandscapeTile &tile = landscape_tiles[tid];
+   tile.frame.reset(draw_tile(tc, tr));
++  tiles_ms += EventLoop::get_instance().get_ticks() - t0;
+   tile.last_use = tile_use_counter;
+ 
+   return tile.frame.get();
+@@ -327,6 +330,7 @@ Viewport::get_tile_frame(unsigned int tid, int tc, int tr) {
+ /* The landscape of a tile, with the paths and borders. */
+ Frame *
+ Viewport::draw_tile(int tc, int tr) {
++  tiles_drawn++;
+   int tile_width = MAP_TILE_COLS*MAP_TILE_WIDTH;
+   int tile_height = MAP_TILE_ROWS*MAP_TILE_HEIGHT;
+ 
+@@ -1230,6 +1234,10 @@ void (*Viewport::draw_probe)(int part) = nullptr;
+ int Viewport::hear_height = 200;
+ 
+ unsigned int Viewport::map_sounds = 0;
++unsigned int Viewport::tiles_drawn = 0;
++unsigned int Viewport::tiles_ms = 0;
++unsigned int Viewport::paths_changes = 0;
++unsigned int Viewport::height_changes = 0;
+ 
+ /* An animation phase lasts 8 ticks: a sound is started once per phase of
+    an object, as at the original's frame rate, however often it is drawn. */
+@@ -2727,12 +2735,14 @@ Viewport::~Viewport() {
+ 
+ void
+ Viewport::on_height_changed(MapPos pos) {
++  height_changes++;
+   redraw_map_pos(pos);
+ }
+ 
+ /* The tiles with the segments of the position and of its neighbours. */
+ void
+ Viewport::on_paths_changed(MapPos pos) {
++  paths_changes++;
+   redraw_map_pos(pos);
+   for (Direction d : cycle_directions_cw()) {
+     redraw_map_pos(map->move(pos, d));
+diff --git a/src/viewport.h b/src/viewport.h
+index 1ccdcf2..f90012d 100644
+--- a/src/viewport.h
++++ b/src/viewport.h
+@@ -98,6 +98,12 @@ class Viewport : public GuiObject, public Map::Handler {
+   static void (*draw_probe)(int part);
+   /* Map sounds started, for the statistics. */
+   static unsigned int map_sounds;
++  /* Landscape tiles drawn, and the changes that dropped tiles (paths or
++     owners, heights), for the statistics. */
++  static unsigned int tiles_drawn;
++  static unsigned int tiles_ms;
++  static unsigned int paths_changes;
++  static unsigned int height_changes;
+ 
+   /* Paths and borders drawn into the landscape tiles (redrawn when they
+      change) instead of into every frame. */
+-- 
+2.45.2.windows.1
+

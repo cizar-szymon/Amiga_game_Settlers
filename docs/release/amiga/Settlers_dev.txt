@@ -1,7 +1,7 @@
 THE SETTLERS (Freeserf) na Amige - opis dla programistow
 ========================================================
 
-Wersja 0.41. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
+Wersja 0.48. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
 w repozytorium Settlers.
 
 
@@ -73,6 +73,9 @@ NARZEDZIA (tools/ w repozytorium)
   make_icon.py      ikona z kadru gry
   embed_images.py   obrazki zasobow Freeserf do port/gen/
   make_start.py     obraz startowy: PNG -> data/start.iff (ILBM, ByteRun1)
+
+Generator map: mapgentest [SIZE...] - czas i etapy generatora dla
+wielkosci mapy, CRC mapy (nie moze sie zmieniac przy zmianach generatora).
 
 Wczytywanie zapisow: loadtest PLIK [N] (build/amiga, wariant loadtest-fm
 z alokatorem gry) - czasy etapow i CRC zapisu po wczytaniu (musi sie nie

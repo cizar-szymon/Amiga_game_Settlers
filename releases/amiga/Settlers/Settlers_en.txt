@@ -1,7 +1,7 @@
 THE SETTLERS - Freeserf for the Amiga with a graphics card
 ==========================================================
 
-Version 0.41 (beta), 25.10.2026
+Version 0.48 (beta), 25.10.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) on an Amiga with a graphics
 card (Picasso96) and a 68040/68060, at up to 800x600. It is based on
@@ -52,6 +52,8 @@ CONTROLS
   Ctrl+Z                   quick save
   Esc                      close a box in the game
   Shift+Esc, Ctrl+Q        quit
+  EXIT (settings box)      leave the game for the start menu
+  QUIT (start menu)        quit (after a question)
   F9                       screenshot to RAM:Settlers-shot.ppm
   F10                      save the state for a bug report
 

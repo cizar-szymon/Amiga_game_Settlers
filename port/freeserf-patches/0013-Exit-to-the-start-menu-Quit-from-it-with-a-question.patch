@@ -1,0 +1,202 @@
+From 0d934503b5005e7ab8979f14909bc3778bb9e5a0 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sun, 25 Oct 2026 22:59:05 +0100
+Subject: [PATCH 13/16] Exit to the start menu, Quit from it with a question
+
+The Quit button of the game's settings box is labelled EXIT and, after
+its question, goes back to the start menu with a new random game, as
+when the program starts (done at the next update: changing the game from
+inside the popup would delete things in use). The start menu's small
+exit icon, which only hid the menu, is the 32x16 QUIT icon there; it
+asks 'Do you want to quit Settlers?' and Yes closes the program.
+---
+ src/game-init.cc | 13 ++++++++-----
+ src/interface.cc | 17 +++++++++++++++++
+ src/interface.h  | 10 ++++++++++
+ src/popup.cc     | 20 ++++++++++++++++++--
+ 4 files changed, 53 insertions(+), 7 deletions(-)
+
+diff --git a/src/game-init.cc b/src/game-init.cc
+index d096fc2..d213fe0 100644
+--- a/src/game-init.cc
++++ b/src/game-init.cc
+@@ -38,6 +38,7 @@
+ #include "src/map-geometry.h"
+ #include "src/list.h"
+ #include "src/game-manager.h"
++#include "src/event_loop.h"
+ #include "src/popup.h"
+ #include "src/translation.h"
+ 
+@@ -274,7 +275,7 @@ GameInitBox::internal_draw() {
+   /* Display program name and version in caption */
+   draw_box_string(0, 212, FREESERF_VERSION);
+ 
+-  draw_box_icon(38, 208, 60); /* exit */
++  draw_box_icon(36, 208, 286); /* quit, as wide as the Quit of the game */
+ }
+ 
+ void
+@@ -429,7 +430,9 @@ GameInitBox::handle_action(int action) {
+       generate_map_preview();
+       break;
+     case ActionClose:
+-      interface->close_game_init();
++      /* Quit: the start menu closes the program, after a question (the
++         Exit button of the game's settings box leads back here). */
++      interface->open_quit_program();
+       break;
+     case ActionGenRandom: {
+       random_input->set_random(Random());
+@@ -458,7 +461,7 @@ GameInitBox::handle_click_left(int cx, int cy) {
+     ActionShowOptions,     308,  16, 32, 32,
+     ActionIncrement,       284,  16, 16, 16,
+     ActionDecrement,       284,  32, 16, 16,
+-    ActionClose,           324, 216, 16, 16,
++    ActionClose,           308, 216, 32, 16,
+     -1
+   };
+ 
+@@ -470,7 +473,7 @@ GameInitBox::handle_click_left(int cx, int cy) {
+     ActionDecrement,       220,  16,  8,  8,
+     ActionGenRandom,       244,  16, 16,  8,
+     ActionApplyRandom ,    244,  24, 16, 24,
+-    ActionClose,           324, 216, 16, 16,
++    ActionClose,           308, 216, 32, 16,
+     -1
+   };
+ 
+@@ -478,7 +481,7 @@ GameInitBox::handle_click_left(int cx, int cy) {
+     ActionStartGame,        20,  16, 32, 32,
+     ActionToggleGameType,   60,  16, 32, 32,
+     ActionShowOptions,     308,  16, 32, 32,
+-    ActionClose,           324, 216, 16, 16,
++    ActionClose,           308, 216, 32, 16,
+     -1
+   };
+ 
+diff --git a/src/interface.cc b/src/interface.cc
+index 5abea65..2336d3b 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -89,6 +89,8 @@ Interface::Interface()
+   last_const_tick = 0;
+ 
+   show_fps = false;
++  exit_to_menu = false;
++  quit_program = false;
+   fps = 0;
+   fps_frames = 0;
+   fps_start = 0;
+@@ -155,6 +157,7 @@ Interface::close_popup() {
+   del_float(popup);
+   delete popup;
+   popup = nullptr;
++  quit_program = false;
+   update_map_cursor_pos(map_cursor_pos);
+   if (panel != nullptr) {
+     panel->update();
+@@ -177,6 +180,12 @@ Interface::open_game_init() {
+   layout();
+ }
+ 
++void
++Interface::open_quit_program() {
++  quit_program = true;
++  open_popup(PopupBox::TypeQuitConfirm);
++}
++
+ void
+ Interface::apply_settings() {
+   Settings &settings = Settings::get_instance();
+@@ -1203,6 +1212,14 @@ void
+ Interface::update() {
+   Audio::get_instance().update_sfx();
+ 
++  if (exit_to_menu) {
++    exit_to_menu = false;
++    close_popup();
++    GameManager::get_instance().start_random_game();
++    open_game_init();
++    return;
++  }
++
+   if (!game) {
+     return;
+   }
+diff --git a/src/interface.h b/src/interface.h
+index 191ff56..4de1e60 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -135,6 +135,8 @@ class Interface : public GuiObject, public GameManager::Handler {
+ 
+   /* Frames per second display (Ctrl+Shift+F). */
+   bool show_fps;
++  bool exit_to_menu;
++  bool quit_program;
+   unsigned int fps;
+   unsigned int fps_frames;
+   unsigned int fps_start;
+@@ -225,6 +227,14 @@ class Interface : public GuiObject, public GameManager::Handler {
+   void close_popup();
+ 
+   void open_game_init();
++  /* The Exit button: at the next update, back to the start menu with a
++     new random game behind it, as when the program starts (asked from a
++     popup, which that closes). */
++  void exit_to_start_menu() { exit_to_menu = true; }
++  /* The Quit button of the start menu: the quit box asks about the
++     program, and its Yes quits it. */
++  void open_quit_program();
++  bool is_quit_program() const { return quit_program; }
+   void close_game_init();
+   /* Box of the advanced options; closing it closes the options too. */
+   void open_advanced();
+diff --git a/src/popup.cc b/src/popup.cc
+index 9220489..9d28427 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -1681,6 +1681,12 @@ PopupBox::draw_sett_select_box() {
+ 
+   draw_box_background(PatternCheckerdDiagonalBrown);
+   draw_custom_icon_box(layout);
++
++  /* The Quit button leads back to the start menu in this port: Exit on
++     it, yellow like the original's lettering, on a plate inside it. */
++  frame->fill_rect(8 * 0 + 8 + 2, 128 + 9 + 2, 28, 12, Color(0x55, 0x22, 0x00));
++  frame->draw_string(8 * 0 + 8, 128 + 9 + 4, "EXIT", Color(0xdd, 0xdd, 0x00),
++                     Color::transparent);
+ }
+ 
+ /* Draw slide bar in a popup box. */
+@@ -1939,7 +1945,11 @@ void
+ PopupBox::draw_quit_confirm_box() {
+   draw_box_background(PatternDiagonalGreen);
+ 
+-  draw_green_centered(10, _("Do you want\nto quit\nthis game?"));
++  if (interface->is_quit_program()) {
++    draw_green_centered(10, _("Do you want\nto quit\nSettlers?"));
++  } else {
++    draw_green_centered(10, _("Do you want\nto quit\nthis game?"));
++  }
+   /* Over the buttons. */
+   draw_green_centered_at(36, 45, _("Yes"));
+   draw_green_centered_at(112, 45, _("No"));
+@@ -3534,7 +3544,13 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+ //      set_box(TypeNoSaveQuitConfirm);
+ //    } else {
+       play_sound(Audio::TypeSfxAhhh);
+-      EventLoop::get_instance().quit();
++      if (interface->is_quit_program()) {
++        EventLoop::get_instance().quit();
++      } else {
++        /* Exit: to the start menu, not out of the program (its Quit
++           button, Shift+Esc and Ctrl+Q quit it). */
++        interface->exit_to_start_menu();
++      }
+ //    }
+     break;
+   case ACTION_QUIT_CANCEL:
+-- 
+2.45.2.windows.1
+

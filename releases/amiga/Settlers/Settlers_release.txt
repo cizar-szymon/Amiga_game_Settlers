@@ -6,6 +6,47 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.48 (25.10.2026) - kandydat do wydania
+----------------------------------------
+
+- Poprawka: po "Making the map" nie pojawial sie podglad mapy.
+
+
+0.47 (25.10.2026)
+-----------------
+
+- Menu startowe: podglad mapy robi sie dopiero, gdy przestaniesz klikac
+  (MAPSIZE, misja, typ gry) - klikanie MAPSIZE z 3 do 8 to jedna mapa
+  zamiast pieciu (ok. 5 s zamiast 12 s). W tym czasie w miejscu podgladu
+  jest napis "Making the map".
+- Generowanie mapy ok. 20% szybsze (MAPSIZE 8: 6,4 -> 5,3 s na 68060),
+  mapy takie same jak wczesniej.
+
+
+0.46 (25.10.2026)
+-----------------
+
+- Napis EXIT w oknie ustawien malymi literami, jak sasiednie przyciski.
+
+
+0.45 (25.10.2026)
+-----------------
+
+- Okno ustawien w grze: przycisk EXIT (dawniej QUIT) po potwierdzeniu
+  wraca do menu startowego zamiast zamykac gre.
+- Menu startowe: przycisk QUIT w prawym dolnym rogu (dawniej maly EXIT,
+  ktory tylko chowal menu) pyta "Do you want to quit Settlers?" i po Yes
+  zamyka gre.
+
+
+0.42 (25.10.2026)
+-----------------
+
+- Szybsze rysowanie terenu: start gry ok. 1,4 s zamiast 3 s (pierwszy
+  obraz mapy), mniejsze szarpniecie przy przewijaniu na nowy obszar mapy
+  (ok. 58 zamiast 75 ms na kawalek terenu).
+
+
 0.41 (25.10.2026)
 -----------------
 

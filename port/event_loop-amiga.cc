@@ -459,7 +459,10 @@ EventLoopAmiga::run() {
                 bufs ? ticks / bufs * 1000 /
                        static_cast<unsigned long>(amiga_eclock_per_ms())
                      : 0UL);
-        fprintf(f, "MAP SOUNDS %u/s\n", Viewport::map_sounds * 1000 / span);
+        fprintf(f, "MAP SOUNDS %u/s  TILES DRAWN SO FAR %u (%u ms)  PATH CHANGES %u"
+                "  HEIGHT CHANGES %u\n", Viewport::map_sounds * 1000 / span,
+                Viewport::tiles_drawn, Viewport::tiles_ms,
+                Viewport::paths_changes, Viewport::height_changes);
         fclose(f);
         /* Replaced by a rename, so that a reader never finds it open. */
         std::remove("RAM:Settlers-stats.txt");
@@ -469,6 +472,8 @@ EventLoopAmiga::run() {
       frames = steps_done = logic_ms = draw_ms = 0;
       video.blit_ms = 0;
       Viewport::map_sounds = 0;
+      Viewport::paths_changes = 0;
+      Viewport::height_changes = 0;
     }
   }
 

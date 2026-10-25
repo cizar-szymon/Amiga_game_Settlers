@@ -1,7 +1,7 @@
 THE SETTLERS (Freeserf) for the Amiga - notes for developers
 ============================================================
 
-Version 0.41. The full description of the port, decisions and
+Version 0.48. The full description of the port, decisions and
 measurements: docs/PORTING.md in the Settlers repository (Polish).
 
 
@@ -75,6 +75,10 @@ TOOLS (tools/ in the repository)
   make_icon.py      the icon from a frame of the game
   embed_images.py   Freeserf's resource images into port/gen/
   make_start.py     the start picture: PNG -> data/start.iff (ILBM, ByteRun1)
+
+The map generator: mapgentest [SIZE...] - the time and the phases of the
+generator by map size, the CRC of the map (it must not change when the
+generator changes).
 
 Loading saves: loadtest FILE [N] (build/amiga; loadtest-fm with the game's
 allocator) - the time of each step and the CRC of the save written after

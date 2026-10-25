@@ -1,0 +1,324 @@
+From 60701d1eac9c808ccf28575c1300d2e2fcccb20a Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sun, 25 Oct 2026 23:21:32 +0100
+Subject: [PATCH 15/16] Map preview after a pause in the clicks; generator
+ phase clock
+
+Every click on the map size, the mission or the game type made a whole
+new map for the preview: seconds for a large map on a 68060, and
+clicking through the sizes made one map after another. The clicks now
+ask for a preview, made 0.4 s after the last one; until then the preview
+area says 'Making the map'. Loading shows the save's map, no new one.
+
+remove_islands expands from a list instead of scanning the whole map
+until nothing changes (the same result). mapgen_ms/mapgen_phase time the
+phases of generate() for a test program.
+---
+ src/game-init.cc     |  39 +++++++++++---
+ src/game-init.h      |   7 +++
+ src/map-generator.cc | 121 ++++++++++++++++++++++++-------------------
+ 3 files changed, 108 insertions(+), 59 deletions(-)
+
+diff --git a/src/game-init.cc b/src/game-init.cc
+index d213fe0..e2e58f9 100644
+--- a/src/game-init.cc
++++ b/src/game-init.cc
+@@ -118,6 +118,8 @@ GameInitBox::GameInitBox(Interface *interface)
+   game_type = GameCustom;
+   game_mission = 0;
+   game_tutorial = 0;
++  preview_pending = false;
++  preview_due = 0;
+ 
+   set_size(360, 254);
+ 
+@@ -188,8 +190,20 @@ GameInitBox::get_player_face_sprite(size_t face) {
+ 
+ void
+ GameInitBox::internal_draw() {
++  if (preview_pending && game_type != GameLoad &&
++      static_cast<int>(EventLoop::get_instance().get_ticks() -
++                       preview_due) >= 0) {
++    /* The last frame showed the note below. */
++    generate_map_preview();
++  }
++
+   draw_background();
+   draw_box_frame(frame, width, height);
++  if (preview_pending && game_type != GameLoad) {
++    frame->fill_rect(190, 55, 150, 160, Color::black);
++    frame->draw_string(190 + 19, 55 + 76, "Making the map", Color::green,
++                       Color::black);
++  }
+ 
+   const int layout[] = {
+     266, 0, 0,    // Start button
+@@ -362,14 +376,14 @@ GameInitBox::handle_action(int action) {
+           mission = GameInfo::get_mission(game_mission);
+           random_input->set_displayed(false);
+           file_list->set_displayed(false);
+-          generate_map_preview();
++          request_map_preview();
+           break;
+         }
+         case GameTutorial: {
+           mission = GameInfo::get_tutorial(game_tutorial);
+           random_input->set_displayed(false);
+           file_list->set_displayed(false);
+-          generate_map_preview();
++          request_map_preview();
+           break;
+         }
+         case GameCustom: {
+@@ -377,12 +391,15 @@ GameInitBox::handle_action(int action) {
+           random_input->set_displayed(true);
+           random_input->set_random(custom_mission->get_random_base());
+           file_list->set_displayed(false);
+-          generate_map_preview();
++          request_map_preview();
+           break;
+         }
+         case GameLoad: {
+           random_input->set_displayed(false);
+           file_list->set_displayed(true);
++          /* The preview shows the chosen save; no new map. */
++          preview_pending = false;
++          minimap->set_displayed(true);
+           break;
+         }
+       }
+@@ -410,7 +427,7 @@ GameInitBox::handle_action(int action) {
+                                            custom_mission->get_map_size() + 1));
+           break;
+       }
+-      generate_map_preview();
++      request_map_preview();
+       break;
+     case ActionDecrement:
+       switch (game_type) {
+@@ -427,7 +444,7 @@ GameInitBox::handle_action(int action) {
+                                            custom_mission->get_map_size() - 1));
+           break;
+       }
+-      generate_map_preview();
++      request_map_preview();
+       break;
+     case ActionClose:
+       /* Quit: the start menu closes the program, after a question (the
+@@ -444,7 +461,7 @@ GameInitBox::handle_action(int action) {
+       if (str.length() == 16) {
+         custom_mission->set_random_base(random_input->get_random());
+         mission = custom_mission;
+-        generate_map_preview();
++        request_map_preview();
+       }
+       break;
+     }
+@@ -611,8 +628,18 @@ GameInitBox::handle_player_click(unsigned int player_index, int cx, int cy) {
+   return true;
+ }
+ 
++void
++GameInitBox::request_map_preview() {
++  preview_pending = true;
++  preview_due = EventLoop::get_instance().get_ticks() + 400;
++  minimap->set_displayed(false);
++  set_redraw();
++}
++
+ void
+ GameInitBox::generate_map_preview() {
++  preview_pending = false;
++  minimap->set_displayed(game_type != GameLoad);
+   map.reset(new Map(MapGeometry(mission->get_map_size())));
+   if (game_type == GameMission || game_type == GameTutorial) {
+     ClassicMissionMapGenerator generator(*map, mission->get_random_base());
+diff --git a/src/game-init.h b/src/game-init.h
+index 550a4cd..7069629 100644
+--- a/src/game-init.h
++++ b/src/game-init.h
+@@ -60,6 +60,12 @@ class GameInitBox : public GuiObject {
+   unsigned int game_type;
+   int game_mission;
+   int game_tutorial;
++  /* A new map preview is made only when the choices rest for a moment: a
++     large map takes seconds (a 68060: size 8 five seconds), and clicking
++     through the sizes or game types made one map after another. Until
++     then the preview area says so. */
++  bool preview_pending;
++  unsigned int preview_due;
+ 
+   PGameInfo custom_mission;
+   PGameInfo mission;
+@@ -84,6 +90,7 @@ class GameInitBox : public GuiObject {
+   unsigned int get_next_character(unsigned int player);
+   void apply_random(Random rnd);
+   void generate_map_preview();
++  void request_map_preview();
+ 
+   virtual void internal_draw();
+   virtual bool handle_click_left(int x, int y);
+diff --git a/src/map-generator.cc b/src/map-generator.cc
+index 3292f3e..20fad41 100644
+--- a/src/map-generator.cc
++++ b/src/map-generator.cc
+@@ -66,13 +66,26 @@ bool ClassicMapGenerator::is_in_water(MapPos pos) const {
+           tiles[map.move_up(pos)].type_up <= Map::TerrainWater3);
+ }
+ 
++/* Profiling (the Amiga port's mapgentest): when mapgen_ms is set, the
++   milliseconds of each phase of generate() add up in mapgen_phase. */
++unsigned long (*mapgen_ms)() = nullptr;
++unsigned long mapgen_phase[16];
++#define MG_T(i) do { \
++    if (mapgen_ms) { \
++      unsigned long n_ = mapgen_ms(); \
++      mapgen_phase[i] += n_ - mg_last; \
++      mg_last = n_; \
++    } \
++  } while (0)
++
+ void ClassicMapGenerator::generate() {
++  unsigned long mg_last = mapgen_ms ? mapgen_ms() : 0;
+   rnd ^= Random(0x5a5a, 0xa5a5, 0xc3c3);
+ 
+   random_int();
+   random_int();
+ 
+-  init_heights_squares();
++  init_heights_squares(); MG_T(0);
+   switch (height_generator) {
+     case HeightGeneratorMidpoints:
+       init_heights_midpoints(); /* Midpoint displacement algorithm */
+@@ -84,26 +97,26 @@ void ClassicMapGenerator::generate() {
+       NOT_REACHED();
+   }
+ 
+-  clamp_heights();
+-  create_water_bodies();
+-  heights_rebase();
+-  init_types();
+-  remove_islands();
+-  heights_rescale();
++  clamp_heights(); MG_T(1);
++  create_water_bodies(); MG_T(2);
++  heights_rebase(); MG_T(3);
++  init_types(); MG_T(4);
++  remove_islands(); MG_T(5);
++  heights_rescale(); MG_T(6);
+ 
+   // Adjust terrain types on shores
+-  change_shore_water_type();
+-  change_shore_grass_type();
++  change_shore_water_type(); MG_T(7);
++  change_shore_grass_type(); MG_T(8);
+ 
+   // Create deserts
+-  create_deserts();
++  create_deserts(); MG_T(9);
+ 
+   // Create map objects (trees, boulders, etc.)
+-  create_objects();
++  create_objects(); MG_T(10);
+ 
+-  create_mineral_deposits();
++  create_mineral_deposits(); MG_T(11);
+ 
+-  clean_up();
++  clean_up(); MG_T(12);
+ }
+ 
+ uint16_t
+@@ -498,47 +511,49 @@ ClassicMapGenerator::remove_islands() {
+       tags[pos_] = 1;
+ 
+       unsigned int num = 0;
+-      bool changed = true;
+-      while (changed) {
+-        changed = false;
+-        for (MapPos pos_ : map.geom()) {
+-          if (tags[pos_] == 1) {
+-            num += 1;
+-            tags[pos_] = 2;
+-
+-            // The i'th flag will indicate whether a path on land from
+-            // pos_in direction i is possible.
+-            int flags = 0;
+-            if (tiles[pos_].type_down >= Map::TerrainGrass0) {
+-              flags |= 3;
+-            }
+-            if (tiles[pos_].type_up >= Map::TerrainGrass0) {
+-              flags |= 6;
+-            }
+-            if (tiles[map.move_left(pos_)].type_down >=
+-                Map::TerrainGrass0) {
+-              flags |= 0xc;
+-            }
+-            if (tiles[map.move_up_left(pos_)].type_up >=
+-                Map::TerrainGrass0) {
+-              flags |= 0x18;
+-            }
+-            if (tiles[map.move_up_left(pos_)].type_down >=
+-                Map::TerrainGrass0) {
+-              flags |= 0x30;
+-            }
+-            if (tiles[map.move_up(pos_)].type_up >= Map::TerrainGrass0) {
+-              flags |= 0x21;
+-            }
++      /* The positions tagged 1 are expanded from a list. The set reached
++         does not depend on the order, so this is the same as scanning
++         the whole map again until nothing changes, as before (about one
++         second for a large map on a 68060). */
++      std::vector<MapPos> todo(1, pos_);
++      while (!todo.empty()) {
++        MapPos pos_ = todo.back();
++        todo.pop_back();
++        num += 1;
++        tags[pos_] = 2;
++
++        // The i'th flag will indicate whether a path on land from
++        // pos_in direction i is possible.
++        int flags = 0;
++        if (tiles[pos_].type_down >= Map::TerrainGrass0) {
++          flags |= 3;
++        }
++        if (tiles[pos_].type_up >= Map::TerrainGrass0) {
++          flags |= 6;
++        }
++        if (tiles[map.move_left(pos_)].type_down >=
++            Map::TerrainGrass0) {
++          flags |= 0xc;
++        }
++        if (tiles[map.move_up_left(pos_)].type_up >=
++            Map::TerrainGrass0) {
++          flags |= 0x18;
++        }
++        if (tiles[map.move_up_left(pos_)].type_down >=
++            Map::TerrainGrass0) {
++          flags |= 0x30;
++        }
++        if (tiles[map.move_up(pos_)].type_up >= Map::TerrainGrass0) {
++          flags |= 0x21;
++        }
+ 
+-            // Mark positions following any valid direction on land.
+-            for (Direction d : cycle_directions_cw()) {
+-              if (BIT_TEST(flags, d)) {
+-                if (tags[map.move(pos_, d)] == 0) {
+-                  tags[map.move(pos_, d)] = 1;
+-                  changed = true;
+-                }
+-              }
++        // Mark positions following any valid direction on land.
++        for (Direction d : cycle_directions_cw()) {
++          if (BIT_TEST(flags, d)) {
++            MapPos next = map.move(pos_, d);
++            if (tags[next] == 0) {
++              tags[next] = 1;
++              todo.push_back(next);
+             }
+           }
+         }
+-- 
+2.45.2.windows.1
+

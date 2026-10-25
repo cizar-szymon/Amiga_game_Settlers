@@ -26,6 +26,9 @@ z oryginalnych danych z wersji na Amigę. Ogólne zasady: `C:\Workprojects\Amiga
 | F5 Dźwięk | ✅ | efekty i muzyka bez spadku fps poniżej celu | 0.22: Paula 22 kHz, efekty i muzyka potwierdzone odsłuchem; ~43 fps; AHI – opcja na później |
 | F6 Wydanie | ✅ | czysta instalacja z archiwum `Settlers-0.32.lha` na Amidze 2 | 0.32 beta, 25.10.2026 |
 
+**Kandydat do wydania: 0.48** (decyzja użytkownika, 25.10.2026, po grze na Amidze 1), znacznik
+`v0.48-rc`, archiwum `releases/amiga/Settlers-0.48.lha`. Wcześniejszy kandydat: 0.41 (`v0.41-rc`).
+
 ## Decyzje
 
 | # | Decyzja | Dlaczego |
@@ -283,6 +286,13 @@ tylko 35 kroków logiki/s zamiast 50 (limit 5 kroków nadrabiania na klatkę). T
 9. `viewport.*`: dźwięki mapy raz na fazę animacji obiektu (brzęczenie przy wysokim FPS).
 10. `game.cc`: tempo gry klawiszami ×1…×3 co ×0,5.
 11. `interface.*`, `game.h`: tempo gry w prawym górnym rogu.
+12. `data-source-amiga.*`, `viewport.*`: tekstury i maski terenu i dróg dekodowane raz; liczniki
+    kafelków i zmian (statystyki).
+13. `popup.cc`, `game-init.cc`, `interface.*`: EXIT w grze do menu startowego, QUIT w menu z
+    pytaniem.
+14. `popup.cc`: napis EXIT małymi literami.
+15. `game-init.*`, `map-generator.cc`: podgląd mapy po chwili spokoju, pomiar etapów generatora,
+    `remove_islands` z listą.
 
 Wszystkie jako commity w `freeserf/` (gałąź `settlers-pin`) i pliki `port/freeserf-patches/`.
 
@@ -565,6 +575,78 @@ AmiAgenta, takty/s z czasem odczytu): ×1 96, ×1,5 151, ×3 304 (granica), `-` 
 `0` 102; `-` przy ×1 bez zmian. Klawisze z klawiatury numerycznej i głównej działają tak samo.
 0.41: tempo inne niż ×1 w prawym górnym rogu (`Interface::draw_game_speed`, `X1.5`…`X3`, styl jak
 licznik FPS; przy ×1 i w pauzie nic) – sprawdzone zrzutami F9 przy ×1,5, ×2 i po `0`.
+
+## 800×600 i kafelki terenu (0.42, Amiga 1)
+
+800×600 (0.41, bez sond): scene1 37,8 kl./s (0.20: 32,5), scene2 31–32 stale, `STEPS 50`; scene2 z
+`PATHS=SCREEN` 23,1 – drogi w kafelkach dają tu +38%. `STATS=FULL` przekłamuje teren (sondy) – do
+pomiarów terenu tylko liczniki: `TILES DRAWN SO FAR n (ms)` w `RAM:Settlers-stats.txt` (narastająco),
+`PATH CHANGES`, `HEIGHT CHANGES` (na sekundę). W zwykłej grze kafelki nie są rysowane od nowa.
+
+Koszt kafelka 512×320 (tymczasowy pomiar w grze: ten sam kafelek 10 razy): zimny (pierwsze użycie
+kombinacji tekstura+maska, 255 nowych obrazków) 1462 ms, z tego dekodowanie tekstury 772, obrazek
+(RGBA → indeksy, odcinki) 360, nałożenie maski 160, maska 83; ciepły 71 ms, prawie cały w kopiowaniu
+pikseli trójkątów: maski terenu Amigi są **ditherowane** (przejścia między rodzajami terenu), więc
+na wiersz trójkąta przypada ~10 odcinków (177 tys. odcinków na 228 tys. pikseli kafelka).
+
+Zmiany (łatka `0012` i port):
+- `DataSourceAmiga`: tekstury i maski terenu i dróg dekodowane raz i zapamiętane (były dekodowane
+  dla każdej kombinacji z maską);
+- `VideoAmiga::create_image`: 32 ostatnie kolory obrazka bez tablicy haszującej;
+- rysowanie do Fast RAM (kafelki, wzorzec `VERIFY`) obrazków bez cienia przez maskę bajtową
+  długimi słowami (`masked_row`: cel = (cel & ~maska) | piksele), także przy przycięciu – zamiast
+  odcinków i wolnej ścieżki piksel po pikselu. Kafelek identyczny piksel w piksel z rysowanym
+  odcinkami (porównanie w pomiarze), `VERIFY` 0 / `TILES` 0 (wzorzec idzie teraz nową ścieżką).
+
+| Kafelek | Przed | Po |
+|---|---|---|
+| zimny (pomiar) | 1462 ms | 621 ms |
+| ciepły (pomiar) | 71 ms | 52 ms |
+| start gry, 6 kafelków | 3048 ms | 1330–1390 ms |
+| przewijanie, nowy kafelek | ~75 ms | ~58 ms |
+
+FPS bez zmian (scene2 640×400 44,6, 800×600 32,0). Dalej: ciepły kafelek to przepustowość pamięci
+(~600 różnych trójkątów); szarpnięcia przy przewijaniu usunęłoby dopiero rysowanie kafelków zawczasu.
+
+## Exit do menu, Quit z menu (0.43–0.45)
+
+Na życzenie użytkownika (łatka `0013`):
+- okno ustawień (`sett_select`): przycisk QUIT (ikona 286) dostał napis EXIT – w danych gry takiego nie
+  ma, więc rysowany: litery 5 px, żółte z ciemnym obrysem jak na sąsiednich przyciskach (0.46; w 0.45
+  czcionką gry 8×8 – za duży); potwierdzenie „Do you want to quit this
+  game?” → `Interface::exit_to_start_menu()`: przy następnym `update` zamknięcie okienka, nowa
+  losowa gra i menu startowe jak przy starcie programu (zmiana gry z wnętrza okienka byłaby
+  niebezpieczna – `set_game` kasuje widok);
+- menu startowe: mały EXIT (ikona 60, `ActionClose`, chował menu) zastąpiony ikoną QUIT 32×16 (286)
+  w tym samym rogu; pyta „Do you want to quit Settlers?” (`open_quit_program`), Yes zamyka program.
+Sprawdzone zrzutami F9 (menu i okno ustawień); kliknięcia – użytkownik (AmiAgent nie ma myszy).
+W oknie ustawień jest też mały EXIT z oryginału (zamyka okno) – dwa napisy EXIT, do decyzji.
+
+## Podgląd mapy w menu startowym (0.47)
+
+Zgłoszenie: losowanie mapy, zmiana typu gry (z LOAD dalej na Custom) i MAPSIZE > 6 trwają długo.
+Każda z tych akcji generowała całą mapę (`ClassicMapGenerator`) dla podglądu. `port/mapgentest.cc`
+(czas, etapy przez `mapgen_ms`/`mapgen_phase` w `map-generator.cc`, CRC mapy), Amiga 1:
+
+| MAPSIZE | mapa | generowanie (0.46) | `-O2` (0.47) |
+|---|---|---|---|
+| 3 | 64×64 | 167 ms | |
+| 6 | 256×128 | 1555 ms | 1296 ms |
+| 7 | 256×256 | 3094 ms | |
+| 8 | 512×256 | 6418 ms | 5326 ms |
+
+Etapy (MAPSIZE 8, `-O1`): woda 1,5 s, pustynie 1,3 s, wysokości 1,2 s, wyspy 1,05 s, reszta < 0,35 s
+każdy – czas liniowy z liczbą pól (~50 µs na pole, kilkadziesiąt przebiegów po mapie; sam przebieg
+z 4 sąsiadami ~0,1 s). `remove_islands` przez listę zamiast powtarzanych skanów – bez zysku (mało
+skanów), zostaje (ten sam wynik). `map-generator.cc` z `-O2` (bez wyjątków w pliku): −19%, CRC map
+bez zmian (2df3a903, 1943881d), `simtest` 8eabef60.
+
+Menu (łatki `0015`, `0016`): akcje tylko zamawiają podgląd (`request_map_preview`), mapa powstaje
+0,4 s po ostatnim kliknięciu (0.48: okno menu rysuje się tylko na żądanie, więc termin sprawdza
+`Interface::update` → `GameInitBox::update_preview`; w 0.47 napis zostawał na zawsze), do tego czasu w miejscu podglądu „Making the map” (minimapa ukryta); LOAD bez
+generowania (podgląd zapisu). MAPSIZE 3→8 kliknięte szybko: jedna mapa (~5 s) zamiast pięciu (~12 s).
+Dalej: start gry generuje mapę drugi raz (`GameInfo::instantiate`), wielkie mapy (9–10) nadal
+kilkanaście sekund.
 
 ## Wydajność (Warp1260 i Warp7060 – wydajnościowo równoważne)
 

@@ -12,7 +12,7 @@ $sh = 'export PATH=/opt/amiga/bin:$PATH; cd /src && ' +
       $(if ($Clean) { 'rm -rf /build/* && ' } else { '' }) +
       'cmake -S port -B /build -DCMAKE_TOOLCHAIN_FILE=/src/port/cmake/amiga-m68k.cmake ' +
       '-DCMAKE_BUILD_TYPE= >/dev/null && cmake --build /build -j $(nproc) && ' +
-      'mkdir -p build/amiga && for f in simtest datacheck Settlers Settlers-hg modelist loadtest loadtest-fm; do cp /build/$f build/amiga/ && m68k-amigaos-strip -o build/amiga/$f.s build/amiga/$f; done && ' +
+      'mkdir -p build/amiga && for f in simtest datacheck Settlers Settlers-hg modelist loadtest loadtest-fm mapgentest; do cp /build/$f build/amiga/ && m68k-amigaos-strip -o build/amiga/$f.s build/amiga/$f; done && ' +
       'ls -l build/amiga'
 
 # settlers-build volume holds the objects on the Linux filesystem (faster than

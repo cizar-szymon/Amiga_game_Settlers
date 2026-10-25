@@ -38,7 +38,12 @@ if(AMIGA_CPU)
   set(PLATFORM_SRC amiga_time.c)
 endif()
 add_executable(simtest simtest.cc ${PLATFORM_SRC})
+# The map generator (the start menu makes a new map for each change) with
+# -O2: it throws no exceptions, which -O2 breaks elsewhere.
+set_source_files_properties(${FS}/map-generator.cc PROPERTIES COMPILE_OPTIONS "-O2")
 target_link_libraries(simtest fs_game fs_tools)
+add_executable(mapgentest mapgentest.cc ${PLATFORM_SRC})
+target_link_libraries(mapgentest fs_game fs_tools)
 
 add_executable(datacheck datacheck.cc ${PLATFORM_SRC})
 target_link_libraries(datacheck fs_data fs_tools)

@@ -282,6 +282,11 @@ VideoAmiga::create_image(void *data, unsigned int width, unsigned int height) {
   image->h = height;
   image->pixels = new uint8_t[width * height];
   const uint8_t *p = static_cast<const uint8_t *>(data);
+  /* The last colours, so that most pixels skip the hash table: an image
+     has few colours (a new landscape tile makes hundreds of images). */
+  uint32_t memo_key[32];
+  uint8_t memo_index[32];
+  std::memset(memo_key, 0xff, sizeof(memo_key));
   for (unsigned int i = 0; i < width * height; i++, p += 4) {
     uint8_t a = p[3];
     if (a == 0) {
@@ -289,7 +294,14 @@ VideoAmiga::create_image(void *data, unsigned int width, unsigned int height) {
     } else if (a < 0xff && p[0] == 0 && p[1] == 0 && p[2] == 0) {
       image->pixels[i] = kShade;
     } else {
-      image->pixels[i] = get_index(p[2], p[1], p[0]);
+      uint32_t key = (static_cast<uint32_t>(p[2]) << 16) |
+                     (static_cast<uint32_t>(p[1]) << 8) | p[0];
+      unsigned int slot = (key ^ (key >> 8) ^ (key >> 16)) & 31;
+      if (memo_key[slot] != key) {
+        memo_key[slot] = key;
+        memo_index[slot] = get_index(p[2], p[1], p[0]);
+      }
+      image->pixels[i] = memo_index[slot];
     }
   }
   encode_runs(image);
@@ -301,6 +313,7 @@ VideoAmiga::destroy_image(Video::Image *image) {
   delete[] image->pixels;
   delete[] image->runs;
   delete[] image->rows;
+  delete[] image->mask;
   delete image;
 }
 
@@ -623,6 +636,30 @@ VideoAmiga::copy_row(uint8_t *d, const uint8_t *s, int w) {
   if (std::memcmp(verify_row, d, w) != 0) verify_errors++;
 }
 
+/* A row into fast RAM by long words: dest = (dest & ~mask) | pixels (a
+   transparent pixel is 0). Reading the destination is cheap there, and the
+   ground triangles, dithered at the edges between kinds of land, have a
+   run for almost every pixel: by the runs a landscape tile took ~50 ms,
+   this way a fraction. */
+static void
+masked_row(uint8_t *d, const uint8_t *s, const uint8_t *m, int w) {
+  while (w >= 4) {
+    uint32_t mk = get_long(m);
+    if (mk == 0xffffffffu) {
+      put_long(d, get_long(s));
+    } else if (mk != 0) {
+      put_long(d, (get_long(d) & ~mk) | get_long(s));
+    }
+    d += 4;
+    s += 4;
+    m += 4;
+    w -= 4;
+  }
+  for (; w > 0; w--, d++, s++, m++) {
+    if (*m) *d = *s;
+  }
+}
+
 /* Clips a w x h block at x, y to the destination; returns false when
    nothing is left. sx, sy are moved by what was cut off. */
 static bool
@@ -655,6 +692,22 @@ VideoAmiga::draw_image(const Video::Image *image, int x, int y, int y_offset,
 
   uint8_t *d = row_ptr(dest, x, y);
   int stride = row_stride(dest);
+  if (!in_vram(dest) && image->n_shade == 0) {
+    /* Into fast RAM (landscape tiles, the VERIFY reference): masked. */
+    if (image->mask == nullptr) {
+      Video::Image *im = const_cast<Video::Image *>(image);
+      size_t n = static_cast<size_t>(im->w) * im->h;
+      im->mask = new uint8_t[n];
+      for (size_t i = 0; i < n; i++) {
+        im->mask[i] = im->pixels[i] != kTransparent ? 0xff : 0x00;
+      }
+    }
+    for (int j = 0; j < h; j++, d += stride) {
+      size_t o = static_cast<size_t>(sy + j) * image->w + sx;
+      masked_row(d, image->pixels + o, image->mask + o, w);
+    }
+    return;
+  }
   if (profile) {
     if (sx == 0 && w == static_cast<int>(image->w)) {
       prof_img_runs_path++;
