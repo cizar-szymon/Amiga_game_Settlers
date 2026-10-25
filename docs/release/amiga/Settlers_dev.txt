@@ -1,7 +1,7 @@
 THE SETTLERS (Freeserf) na Amige - opis dla programistow
 ========================================================
 
-Wersja 0.33. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
+Wersja 0.34. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
 w repozytorium Settlers.
 
 
@@ -64,6 +64,7 @@ NARZEDZIA (tools/ w repozytorium)
   modinfo.py        komendy Fxx modulu MOD
   make_icon.py      ikona z kadru gry
   embed_images.py   obrazki zasobow Freeserf do port/gen/
+  make_start.py     obraz startowy: PNG -> data/start.iff (ILBM, ByteRun1)
 
 Wczytywanie zapisow: loadtest PLIK [N] (build/amiga, wariant loadtest-fm
 z alokatorem gry) - czasy etapow i CRC zapisu po wczytaniu (musi sie nie

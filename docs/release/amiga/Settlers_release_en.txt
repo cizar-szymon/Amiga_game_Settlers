@@ -6,6 +6,14 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.34 (25.10.2026)
+-----------------
+
+- A start picture instead of a grey screen for the first seconds: the file
+  data/start.iff (IFF ILBM), when it is there; without it the screen is
+  black.
+
+
 0.33 (25.10.2026)
 -----------------
 

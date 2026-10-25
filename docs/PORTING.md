@@ -453,6 +453,17 @@ Rozkład wczytania przed zmianą mapy (sondy, z alokatorem): rozbiór tekstu i p
 549 ms, obiekty 125 ms. Sprawdzanie spójności: 0 ms. Łatka `0005` we Freeserf; alokator w grze bez
 wpływu na fps (43,2 w scenie z dźwiękiem), `VERIFY` 0, 4 wyjścia bez błędu.
 
+## Obraz startowy (0.34)
+
+Między otwarciem ekranu a pierwszą klatką gry (ok. 3 s: dźwięk, losowa mapa, interfejs) ekran
+był szary – domyślny kolor 0 nowego ekranu. Teraz `VideoAmiga` zaraz po otwarciu ekranu pokazuje
+`<DATA>/start.iff` (`amiga_show_picture()` w `amiga_screen.c`: IFF ILBM do 8 bitplanów, ByteRun1,
+zmniejszony do ekranu najbliższym pikselem i wyśrodkowany; paleta obrazu zajmuje kolory 0..n-1
+do pierwszej klatki). Bez pliku ekran jest czarny. Plik robi `tools/make_start.py` z PNG
+(800×445, 128 kolorów, 86 KB). Obraz to grafika oryginału (`data/START.png` od użytkownika), więc
+jak dane gry nie trafia do repozytorium ani do wydań. Uwaga: zrzuty AmiAgenta (`shot`) z ekranu
+8-bit gry mają przekłamane kolory także bez obrazu startowego – prawdziwe kolory daje F9.
+
 ## Wydajność (Warp1260 i Warp7060 – wydajnościowo równoważne)
 
 | Data | Zmiana | Scena | fps / czas | Uwagi |

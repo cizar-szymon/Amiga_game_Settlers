@@ -1,7 +1,7 @@
 THE SETTLERS - Freeserf for the Amiga with a graphics card
 ==========================================================
 
-Version 0.33 (beta), 25.10.2026
+Version 0.34 (beta), 25.10.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) on an Amiga with a graphics
 card (Picasso96) and a 68040/68060, at up to 800x600. It is based on
@@ -27,6 +27,10 @@ GETTING STARTED
 3. Double-click the Settlers icon.
 
 The game data is not in this archive - it comes from your disks.
+
+Start picture (optional): the file data/start.iff - any IFF ILBM picture of
+up to 8 bitplanes, shown while the game starts, scaled down to the screen.
+Without it the screen is black while the game starts.
 
 
 CONTROLS

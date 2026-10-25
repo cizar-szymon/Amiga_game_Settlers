@@ -70,6 +70,10 @@ void amiga_set_title(const char *title);
    cursor). */
 void amiga_hide_pointer(void);
 
+/* Shows an IFF ILBM picture on the screen, scaled down to fit and centred
+   (its palette replaces colours 0..n-1). 0: shown, -1: none or not read. */
+int amiga_show_picture(const char *path);
+
 /* How amiga_screen_write sends pixels: 0 WriteChunkyPixels, 1 locked
    bitmap with long moves, 2 the same with MOVE16 where possible. */
 extern int amiga_blit_mode;

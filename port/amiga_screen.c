@@ -606,3 +606,124 @@ void amiga_back_read(int x, int y, int w, int h, unsigned char *dst,
     src += bpr;
   }
 }
+
+/* The start picture: an IFF ILBM (tools/make_start.py) shown, scaled down
+   to fit and centred, from the opening of the screen until the game's
+   first frame - instead of an empty screen for a few seconds. */
+static ULONG be32(const UBYTE *p)
+{
+  return ((ULONG)p[0] << 24) | ((ULONG)p[1] << 16) | ((ULONG)p[2] << 8) | p[3];
+}
+
+int amiga_show_picture(const char *path)
+{
+  BPTR fh;
+  LONG size;
+  UBYTE *file = NULL, *chunky = NULL, *out = NULL, *row = NULL;
+  const UBYTE *bmhd = NULL, *cmap = NULL, *body = NULL;
+  ULONG cmap_len = 0, body_len = 0, pos;
+  int w, h, planes, comp, rowbytes, x, y, p, ok = -1;
+  int dw, dh, ox, oy;
+
+  if (screen == NULL || (fh = Open((CONST_STRPTR)path, MODE_OLDFILE)) == 0) {
+    return -1;
+  }
+  Seek(fh, 0, OFFSET_END);
+  size = Seek(fh, 0, OFFSET_BEGINNING);
+  if (size >= 12 && size < 4 * 1024 * 1024 &&
+      (file = (UBYTE *)AllocVec(size, MEMF_ANY)) != NULL &&
+      Read(fh, file, size) != size) {
+    size = 0;
+  }
+  Close(fh);
+  if (file == NULL || size < 12 || memcmp(file, "FORM", 4) != 0 ||
+      memcmp(file + 8, "ILBM", 4) != 0) {
+    goto done;
+  }
+  for (pos = 12; pos + 8 <= (ULONG)size;) {
+    ULONG n = be32(file + pos + 4);
+    const UBYTE *c = file + pos + 8;
+    if (pos + 8 + n > (ULONG)size) break;
+    if (memcmp(file + pos, "BMHD", 4) == 0 && n >= 20) bmhd = c;
+    else if (memcmp(file + pos, "CMAP", 4) == 0) { cmap = c; cmap_len = n; }
+    else if (memcmp(file + pos, "BODY", 4) == 0) { body = c; body_len = n; }
+    pos += 8 + n + (n & 1);
+  }
+  if (bmhd == NULL || cmap == NULL || body == NULL) goto done;
+  w = (bmhd[0] << 8) | bmhd[1];
+  h = (bmhd[2] << 8) | bmhd[3];
+  planes = bmhd[8];
+  comp = bmhd[10];
+  if (w <= 0 || h <= 0 || planes < 1 || planes > 8 || comp > 1 ||
+      bmhd[9] == 1) {  /* no mask plane */
+    goto done;
+  }
+  rowbytes = ((w + 15) >> 4) << 1;
+  chunky = (UBYTE *)AllocVec((ULONG)w * h, MEMF_ANY | MEMF_CLEAR);
+  row = (UBYTE *)AllocVec(rowbytes, MEMF_ANY);
+  out = (UBYTE *)AllocVec((ULONG)width * height + 16, MEMF_ANY | MEMF_CLEAR);
+  if (chunky == NULL || row == NULL || out == NULL) goto done;
+
+  /* Planes, interleaved row by row, ByteRun1 -> one byte per pixel. */
+  pos = 0;
+  for (y = 0; y < h; y++) {
+    UBYTE *d = chunky + (ULONG)y * w;
+    for (p = 0; p < planes; p++) {
+      int n = 0;
+      UBYTE bit = (UBYTE)(1 << p);
+      if (comp == 0) {
+        if (pos + rowbytes > body_len) goto done;
+        memcpy(row, body + pos, rowbytes);
+        pos += rowbytes;
+      } else {
+        while (n < rowbytes) {
+          int b;
+          if (pos >= body_len) goto done;
+          b = (signed char)body[pos++];
+          if (b >= 0) {
+            if (n + b + 1 > rowbytes || pos + b + 1 > body_len) goto done;
+            memcpy(row + n, body + pos, b + 1);
+            pos += b + 1;
+            n += b + 1;
+          } else if (b != -128) {
+            if (n - b + 1 > rowbytes || pos >= body_len) goto done;
+            memset(row + n, body[pos++], 1 - b);
+            n += 1 - b;
+          }
+        }
+      }
+      for (x = 0; x < w; x++) {
+        if (row[x >> 3] & (0x80 >> (x & 7))) d[x] |= bit;
+      }
+    }
+  }
+
+  /* Scaled down (nearest pixel) to fit the screen, never up. */
+  dw = w;
+  dh = h;
+  if (dw > width) { dh = dh * width / dw; dw = width; }
+  if (dh > height) { dw = dw * height / dh; dh = height; }
+  ox = (width - dw) / 2;
+  oy = (height - dh) / 2;
+  {
+    ULONG sx_step = ((ULONG)w << 16) / dw, sy_step = ((ULONG)h << 16) / dh;
+    ULONG sy = 0;
+    for (y = 0; y < dh; y++, sy += sy_step) {
+      const UBYTE *s = chunky + (sy >> 16) * (ULONG)w;
+      UBYTE *d = out + (ULONG)(oy + y) * width + ox;
+      ULONG sx = 0;
+      for (x = 0; x < dw; x++, sx += sx_step) d[x] = s[sx >> 16];
+    }
+  }
+  /* Colour 0 (the darkest) fills the rest. */
+  amiga_set_colors(0, (int)(cmap_len / 3 > 256 ? 256 : cmap_len / 3), cmap);
+  amiga_screen_write(out, width, 0, 0, width, height);
+  ok = 0;
+
+done:
+  if (out != NULL) FreeVec(out);
+  if (row != NULL) FreeVec(row);
+  if (chunky != NULL) FreeVec(chunky);
+  if (file != NULL) FreeVec(file);
+  return ok;
+}

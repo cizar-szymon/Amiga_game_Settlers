@@ -71,6 +71,9 @@ class VideoAmiga : public Video {
   /* Set by main before the first Video::get_instance(). */
   static unsigned int config_width;
   static unsigned int config_height;
+  /* Shown from the opening of the screen to the first frame (may be
+     empty or missing). */
+  static std::string start_picture;
   /* RENDER=VRAM (default): compose the frame in the card's memory;
      RENDER=FAST: in fast RAM, sent whole at the swap. */
   static bool render_vram;

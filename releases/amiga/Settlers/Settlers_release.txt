@@ -6,6 +6,13 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.34 (25.10.2026)
+-----------------
+
+- Obraz startowy zamiast szarego ekranu przez pierwsze sekundy: plik
+  data/start.iff (IFF ILBM), jesli jest; bez niego ekran jest czarny.
+
+
 0.33 (25.10.2026)
 -----------------
 

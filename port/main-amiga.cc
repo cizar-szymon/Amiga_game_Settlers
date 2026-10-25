@@ -152,6 +152,7 @@ main(int argc, char *argv[]) {
 
     VideoAmiga::config_width = width;
     VideoAmiga::config_height = height;
+    VideoAmiga::start_picture = data_dirs.front() + "/start.iff";
     Graphics &gfx = Graphics::get_instance();
 
     Audio &audio = Audio::get_instance();
