@@ -1,7 +1,7 @@
 From 0d934503b5005e7ab8979f14909bc3778bb9e5a0 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Sun, 25 Oct 2026 22:59:05 +0100
-Subject: [PATCH 13/18] Exit to the start menu, Quit from it with a question
+Subject: [PATCH 13/20] Exit to the start menu, Quit from it with a question
 
 The Quit button of the game's settings box is labelled EXIT and, after
 its question, goes back to the start menu with a new random game, as

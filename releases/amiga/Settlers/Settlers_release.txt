@@ -6,8 +6,23 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
-0.54 (26.10.2026) - kandydat do wydania
+0.56 (26.10.2026) - kandydat do wydania
 ----------------------------------------
+
+- Okno z klawiszami szersze (klawisz i opis w dwoch kolumnach).
+- Pauza (P): duzy napis PAUSE na srodku ekranu (chowa sie pod oknami).
+
+
+0.55 (26.10.2026)
+-----------------
+
+- Okno ustawien: przycisk znow z napisem QUIT (dzialanie bez zmian:
+  wyjscie do menu startowego); nowy przycisk "I" miedzy SAVE i EXIT -
+  okienko z klawiszami gry. To samo okienko pod klawiszem I.
+
+
+0.54 (26.10.2026)
+-----------------
 
 - Bez przyciecia przy zmianie powiekszenia (teren nie jest juz rysowany
   od nowa, bylo ok. 0,3 s).

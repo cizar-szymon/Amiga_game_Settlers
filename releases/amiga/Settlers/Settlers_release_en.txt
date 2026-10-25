@@ -6,8 +6,24 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
-0.54 (26.10.2026) - release candidate
+0.56 (26.10.2026) - release candidate
 -------------------------------------
+
+- The keys box wider (the key and its meaning in two columns).
+- Pause (P): a large PAUSE in the middle of the screen (hidden while a
+  box is open).
+
+
+0.55 (26.10.2026)
+-----------------
+
+- The settings box: the button says QUIT again (it still goes back to
+  the start menu); a new "I" button between SAVE and EXIT shows the keys
+  of the game. The I key shows the same box.
+
+
+0.54 (26.10.2026)
+-----------------
 
 - No jerk when the magnification changes (the land is no longer drawn
   again, it took about 0.3 s).

@@ -1,0 +1,485 @@
+From 72931c1a14a90bafe64381a5a9e23e3460deb293 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Mon, 26 Oct 2026 00:50:34 +0100
+Subject: [PATCH 20/20] A wider keys box; PAUSE in the middle of the screen
+
+The keys box is a box of its own (KeysBox, 272x160, the frame of the
+advanced box, two columns: key and meaning) instead of a popup, whose
+frame pictures have a fixed size. While the game is paused, PAUSE in
+large letters in the middle of the screen, hidden while a box is open.
+---
+ src/interface.cc |  73 +++++++++++++++++++++++++++++-
+ src/interface.h  |   5 +++
+ src/keys-box.cc  | 115 +++++++++++++++++++++++++++++++++++++++++++++++
+ src/keys-box.h   |  49 ++++++++++++++++++++
+ src/popup.cc     |  54 +---------------------
+ src/popup.h      |   5 +--
+ 6 files changed, 243 insertions(+), 58 deletions(-)
+ create mode 100644 src/keys-box.cc
+ create mode 100644 src/keys-box.h
+
+diff --git a/src/interface.cc b/src/interface.cc
+index a3bbe01..ba67e62 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -38,6 +38,7 @@
+ #include "src/popup.h"
+ #include "src/game-init.h"
+ #include "src/advanced-box.h"
++#include "src/keys-box.h"
+ #include "src/settings.h"
+ #include "src/data-source-mixed.h"
+ #include "src/viewport.h"
+@@ -100,6 +101,7 @@ Interface::Interface()
+   popup = nullptr;
+   init_box = nullptr;
+   advanced_box = nullptr;
++  keys_box = nullptr;
+   notification_box = nullptr;
+ 
+   GameManager::get_instance().add_handler(this);
+@@ -115,6 +117,7 @@ Interface::~Interface() {
+   delete popup;
+   delete init_box;
+   delete advanced_box;
++  delete keys_box;
+   delete notification_box;
+ }
+ 
+@@ -283,6 +286,30 @@ Interface::open_advanced() {
+   layout();
+ }
+ 
++/* The keys of the game (the I button of the settings box, the I key): over
++   whatever is open, which it leaves as it was. */
++void
++Interface::open_keys_box() {
++  if (keys_box == nullptr) {
++    keys_box = new KeysBox(this);
++    add_float(keys_box, 0, 0);
++  }
++  keys_box->set_displayed(true);
++  keys_box->set_enabled(true);
++  layout();
++}
++
++void
++Interface::close_keys_box() {
++  if (keys_box != nullptr) {
++    keys_box->set_displayed(false);
++    del_float(keys_box);
++    delete keys_box;
++    keys_box = nullptr;
++  }
++  layout();
++}
++
+ void
+ Interface::close_advanced() {
+   if (advanced_box != nullptr) {
+@@ -969,6 +996,11 @@ Interface::layout() {
+     init_box->set_size(init_box_width, init_box_height);
+   }
+ 
++  if (keys_box != nullptr) {
++    keys_box->move_to((width - KeysBox::kWidth) / 2,
++                      (height - KeysBox::kHeight) / 2);
++  }
++
+   if (advanced_box != nullptr) {
+     advanced_box->move_to((width - AdvancedBox::kWidth) / 2,
+                           (height - AdvancedBox::kHeight) / 2);
+@@ -1207,6 +1239,44 @@ Interface::draw_game_speed(Frame *frame) {
+ #endif
+ }
+ 
++/* PAUSE in large letters in the middle of the screen while the game is
++   paused (P): yellow with a dark shadow, the letters drawn from 5x7 dot
++   patterns, each dot 6 pixels. */
++void
++Interface::draw_pause(Frame *frame) {
++  if (!game || !game->is_paused()) return;
++  /* Not over a box: it would hide its text. */
++  if ((popup != nullptr && popup->is_displayed()) ||
++      (keys_box != nullptr && keys_box->is_displayed()) ||
++      (advanced_box != nullptr && advanced_box->is_displayed()) ||
++      (init_box != nullptr && init_box->is_displayed())) {
++    return;
++  }
++  static const char *const kLetters[5][7] = {
++    { "#### ", "#   #", "#   #", "#### ", "#    ", "#    ", "#    " },  // P
++    { " ### ", "#   #", "#   #", "#####", "#   #", "#   #", "#   #" },  // A
++    { "#   #", "#   #", "#   #", "#   #", "#   #", "#   #", " ### " },  // U
++    { " ####", "#    ", "#    ", " ### ", "    #", "    #", "#### " },  // S
++    { "#####", "#    ", "#    ", "#### ", "#    ", "#    ", "#####" }   // E
++  };
++  const int dot = 6, gap = 2 * dot;
++  const int letter_w = 5 * dot, text_w = 5 * letter_w + 4 * gap;
++  const int x0 = (width - text_w) / 2, y0 = (height - 7 * dot) / 2;
++  for (int pass = 0; pass < 2; pass++) {
++    Color c = (pass == 0) ? Color::black : Color(0xdd, 0xdd, 0x00);
++    int off = (pass == 0) ? dot / 2 : 0;
++    for (int l = 0; l < 5; l++) {
++      for (int r = 0; r < 7; r++) {
++        for (int col = 0; col < 5; col++) {
++          if (kLetters[l][r][col] != '#') continue;
++          frame->fill_rect(x0 + l * (letter_w + gap) + col * dot + off,
++                           y0 + r * dot + off, dot, dot, c);
++        }
++      }
++    }
++  }
++}
++
+ /* Called periodically when the game progresses. */
+ void
+ Interface::update() {
+@@ -1346,7 +1416,7 @@ Interface::handle_key_pressed(char key, int modifier) {
+     }
+     case 'i': {
+       /* The keys of the game (also the "I" button of the settings box). */
+-      open_popup(PopupBox::TypeKeysInfo);
++      open_keys_box();
+       break;
+     }
+ 
+@@ -1421,6 +1491,7 @@ Interface::handle_event(const Event *event) {
+       draw(reinterpret_cast<Frame*>(event->object));
+       draw_fps(reinterpret_cast<Frame*>(event->object));
+       draw_game_speed(reinterpret_cast<Frame*>(event->object));
++      draw_pause(reinterpret_cast<Frame*>(event->object));
+       break;
+     case Event::TypeInvalidate:
+       invalidate();
+diff --git a/src/interface.h b/src/interface.h
+index 4de1e60..960e3fa 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -44,6 +44,7 @@ class PanelBar;
+ class PopupBox;
+ class GameInitBox;
+ class AdvancedBox;
++class KeysBox;
+ class NotificationBox;
+ 
+ class Interface : public GuiObject, public GameManager::Handler {
+@@ -98,6 +99,7 @@ class Interface : public GuiObject, public GameManager::Handler {
+   PopupBox *popup;
+   GameInitBox *init_box;
+   AdvancedBox *advanced_box;
++  KeysBox *keys_box;
+   NotificationBox *notification_box;
+ 
+   MapPos map_cursor_pos;
+@@ -239,6 +241,9 @@ class Interface : public GuiObject, public GameManager::Handler {
+   /* Box of the advanced options; closing it closes the options too. */
+   void open_advanced();
+   void close_advanced();
++  void open_keys_box();
++  void close_keys_box();
++  void draw_pause(Frame *frame);
+ 
+   void open_message();
+   void return_from_message();
+diff --git a/src/keys-box.cc b/src/keys-box.cc
+new file mode 100644
+index 0000000..25884ea
+--- /dev/null
++++ b/src/keys-box.cc
+@@ -0,0 +1,115 @@
++/*
++ * keys-box.cc - Box with the keys of the game
++ *
++ * Copyright (C) 2026  Wicked_Digger <wicked_digger@mail.ru>
++ *
++ * This file is part of freeserf.
++ *
++ * freeserf is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * freeserf is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "src/keys-box.h"
++
++#include <string>
++
++#include "src/interface.h"
++#include "src/popup.h"
++#include "src/box-frame.h"
++#include "src/audio.h"
++#include "src/data.h"
++
++static const int kExitWidth = 16;
++static const int kExitHeight = 16;
++static const int kKeyX = 16;
++static const int kTextX = 104;
++static const int kFirstRowY = 22;
++static const int kRowHeight = 10;
++
++static const struct {
++  const char *key;
++  const char *text;
++} keys[] = {
++  { "+", "Game speed up" },
++  { "-", "Game speed down" },
++  { "0", "Normal speed" },
++  { "Z", "Zoom" },
++  { "Wheel", "Zoom in and out" },
++  { "P", "Pause" },
++  { "M", "Music on-off" },
++  { "S", "Sound on-off" },
++  { "Ctrl+Z", "Quick save" },
++  { "F9", "Screenshot" },
++  { "I", "This box" },
++  { "Shift+Esc", "Quit" }
++};
++
++KeysBox::KeysBox(Interface *_interface)
++  : interface(_interface) {
++  set_size(kWidth, kHeight);
++}
++
++/* The game's font has no '+': drawn, with a shadow like the letters. */
++static void
++draw_plus(Frame *frame, int x, int y) {
++  frame->fill_rect(x + 2, y + 4, 6, 2, Color::black);
++  frame->fill_rect(x + 4, y + 2, 2, 6, Color::black);
++  frame->fill_rect(x + 1, y + 3, 6, 2, Color::green);
++  frame->fill_rect(x + 3, y + 1, 2, 6, Color::green);
++}
++
++void
++KeysBox::internal_draw() {
++  for (int y = 0; y < height; y += 16) {
++    for (int x = 0; x < width; x += 16) {
++      frame->draw_sprite(x, y, Data::AssetIcon,
++                         PopupBox::PatternDiagonalGreen);
++    }
++  }
++  draw_box_frame(frame, width, height);
++
++  std::string title = "Keys";
++  frame->draw_string((width - frame->get_string_width(title)) / 2, 9, title,
++                     Color::green, Color::black);
++  int y = kFirstRowY;
++  for (const auto &k : keys) {
++    std::string key = k.key;
++    std::string with_spaces = key;
++    for (char &c : with_spaces) {
++      if (c == '+') c = ' ';
++    }
++    frame->draw_string(kKeyX, y, with_spaces, Color::green, Color::black);
++    for (std::string::size_type i = 0; i < key.size(); i++) {
++      if (key[i] == '+') {
++        draw_plus(frame, kKeyX + 8 * static_cast<int>(i), y);
++      }
++    }
++    frame->draw_string(kTextX, y, k.text, Color::green, Color::black);
++    y += kRowHeight;
++  }
++
++  frame->draw_sprite(width - 8 - kExitWidth, height - 7 - kExitHeight,
++                     Data::AssetIcon, 60);  // Exit
++}
++
++bool
++KeysBox::handle_click_left(int x, int y) {
++  int exit_x = width - 8 - kExitWidth;
++  int exit_y = height - 7 - kExitHeight;
++  if (x >= exit_x && x < exit_x + kExitWidth &&
++      y >= exit_y && y < exit_y + kExitHeight) {
++    play_sound(Audio::TypeSfxClick);
++    interface->close_keys_box();
++  }
++  return true;
++}
+diff --git a/src/keys-box.h b/src/keys-box.h
+new file mode 100644
+index 0000000..8410b90
+--- /dev/null
++++ b/src/keys-box.h
+@@ -0,0 +1,49 @@
++/*
++ * keys-box.h - Box with the keys of the game
++ *
++ * Copyright (C) 2026  Wicked_Digger <wicked_digger@mail.ru>
++ *
++ * This file is part of freeserf.
++ *
++ * freeserf is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * freeserf is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef SRC_KEYS_BOX_H_
++#define SRC_KEYS_BOX_H_
++
++#include "src/gui.h"
++
++class Interface;
++
++/* The keys of the game, from the I button of the settings box or the I
++   key: wider than the popup boxes, for two columns. Small enough for a
++   400x300 screen. */
++class KeysBox : public GuiObject {
++ public:
++  static const int kWidth = 272;
++  static const int kHeight = 160;
++
++ protected:
++  Interface *interface;
++
++ public:
++  explicit KeysBox(Interface *interface);
++  virtual ~KeysBox() {}
++
++ protected:
++  virtual void internal_draw();
++  virtual bool handle_click_left(int x, int y);
++};
++
++#endif  // SRC_KEYS_BOX_H_
+diff --git a/src/popup.cc b/src/popup.cc
+index 76d5dd0..1bf536d 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -1966,43 +1966,6 @@ PopupBox::draw_small_label(int x, int y, int w, const char *const rows[5]) {
+   }
+ }
+ 
+-/* The keys of the game, from the "I" button of the settings box (Amiga
+-   port). At most 15 characters a line. */
+-void
+-PopupBox::draw_keys_info_box() {
+-  draw_box_background(PatternDiagonalGreen);
+-
+-  draw_green_centered(4, "Keys");
+-  /* The game's font has no '+' and no '/': a space in the text, the plus
+-     drawn below. */
+-  static const char *const kLines =
+-    "  Game speed   \n"
+-    "- Game speed --\n"
+-    "0 Normal speed\n"
+-    "Z Zoom\n"
+-    "Wheel Zoom\n"
+-    "P Pause\n"
+-    "M Music on-off\n"
+-    "S Sound on-off\n"
+-    "Ctrl Z Save\n"
+-    "F9 Screenshot\n"
+-    "I This box\n"
+-    "Shift Esc Quit";
+-  draw_green_lines(1, 18, kLines, 9);
+-  static const int kPlus[][2] = {  /* character, line */
+-    {0, 0}, {13, 0}, {14, 0}, {4, 8}, {5, 11}
+-  };
+-  for (const auto &p : kPlus) {
+-    int x = 8 * 1 + 8 + 8 * p[0], y = 18 + 9 + 9 * p[1];
+-    frame->fill_rect(x + 2, y + 4, 6, 2, Color::black);  /* shadow */
+-    frame->fill_rect(x + 4, y + 2, 2, 6, Color::black);
+-    frame->fill_rect(x + 1, y + 3, 6, 2, Color::green);
+-    frame->fill_rect(x + 3, y + 1, 2, 6, Color::green);
+-  }
+-
+-  draw_popup_icon(14, 128, 60); /* exit */
+-}
+-
+ void
+ PopupBox::draw_quit_confirm_box() {
+   draw_box_background(PatternDiagonalGreen);
+@@ -2992,9 +2955,6 @@ PopupBox::internal_draw() {
+   case TypeQuitConfirm:
+     draw_quit_confirm_box();
+     break;
+-  case TypeKeysInfo:
+-    draw_keys_info_box();
+-    break;
+   case TypeNoSaveQuitConfirm:
+     draw_no_save_quit_confirm_box();
+     break;
+@@ -3629,7 +3589,7 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     interface->open_popup(TypeQuitConfirm);
+     break;
+   case ActionShowKeysInfo:
+-    set_box(TypeKeysInfo);
++    interface->open_keys_box();
+     break;
+   case ActionShowOptions:
+     interface->open_popup(TypeOptions);
+@@ -4323,15 +4283,6 @@ PopupBox::handle_sett_5_6_click(int cx, int cy) {
+   handle_clickmap(cx, cy, clkmap);
+ }
+ 
+-void
+-PopupBox::handle_keys_info_click(int cx, int cy) {
+-  const int clkmap[] = {
+-    ACTION_CLOSE_BOX, 112, 128, 16, 16,
+-    -1
+-  };
+-  handle_clickmap(cx, cy, clkmap);
+-}
+-
+ void
+ PopupBox::handle_quit_confirm_click(int cx, int cy) {
+   const int clkmap[] = {
+@@ -4676,9 +4627,6 @@ PopupBox::handle_click_left(int cx, int cy) {
+   case TypeQuitConfirm:
+     handle_quit_confirm_click(cx, cy);
+     break;
+-  case TypeKeysInfo:
+-    handle_keys_info_click(cx, cy);
+-    break;
+   case TypeNoSaveQuitConfirm:
+     handle_no_save_quit_confirm_click(cx, cy);
+     break;
+diff --git a/src/popup.h b/src/popup.h
+index 927ba7f..857de90 100644
+--- a/src/popup.h
++++ b/src/popup.h
+@@ -98,8 +98,7 @@ class PopupBox : public GuiObject {
+     TypeJsCalibDownRight,
+     TypeJsCalibCenter,
+     TypeCtrlsInfo,
+-    TypeTutorialOrders,
+-    TypeKeysInfo  /* the keys of the game (Amiga port), from the "I" button */
++    TypeTutorialOrders
+   } Type;
+ 
+   typedef enum BackgroundPattern {
+@@ -231,7 +230,6 @@ class PopupBox : public GuiObject {
+   void draw_popup_resource_stairs(int order[]);
+   void draw_sett_5_box();
+   void draw_quit_confirm_box();
+-  void draw_keys_info_box();
+   void draw_small_label(int x, int y, int w, const char *const rows[5]);
+   void draw_no_save_quit_confirm_box();
+   void draw_options_box();
+@@ -286,7 +284,6 @@ class PopupBox : public GuiObject {
+   void handle_sett_4_click(int x, int y);
+   void handle_sett_5_6_click(int x, int y);
+   void handle_quit_confirm_click(int x, int y);
+-  void handle_keys_info_click(int x, int y);
+   void handle_no_save_quit_confirm_click(int x, int y);
+   void handle_castle_res_clk(int x, int y);
+   void handle_transport_info_clk(int x, int y);
+-- 
+2.45.2.windows.1
+

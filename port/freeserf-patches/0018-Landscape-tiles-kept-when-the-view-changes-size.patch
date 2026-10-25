@@ -1,7 +1,7 @@
 From 62aedbe49ce01e74960f35ad0ca939b70031b403 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Mon, 26 Oct 2026 00:28:47 +0100
-Subject: [PATCH 18/18] Landscape tiles kept when the view changes size
+Subject: [PATCH 18/20] Landscape tiles kept when the view changes size
 
 Viewport::layout dropped all the landscape tiles at every size change,
 so each step of the magnified map view drew all tiles in view again. The

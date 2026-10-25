@@ -1,0 +1,246 @@
+From ad1b3342fd9b44cd2722b755f895da7ae1ed10c4 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Mon, 26 Oct 2026 00:42:20 +0100
+Subject: [PATCH 19/20] QUIT label again; an I button and key with the keys of
+ the game
+
+The settings box's button to the start menu shows the original QUIT
+again. Between Save and the small Exit an 'I' button (the small Exit
+picture with an I in the lettering of the buttons) opens a box with the
+keys of the game; the I key opens it too. The game's font has no '+' and
+'/': the plus signs are drawn.
+---
+ src/interface.cc |   5 +++
+ src/popup.cc     | 112 ++++++++++++++++++++++++++++++++++++-----------
+ src/popup.h      |   6 ++-
+ 3 files changed, 96 insertions(+), 27 deletions(-)
+
+diff --git a/src/interface.cc b/src/interface.cc
+index d49d61e..a3bbe01 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -1344,6 +1344,11 @@ Interface::handle_key_pressed(char key, int modifier) {
+       game->pause();
+       break;
+     }
++    case 'i': {
++      /* The keys of the game (also the "I" button of the settings box). */
++      open_popup(PopupBox::TypeKeysInfo);
++      break;
++    }
+ 
+     /* Audio */
+     case 's': {
+diff --git a/src/popup.cc b/src/popup.cc
+index a98ec99..76d5dd0 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -22,6 +22,7 @@
+ #include "src/popup.h"
+ 
+ #include <algorithm>
++#include <cstring>
+ #include <sstream>
+ #include <string>
+ 
+@@ -206,6 +207,7 @@ typedef enum Action {
+   ACTION_SHOW_QUIT,
+   ActionShowOptions,
+   ACTION_SHOW_SAVE,
++  ActionShowKeysInfo,
+   ACTION_SETT_8_CYCLE,
+   ACTION_CLOSE_OPTIONS,
+   ACTION_OPTIONS_PATHWAY_SCROLLING_1,
+@@ -1682,32 +1684,11 @@ PopupBox::draw_sett_select_box() {
+   draw_box_background(PatternCheckerdDiagonalBrown);
+   draw_custom_icon_box(layout);
+ 
+-  /* The Quit button leads back to the start menu in this port: EXIT on
+-     it, in small letters like those of the buttons beside it (5 pixels
+-     high, yellow, dark outline), as the game's data has no such picture. */
+-  static const char *const kExit[5] = {
+-    "#### #   # ### #####",
+-    "#     # #   #    #  ",
+-    "###    #    #    #  ",
+-    "#     # #   #    #  ",
+-    "#### #   # ###   #  "
+-  };
+-  const int bx = 8 * 0 + 8, by = 128 + 9;  /* the button, 32x16 */
+-  frame->fill_rect(bx + 2, by + 2, 28, 12, Color(0x99, 0x55, 0x22));
+-  const int lx = bx + 6, ly = by + 5;
+-  for (int pass = 0; pass < 2; pass++) {
+-    for (int r = 0; r < 5; r++) {
+-      for (int c = 0; kExit[r][c] != 0; c++) {
+-        if (kExit[r][c] != '#') continue;
+-        if (pass == 0) {
+-          frame->fill_rect(lx + c - 1, ly + r - 1, 3, 3,
+-                           Color(0x55, 0x22, 0x00));
+-        } else {
+-          frame->fill_rect(lx + c, ly + r, 1, 1, Color(0xdd, 0xdd, 0x00));
+-        }
+-      }
+-    }
+-  }
++  /* The "I" button between Save and Exit (Amiga port): the keys of the
++     game. The small Exit picture with an I on it. */
++  static const char *const kI[5] = { "###", " # ", " # ", " # ", "###" };
++  draw_popup_icon(12, 128, 60);
++  draw_small_label(8 * 12 + 8, 128 + 9, 16, kI);
+ }
+ 
+ /* Draw slide bar in a popup box. */
+@@ -1962,6 +1943,66 @@ PopupBox::draw_sett_5_box() {
+   draw_popup_icon(6, 120, 33+current_sett_5_item);
+ }
+ 
++/* A label of 5 pixel high letters (rows of '#'), yellow with a dark
++   outline like the lettering of the original's buttons, centred on a plate
++   over a button w pixels wide and 16 high at x, y. */
++void
++PopupBox::draw_small_label(int x, int y, int w, const char *const rows[5]) {
++  int lw = static_cast<int>(std::strlen(rows[0]));
++  frame->fill_rect(x + 2, y + 2, w - 4, 12, Color(0x99, 0x55, 0x22));
++  const int lx = x + (w - lw) / 2, ly = y + 5;
++  for (int pass = 0; pass < 2; pass++) {
++    for (int r = 0; r < 5; r++) {
++      for (int col = 0; rows[r][col] != 0; col++) {
++        if (rows[r][col] != '#') continue;
++        if (pass == 0) {
++          frame->fill_rect(lx + col - 1, ly + r - 1, 3, 3,
++                           Color(0x55, 0x22, 0x00));
++        } else {
++          frame->fill_rect(lx + col, ly + r, 1, 1, Color(0xdd, 0xdd, 0x00));
++        }
++      }
++    }
++  }
++}
++
++/* The keys of the game, from the "I" button of the settings box (Amiga
++   port). At most 15 characters a line. */
++void
++PopupBox::draw_keys_info_box() {
++  draw_box_background(PatternDiagonalGreen);
++
++  draw_green_centered(4, "Keys");
++  /* The game's font has no '+' and no '/': a space in the text, the plus
++     drawn below. */
++  static const char *const kLines =
++    "  Game speed   \n"
++    "- Game speed --\n"
++    "0 Normal speed\n"
++    "Z Zoom\n"
++    "Wheel Zoom\n"
++    "P Pause\n"
++    "M Music on-off\n"
++    "S Sound on-off\n"
++    "Ctrl Z Save\n"
++    "F9 Screenshot\n"
++    "I This box\n"
++    "Shift Esc Quit";
++  draw_green_lines(1, 18, kLines, 9);
++  static const int kPlus[][2] = {  /* character, line */
++    {0, 0}, {13, 0}, {14, 0}, {4, 8}, {5, 11}
++  };
++  for (const auto &p : kPlus) {
++    int x = 8 * 1 + 8 + 8 * p[0], y = 18 + 9 + 9 * p[1];
++    frame->fill_rect(x + 2, y + 4, 6, 2, Color::black);  /* shadow */
++    frame->fill_rect(x + 4, y + 2, 2, 6, Color::black);
++    frame->fill_rect(x + 1, y + 3, 6, 2, Color::green);
++    frame->fill_rect(x + 3, y + 1, 2, 6, Color::green);
++  }
++
++  draw_popup_icon(14, 128, 60); /* exit */
++}
++
+ void
+ PopupBox::draw_quit_confirm_box() {
+   draw_box_background(PatternDiagonalGreen);
+@@ -2951,6 +2992,9 @@ PopupBox::internal_draw() {
+   case TypeQuitConfirm:
+     draw_quit_confirm_box();
+     break;
++  case TypeKeysInfo:
++    draw_keys_info_box();
++    break;
+   case TypeNoSaveQuitConfirm:
+     draw_no_save_quit_confirm_box();
+     break;
+@@ -3584,6 +3628,9 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+   case ACTION_SHOW_QUIT:
+     interface->open_popup(TypeQuitConfirm);
+     break;
++  case ActionShowKeysInfo:
++    set_box(TypeKeysInfo);
++    break;
+   case ActionShowOptions:
+     interface->open_popup(TypeOptions);
+     break;
+@@ -4123,6 +4170,7 @@ PopupBox::handle_sett_select_clk(int cx, int cy) {
+     ACTION_SHOW_QUIT, 0, 128, 32, 16,
+     ActionShowOptions, 32, 128, 32, 16,
+     ACTION_SHOW_SAVE, 64, 128, 32, 16,
++    ActionShowKeysInfo, 96, 128, 16, 16,
+ 
+     ACTION_SHOW_SETT_1, 8, 8, 32, 32,
+     ACTION_SHOW_SETT_2, 48, 8, 32, 32,
+@@ -4275,6 +4323,15 @@ PopupBox::handle_sett_5_6_click(int cx, int cy) {
+   handle_clickmap(cx, cy, clkmap);
+ }
+ 
++void
++PopupBox::handle_keys_info_click(int cx, int cy) {
++  const int clkmap[] = {
++    ACTION_CLOSE_BOX, 112, 128, 16, 16,
++    -1
++  };
++  handle_clickmap(cx, cy, clkmap);
++}
++
+ void
+ PopupBox::handle_quit_confirm_click(int cx, int cy) {
+   const int clkmap[] = {
+@@ -4619,6 +4676,9 @@ PopupBox::handle_click_left(int cx, int cy) {
+   case TypeQuitConfirm:
+     handle_quit_confirm_click(cx, cy);
+     break;
++  case TypeKeysInfo:
++    handle_keys_info_click(cx, cy);
++    break;
+   case TypeNoSaveQuitConfirm:
+     handle_no_save_quit_confirm_click(cx, cy);
+     break;
+diff --git a/src/popup.h b/src/popup.h
+index 1d3bb54..927ba7f 100644
+--- a/src/popup.h
++++ b/src/popup.h
+@@ -98,7 +98,8 @@ class PopupBox : public GuiObject {
+     TypeJsCalibDownRight,
+     TypeJsCalibCenter,
+     TypeCtrlsInfo,
+-    TypeTutorialOrders
++    TypeTutorialOrders,
++    TypeKeysInfo  /* the keys of the game (Amiga port), from the "I" button */
+   } Type;
+ 
+   typedef enum BackgroundPattern {
+@@ -230,6 +231,8 @@ class PopupBox : public GuiObject {
+   void draw_popup_resource_stairs(int order[]);
+   void draw_sett_5_box();
+   void draw_quit_confirm_box();
++  void draw_keys_info_box();
++  void draw_small_label(int x, int y, int w, const char *const rows[5]);
+   void draw_no_save_quit_confirm_box();
+   void draw_options_box();
+   void draw_castle_res_box();
+@@ -283,6 +286,7 @@ class PopupBox : public GuiObject {
+   void handle_sett_4_click(int x, int y);
+   void handle_sett_5_6_click(int x, int y);
+   void handle_quit_confirm_click(int x, int y);
++  void handle_keys_info_click(int x, int y);
+   void handle_no_save_quit_confirm_click(int x, int y);
+   void handle_castle_res_clk(int x, int y);
+   void handle_transport_info_clk(int x, int y);
+-- 
+2.45.2.windows.1
+

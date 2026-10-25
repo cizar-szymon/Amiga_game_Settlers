@@ -1,7 +1,7 @@
 THE SETTLERS (Freeserf) na Amige - opis dla programistow
 ========================================================
 
-Wersja 0.54. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
+Wersja 0.56. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
 w repozytorium Settlers.
 
 

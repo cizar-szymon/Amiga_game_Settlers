@@ -26,9 +26,9 @@ z oryginalnych danych z wersji na Amigę. Ogólne zasady: `C:\Workprojects\Amiga
 | F5 Dźwięk | ✅ | efekty i muzyka bez spadku fps poniżej celu | 0.22: Paula 22 kHz, efekty i muzyka potwierdzone odsłuchem; ~43 fps; AHI – opcja na później |
 | F6 Wydanie | ✅ | czysta instalacja z archiwum `Settlers-0.32.lha` na Amidze 2 | 0.32 beta, 25.10.2026 |
 
-**Kandydat do wydania: 0.54** (decyzja użytkownika: zawsze najnowsza sprawdzona wersja), znacznik
-`v0.54-rc`, archiwum `releases/amiga/Settlers-0.54.lha`. Wcześniejsi: 0.53, 0.52, 0.48, 0.41
-(`v0.xx-rc`).
+**Kandydat do wydania: 0.56** (decyzja użytkownika: zawsze najnowsza sprawdzona wersja; 0.56
+potwierdzona przez użytkownika 26.10.2026), znacznik `v0.56-rc`, archiwum
+`releases/amiga/Settlers-0.56.lha`. Wcześniejsi: 0.54, 0.53, 0.52, 0.48, 0.41 (`v0.xx-rc`).
 
 ## Decyzje
 
@@ -297,6 +297,9 @@ tylko 35 kroków logiki/s zamiast 50 (limit 5 kroków nadrabiania na klatkę). T
 16. `game-init.*`, `interface.cc`: podgląd mapy generowany, gdy minie czas (okno rysuje się na żądanie).
 17. `gui.*`, `viewport.cc`: Invert scrolling w obu osiach, tylko mysz.
 18. `viewport.*`: kafelki terenu zostają przy zmianie rozmiaru widoku (powiększenie).
+19. `popup.*`, `interface.cc`: QUIT znów z oryginalnym napisem, przycisk i klawisz „I” z okienkiem
+    klawiszy.
+20. `keys-box.*`, `interface.*`, `popup.*`: szersze okno klawiszy, napis PAUSE.
 
 Wszystkie jako commity w `freeserf/` (gałąź `settlers-pin`) i pliki `port/freeserf-patches/`.
 
@@ -681,6 +684,21 @@ Maska bajtowa tylko dla obrazków o krótkich odcinkach (< 4 piksele średnio: t
 odcinkami (widok powiększony składa się w Fast RAM). 800×600 scene2: ×2 30,2 → **41,3**, ×3 44,5 →
 **49,5**, ×1 32,5 bez zmian. `VERIFY` 0 przy ×2 i ×3, z przewijaniem, z okienkiem nad mapą i po
 powrocie do ×1. Przy zmianie stopnia kafelki terenu są rysowane od nowa (6 kafelków, ~0,3 s).
+
+## Przycisk i klawisz Info (0.55)
+
+Na życzenie użytkownika (łatka `0019`): na przycisku wyjścia do menu w oknie ustawień znów oryginalny
+napis QUIT (działanie bez zmian); między SAVE a małym EXIT nowy przycisk 16×16 „I” (grafika małego
+EXIT, litera 5 px jak na sąsiednich przyciskach – `draw_small_label`) → okienko `TypeKeysInfo` z
+klawiszami (+, −, 0, Z, rolka, P, M, S, Ctrl+Z, F9, I, Shift+Esc); klawisz `I` otwiera to samo.
+Czcionka gry nie ma „+” ani „/”: plus rysowany (`fill_rect` z cieniem), „on-off”. Sprawdzone
+zrzutami F9 (okno ustawień, okienko Keys); kliknięcie „I” – użytkownik.
+
+0.56 (łatka `0020`): okno klawiszy szersze – osobne okno `KeysBox` (272×160, ramka `draw_box_frame` jak
+Advanced, dwie kolumny: klawisz, opis; mieści się w 400×300) zamiast okienka 144×160 (ramka okienek to
+grafiki o stałym rozmiarze); przecinka też brak w czcionce. Pauza: duży napis PAUSE na środku
+(`Interface::draw_pause`, litery 5×7 z kwadratów 6 px, żółte z cieniem), ukryty, gdy otwarte jest
+okno. Sprawdzone zrzutami F9.
 
 ## Zmiana powiększenia bez rysowania terenu, testy zamykania (0.54)
 
