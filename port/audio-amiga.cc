@@ -203,6 +203,14 @@ class AudioAmiga::PlayerMusic : public Audio::Player,
     music_on = enable && music_loaded;
     amiga_audio_unlock();
   }
+  /* The module is loaded also with the music off (TrackMusic::play then
+     does not start it), so that switching it on later (M, Options) plays
+     it. */
+  virtual Audio::PTrack play_track(int track_id) {
+    Audio::PTrack track = get_track(track_id);
+    if (track != nullptr) track->play();
+    return is_enabled() ? track : nullptr;
+  }
   virtual Audio::PVolumeController get_volume_controller() {
     return Audio::PVolumeController(this, [](Audio::VolumeController *) {});
   }

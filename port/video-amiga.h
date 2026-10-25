@@ -74,6 +74,8 @@ class VideoAmiga : public Video {
   /* Shown from the opening of the screen to the first frame (may be
      empty or missing). */
   static std::string start_picture;
+  /* amiga_now_ms() when the start picture was shown, 0: not shown. */
+  static unsigned long start_picture_ms;
   /* RENDER=VRAM (default): compose the frame in the card's memory;
      RENDER=FAST: in fast RAM, sent whole at the swap. */
   static bool render_vram;

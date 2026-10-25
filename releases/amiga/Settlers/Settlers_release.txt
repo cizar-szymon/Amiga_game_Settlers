@@ -6,6 +6,25 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.39 (25.10.2026)
+-----------------
+
+- Obraz startowy zostaje co najmniej 4 sekundy, z muzyka w tle, jesli
+  muzyka jest wlaczona w grze.
+- Poprawka: przy wylaczonej muzyce grala przez chwile na starcie. Teraz
+  w ogole sie nie wlacza; wlaczona pozniej (M, Options) gra normalnie.
+
+
+0.38 (25.10.2026)
+-----------------
+
+- Poprawka: brzeczace, "przesterowane" efekty (uderzenia mlotkiem,
+  kopanie, pilowanie, kucie). Dzwieki postaci i budynkow sa uruchamiane
+  przez rysowanie i przy wysokiej liczbie klatek startowaly kilka razy
+  w jednej fazie animacji, ucinajac sie nawzajem. Teraz raz na faze, jak
+  w oryginale.
+
+
 0.37 (25.10.2026)
 -----------------
 

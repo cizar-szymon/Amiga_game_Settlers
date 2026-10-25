@@ -1,0 +1,132 @@
+From 889ff71e16020fca8049998aac335e0e1cd6e11b Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sun, 25 Oct 2026 20:23:50 +0100
+Subject: [PATCH 9/9] Map sounds once per animation phase
+
+The sounds of serfs and buildings are started by the drawing, many of
+them in every frame of an animation phase ("phase 4 always, phase 5 if
+not playing"). At the original's frame rate that was about once per
+phase; at 40-50 frames per second the hammer blow and others started
+3-4 times in a phase, each start cutting the last short: a buzz. Each
+object now starts a sound at most once per phase (8 ticks).
+Viewport::map_sounds counts the starts.
+---
+ src/viewport.cc | 30 ++++++++++++++++++++++++++++++
+ src/viewport.h  | 11 ++++++++++-
+ 2 files changed, 40 insertions(+), 1 deletion(-)
+
+diff --git a/src/viewport.cc b/src/viewport.cc
+index b9daf82..61e1a7d 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -1229,6 +1229,32 @@ unsigned int Viewport::tile_errors = 0;
+ void (*Viewport::draw_probe)(int part) = nullptr;
+ int Viewport::hear_height = 200;
+ 
++unsigned int Viewport::map_sounds = 0;
++
++/* An animation phase lasts 8 ticks: a sound is started once per phase of
++   an object, as at the original's frame rate, however often it is drawn. */
++void
++Viewport::play_map_sound(int sound) {
++  static const uint32_t kPhaseTicks = 8;
++  if (!sfx_heard) return;
++  uint32_t tick = interface->get_game()->get_tick();
++  uint32_t key = (sfx_source << 7) | static_cast<uint32_t>(sound);
++  auto it = sfx_started.find(key);
++  if (it != sfx_started.end() && tick - it->second < kPhaseTicks) return;
++  if (sfx_started.size() >= 256) {
++    for (auto i = sfx_started.begin(); i != sfx_started.end();) {
++      if (tick - i->second >= kPhaseTicks) {
++        i = sfx_started.erase(i);
++      } else {
++        ++i;
++      }
++    }
++  }
++  sfx_started[key] = tick;
++  map_sounds++;
++  play_sound(sound);
++}
++
+ bool
+ Viewport::hears(int lx, int ly) const {
+   if (hear_width <= 0) return true;
+@@ -1242,6 +1268,7 @@ void
+ Viewport::draw_building(MapPos pos, int lx, int ly) {
+   Building *building = interface->get_game()->get_building_at_pos(pos);
+   sfx_heard = hears(lx, ly);
++  sfx_source = (1u << 23) | building->get_index();
+ 
+   if (building->is_burning()) {
+     draw_burning_building(building, lx, ly);
+@@ -1981,6 +2008,7 @@ Viewport::draw_active_serf(Serf *serf, MapPos pos, int x_base, int y_base) {
+   int lx = x_base + animation.x;
+   int ly = y_base + animation.y - 4 * map->get_height(pos);
+   sfx_heard = hears(lx, ly);
++  sfx_source = serf->get_index();
+   int body = serf_get_body(serf);
+ 
+   if (body > -1) {
+@@ -2012,6 +2040,7 @@ Viewport::draw_active_serf(Serf *serf, MapPos pos, int x_base, int y_base) {
+       int lx = x_base + animation.x;
+       int ly = y_base + animation.y - 4 * map->get_height(pos);
+       sfx_heard = hears(lx, ly);
++      sfx_source = def_serf->get_index();
+       int body = serf_get_body(def_serf);
+ 
+       if (body > -1) {
+@@ -2687,6 +2716,7 @@ Viewport::Viewport(Interface *_interface, PMap _map)
+   water_in_view = 0;
+   trees_in_view = 0;
+   sfx_heard = true;
++  sfx_source = 0;
+ 
+   data_source = Data::get_instance().get_data_source();
+ }
+diff --git a/src/viewport.h b/src/viewport.h
+index bd3b094..1ccdcf2 100644
+--- a/src/viewport.h
++++ b/src/viewport.h
+@@ -23,6 +23,7 @@
+ #define SRC_VIEWPORT_H_
+ 
+ #include <map>
++#include <unordered_map>
+ #include <memory>
+ 
+ #include "src/gui.h"
+@@ -74,6 +75,12 @@ class Viewport : public GuiObject, public Map::Handler {
+   int trees_in_view;
+   /* Whether the object being drawn is in the hearing area. */
+   bool sfx_heard;
++  /* The object being drawn (a serf, or a building with bit 23) and the
++     tick each of its sounds was started at. The sounds are started by the
++     drawing, many of them in every frame of an animation phase: at a high
++     frame rate they started again and again, cut short (a buzz). */
++  uint32_t sfx_source;
++  std::unordered_map<uint32_t, uint32_t> sfx_started;
+ 
+  public:
+   /* Sounds of the map come only from this area around the centre of the
+@@ -89,6 +96,8 @@ class Viewport : public GuiObject, public Map::Handler {
+     ProbeSerfs, ProbeCursor, ProbeEnd, ProbeCount
+   };
+   static void (*draw_probe)(int part);
++  /* Map sounds started, for the statistics. */
++  static unsigned int map_sounds;
+ 
+   /* Paths and borders drawn into the landscape tiles (redrawn when they
+      change) instead of into every frame. */
+@@ -101,7 +110,7 @@ class Viewport : public GuiObject, public Map::Handler {
+ 
+  protected:
+   bool hears(int lx, int ly) const;
+-  void play_map_sound(int sound) { if (sfx_heard) play_sound(sound); }
++  void play_map_sound(int sound);
+ 
+  public:
+   Viewport(Interface *interface, PMap map);
+-- 
+2.45.2.windows.1
+

@@ -6,6 +6,24 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.39 (25.10.2026)
+-----------------
+
+- The start picture stays for at least 4 seconds, with the music when it
+  is on in the game.
+- Fix: with the music off it played for a moment at the start. Now it
+  does not start at all; switched on later (M, Options) it plays.
+
+
+0.38 (25.10.2026)
+-----------------
+
+- Fix: buzzing, "overdriven" sound effects (hammer blows, digging,
+  sawing, smithing). The sounds of serfs and buildings are started by the
+  drawing and at a high frame rate started several times in one animation
+  phase, cutting each other short. Now once per phase, as in the original.
+
+
 0.37 (25.10.2026)
 -----------------
 

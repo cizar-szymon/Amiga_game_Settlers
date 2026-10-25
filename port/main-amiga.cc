@@ -175,9 +175,13 @@ main(int argc, char *argv[]) {
     VideoAmiga::start_picture = data_dirs.front() + "/start.iff";
     Graphics &gfx = Graphics::get_instance();
 
+    /* The music as set last time, from the start picture on: started
+       before the settings were applied it played for a moment even when
+       it was off. */
     Audio &audio = Audio::get_instance();
     Audio::PPlayer player = audio.get_music_player();
     if (player) {
+      player->enable(settings.get("options", "music", player->is_enabled()));
       player->play_track(Audio::TypeMidiTrack0);
     }
 
@@ -219,6 +223,21 @@ main(int argc, char *argv[]) {
       s.set("amiga", "mode", std::to_string(w) + "x" + std::to_string(h));
       s.save();
     };
+    /* The start picture stays at least 4 s (with the music, when it is
+       on); Ctrl-C quits. */
+    if (VideoAmiga::start_picture_ms != 0) {
+      static const unsigned long kStartPictureMs = 4000;
+      for (;;) {
+        unsigned long shown = amiga_now_ms() - VideoAmiga::start_picture_ms;
+        if (shown >= kStartPictureMs) break;
+        if (amiga_wait(kStartPictureMs - shown)) {
+          interface.store_settings();
+          delete screen_frame;
+          return 0;
+        }
+      }
+    }
+
     event_loop.add_handler(&interface);
     event_loop.run();
     event_loop.del_handler(&interface);

@@ -34,6 +34,7 @@ put_long(uint8_t *p, uint32_t v) {
 unsigned int VideoAmiga::config_width = 640;
 unsigned int VideoAmiga::config_height = 480;
 std::string VideoAmiga::start_picture;
+unsigned long VideoAmiga::start_picture_ms = 0;
 bool VideoAmiga::profile = false;
 bool VideoAmiga::verify = false;
 bool VideoAmiga::render_vram = true;
@@ -113,8 +114,10 @@ VideoAmiga::VideoAmiga()
   }
   /* Until the first frame: the start picture, or at least a black screen
      instead of the default grey colour 0. */
-  if (start_picture.empty() ||
-      amiga_show_picture(start_picture.c_str()) != 0) {
+  if (!start_picture.empty() &&
+      amiga_show_picture(start_picture.c_str()) == 0) {
+    start_picture_ms = amiga_now_ms();
+  } else {
     amiga_set_colors(0, 2, rgb);
   }
   screen = create_frame(config_width, config_height);

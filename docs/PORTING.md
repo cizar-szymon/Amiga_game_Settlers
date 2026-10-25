@@ -280,6 +280,7 @@ tylko 35 kroków logiki/s zamiast 50 (limit 5 kroków nadrabiania na klatkę). T
    float, hash obrazków) i sonda `draw_probe`.
 8. `viewport.*`, `map.*`, `video.h`, `gfx.h`: drogi i granice w kafelkach terenu, powiadomienia
    `on_paths_changed`, sprawdzanie kafelków (`verify_tiles`).
+9. `viewport.*`: dźwięki mapy raz na fazę animacji obiektu (brzęczenie przy wysokim FPS).
 
 Wszystkie jako commity w `freeserf/` (gałąź `settlers-pin`) i pliki `port/freeserf-patches/`.
 
@@ -533,6 +534,24 @@ Sprawdzenie:
 | scene1 640×480 z dźwiękiem | 46,2 | **50,1** (pułap) |
 
 Teraz największe są obiekty (`VIEW OBJ` 577 ms/s z sondami): drzewa z cieniami, budynki, flagi.
+
+## Brzęczące efekty przy wysokim FPS (0.38)
+
+Zgłoszenie: „pierdzenie, jakby przesterowanie” przy uderzeniach młotkiem. Dźwięki postaci i budynków
+uruchamia kod rysowania (`viewport.cc`), zwykle „w fazie A zawsze, w fazie B gdy nie gra” (np.
+budowniczy `(t & 7) == 4`). Faza animacji trwa 8 taktów (80 ms): przy 14 kl./s (0.35) dźwięk startował
+raz na fazę, przy 44 kl./s (0.37) 3–4 razy – każdy start ucina poprzedni. Łatka `0009`: ten sam obiekt
+(postać, budynek – bit 23) uruchamia ten sam dźwięk najwyżej raz na 8 taktów (`sfx_started`),
+niezależnie od liczby klatek. Licznik `MAP SOUNDS n/s` w `RAM:Settlers-stats.txt` (STATS).
+Scena 2, 10 próbek po 1 s: bez ograniczenia 32 starty, z ograniczeniem 5; FPS bez zmian (44,4).
+
+## Obraz startowy z muzyką (0.39)
+
+Obraz startowy zostaje co najmniej 4 s od pokazania (`VideoAmiga::start_picture_ms`, czekanie
+`amiga_wait` przed pętlą gry, Ctrl-C kończy). Muzyka startowała w `main` przed `apply_settings`, więc
+przy wyłączonej grała ok. 1 s: teraz `main` ustawia ją z `Settlers.ini` (`options/music`) przed
+`play_track`, a `PlayerMusic::play_track` wczytuje moduł także przy wyłączonej muzyce (bez grania),
+żeby późniejsze włączenie (M, Options) działało.
 
 ## Wydajność (Warp1260 i Warp7060 – wydajnościowo równoważne)
 
