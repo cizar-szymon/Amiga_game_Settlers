@@ -97,7 +97,9 @@ VideoAmiga::VideoAmiga()
   , under_w(0)
   , under_h(0)
   , blit_ms(0)
-  , verify_errors(0) {
+  , verify_errors(0)
+  , frame_no(0)
+  , scaled_frame(0) {
   prof_reset();
   std::memset(rgb, 0, sizeof(rgb));
   /* 0 transparent, 1 shade: both black on the screen. Darkening a
@@ -689,11 +691,16 @@ VideoAmiga::draw_image(const Video::Image *image, int x, int y, int y_offset,
   int sy = y_offset;
   y += y_offset;
   if (!clip(&x, &y, &w, &h, &sx, &sy, dest)) return;
+  mark_rows(dest, y, h);
 
   uint8_t *d = row_ptr(dest, x, y);
   int stride = row_stride(dest);
-  if (!in_vram(dest) && image->n_shade == 0) {
-    /* Into fast RAM (landscape tiles, the VERIFY reference): masked. */
+  if (!in_vram(dest) && image->n_shade == 0 &&
+      image->n_runs * 4 > image->n_copy) {
+    /* Into fast RAM, an image of short runs (under 4 pixels on average:
+       the dithered ground triangles of the landscape tiles): masked. A
+       sprite of long runs is faster by its runs - the mask goes through
+       its whole box (the magnified map view is drawn in fast RAM). */
     if (image->mask == nullptr) {
       Video::Image *im = const_cast<Video::Image *>(image);
       size_t n = static_cast<size_t>(im->w) * im->h;
@@ -770,6 +777,7 @@ VideoAmiga::draw_frame(int dx, int dy, Video::Frame *dest, int sx, int sy,
   if (sx + w > static_cast<int>(src->w)) w = src->w - sx;
   if (sy + h > static_cast<int>(src->h)) h = src->h - sy;
   if (!clip(&dx, &dy, &w, &h, &sx, &sy, dest)) return;
+  mark_rows(dest, dy, h);
 
   if (src->changed) {
     src->opaque = is_opaque(src);
@@ -828,6 +836,88 @@ VideoAmiga::draw_frame_scaled(int dx, int dy, int dw, int dh,
   ProfScope prof(this, ProfOther, dw * dh);
   touch(dest);
   if (dw <= 0 || dh <= 0) return;
+  int f = (w > 0 && dw % w == 0) ? dw / w : 0;
+  if ((f == 2 || f == 3) && dh == f * h && dw <= 1024) {
+    /* The map view magnified 2 or 3 times (Z, the wheel): a row widened
+       into a buffer and copied to f rows by memcpy. Into the card's
+       memory only what changed since the last frame (all of an 800x600
+       screen took 16-21 ms a frame): a row the same as last time is left
+       out, of a changed one the part from its first to its last change;
+       rows something else was drawn on since are sent whole. A row with a
+       transparent or shade pixel goes pixel by pixel. */
+    uint32_t wide_longs[1024 / 4];
+    uint8_t *wide = reinterpret_cast<uint8_t *>(wide_longs);
+    int x0 = std::max(0, dx), x1 = std::min(static_cast<int>(dest->w), dx + dw);
+    bool diff = in_vram(dest);
+    if (diff) {
+      size_t n = static_cast<size_t>(w) * h;
+      if (touched.size() != dest->h || scaled_prev.size() != n ||
+          scaled_frame + 1 != frame_no) {
+        /* No picture of the last frame to compare with: all of it. */
+        touched.assign(dest->h, 1);
+        scaled_prev.assign(n, 0);
+      }
+      scaled_frame = frame_no;
+    }
+    for (int j = 0; j < h && x0 < x1; j++) {
+      const uint8_t *s = src->pixels + j * src->w;
+      int a = 0, b = w - 1;  /* the source pixels to send */
+      if (diff) {
+        uint8_t *prev = &scaled_prev[static_cast<size_t>(j) * w];
+        bool whole = false;
+        for (int k = 0; k < f; k++) {
+          int y = dy + f * j + k;
+          if (y >= 0 && y < static_cast<int>(dest->h) && touched[y]) {
+            whole = true;
+          }
+        }
+        if (!whole) {
+          if (std::memcmp(prev, s, w) == 0) continue;
+          while (prev[a] == s[a]) a++;
+          while (prev[b] == s[b]) b--;
+        }
+        std::memcpy(prev, s, w);
+      }
+      bool plain = true;
+      for (int i = a; i <= b; i++) {
+        uint8_t v = s[i];
+        if (v <= kShade) {
+          plain = false;
+          break;
+        }
+        if (f == 2) {
+          reinterpret_cast<uint16_t *>(wide)[i] =
+            static_cast<uint16_t>((v << 8) | v);
+        } else {
+          wide[3 * i] = wide[3 * i + 1] = wide[3 * i + 2] = v;
+        }
+      }
+      int sx0 = std::max(x0, dx + f * a), sx1 = std::min(x1, dx + f * (b + 1));
+      if (sx0 >= sx1) continue;
+      for (int k = 0; k < f; k++) {
+        int y = dy + f * j + k;
+        if (y < 0 || y >= static_cast<int>(dest->h)) continue;
+        if (plain) {
+          std::memcpy(row_ptr(dest, sx0, y), wide + (sx0 - dx), sx1 - sx0);
+          continue;
+        }
+        for (int x = sx0; x < sx1; x++) {
+          uint8_t v = s[(x - dx) / f];
+          uint8_t *d = row_ptr(dest, x, y);
+          if (v > kShade) {
+            *d = v;
+          } else if (v == kShade) {
+            *d = shade[*d];
+          }
+        }
+      }
+    }
+    if (diff) {
+      /* What is drawn over the view from now on marks its rows again. */
+      std::fill(touched.begin(), touched.end(), 0);
+    }
+    return;
+  }
   for (int j = 0; j < dh; j++) {
     int y = dy + j;
     if (y < 0 || y >= static_cast<int>(dest->h)) continue;
@@ -871,6 +961,7 @@ VideoAmiga::fill_rect(int x, int y, unsigned int width, unsigned int height,
   int sx = 0;
   int sy = 0;
   if (!clip(&x, &y, &w, &h, &sx, &sy, dest)) return;
+  mark_rows(dest, y, h);
   uint8_t v = get_index(color.r, color.g, color.b);
   uint8_t *d = row_ptr(dest, x, y);
   int stride = row_stride(dest);
@@ -890,6 +981,7 @@ VideoAmiga::draw_line(int x, int y, int x1, int y1, const Video::Color color,
   VramRelease release(this);
   uint8_t v = get_index(color.r, color.g, color.b);
   touch(dest);
+  mark_rows(dest, std::min(y, y1), std::abs(y1 - y) + 1);
   int dx = std::abs(x1 - x);
   int dy = -std::abs(y1 - y);
   int stx = x < x1 ? 1 : -1;
@@ -910,6 +1002,7 @@ VideoAmiga::draw_line(int x, int y, int x1, int y1, const Video::Color color,
 void
 VideoAmiga::swap_buffers() {
   uint32_t t0 = static_cast<uint32_t>(amiga_now_ms());
+  frame_no++;
   release_vram();
   if (dirty_first <= dirty_last) {
     amiga_set_colors(dirty_first, dirty_last - dirty_first + 1,

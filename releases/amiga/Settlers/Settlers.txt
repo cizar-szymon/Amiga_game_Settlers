@@ -1,7 +1,7 @@
 THE SETTLERS - Freeserf na Amige z karta graficzna
 ==================================================
 
-Wersja 0.48 (beta), 25.10.2026
+Wersja 0.52 (beta), 26.10.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) na Amige z karta graficzna
 (Picasso96) i procesorem 68040/68060, w rozdzielczosci do 800x600.
@@ -40,6 +40,8 @@ STEROWANIE
   mysz                     wszystko w grze (jak w oryginale)
   prawy przycisk + ruch    przewijanie mapy
   strzalki                 przewijanie mapy
+  Z, rolka myszy           powiekszenie mapy: x2 (powyzej 400x300), x3 (800x600);
+                           rolka w gore/w dol o stopien, Z po kolei
   P                        pauza (drugi raz: dalej)
   1 ... 5                  przyciski panelu
   B                        miejsca pod budowe

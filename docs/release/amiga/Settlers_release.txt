@@ -6,8 +6,32 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
-0.48 (25.10.2026) - kandydat do wydania
+0.52 (26.10.2026) - kandydat do wydania
 ----------------------------------------
+
+- Szybsze powiekszenie: na karte idzie tylko to, co sie zmienilo.
+  800x600: x2 30 -> 41 klatek/s, x3 44 -> 50 klatek/s.
+
+
+0.51 (25.10.2026)
+-----------------
+
+- W 800x600 drugi stopien powiekszenia: x3 (widok ok. 267x200, jak
+  w oryginale). Rolka w gore/w dol zmienia o stopien, Z przechodzi po
+  kolei x1, x2, x3 i z powrotem.
+
+
+0.50 (25.10.2026)
+-----------------
+
+- Powiekszenie mapy 2x wokol srodka ekranu: klawisz Z (przelacza) albo
+  rolka myszy (w gore: powiekszenie, w dol: normalnie; AmigaOS 3.2 lub
+  sterownik NewMouse). Tylko powyzej 400x300; panel i okna bez zmian.
+  Powiekszony widok jest nawet szybszy (rysowana jest cwiartka mapy).
+
+
+0.48 (25.10.2026)
+-----------------
 
 - Poprawka: po "Making the map" nie pojawial sie podglad mapy.
 

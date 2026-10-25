@@ -26,8 +26,9 @@ z oryginalnych danych z wersji na Amigę. Ogólne zasady: `C:\Workprojects\Amiga
 | F5 Dźwięk | ✅ | efekty i muzyka bez spadku fps poniżej celu | 0.22: Paula 22 kHz, efekty i muzyka potwierdzone odsłuchem; ~43 fps; AHI – opcja na później |
 | F6 Wydanie | ✅ | czysta instalacja z archiwum `Settlers-0.32.lha` na Amidze 2 | 0.32 beta, 25.10.2026 |
 
-**Kandydat do wydania: 0.48** (decyzja użytkownika, 25.10.2026, po grze na Amidze 1), znacznik
-`v0.48-rc`, archiwum `releases/amiga/Settlers-0.48.lha`. Wcześniejszy kandydat: 0.41 (`v0.41-rc`).
+**Kandydat do wydania: 0.52** (decyzja użytkownika, 26.10.2026: najnowsza wersja), znacznik
+`v0.52-rc`, archiwum `releases/amiga/Settlers-0.52.lha`. Wcześniejsi: 0.48 (`v0.48-rc`), 0.41
+(`v0.41-rc`).
 
 ## Decyzje
 
@@ -647,6 +648,36 @@ Menu (łatki `0015`, `0016`): akcje tylko zamawiają podgląd (`request_map_prev
 generowania (podgląd zapisu). MAPSIZE 3→8 kliknięte szybko: jedna mapa (~5 s) zamiast pięciu (~12 s).
 Dalej: start gry generuje mapę drugi raz (`GameInfo::instantiate`), wielkie mapy (9–10) nadal
 kilkanaście sekund.
+
+## Powiększenie mapy (0.49–0.50)
+
+Prośba użytkownika: skokowe przybliżenie terenu ze środka ekranu w rozdzielczościach powyżej
+400×300. Freeserf ma `Graphics::map_zoom`: widok mapy dostaje rozmiar ekran/zoom, rysuje się do
+własnej ramki w Fast RAM i jest rozciągany (`draw_frame_scaled`); panel i okienka zostają; pozycja
+myszy przeliczana w `GuiObject`. Port: `on_zoom` w `main` (środek ekranu zachowany:
+`get_current_map_pos` → `move_to_map_pos`, interfejs znów rysuje w ramce ekranu – `use_frame`),
+klawisz `Z` (przełącza), rolka myszy – RAWKEY 0x7A/0x7B (`RAWKEY_WHEEL_UP/DOWN`, OS 3.2 i NewMouse;
+w górę ×2, w dół ×1, powtórzenia bez skutku); przy 400×300 powiększenie wraca do ×1.
+`VideoAmiga::draw_frame_scaled`: szybka ścieżka ×2 (wiersz podwojony słowami 16-bit, dwa razy
+`copy_row` do VRAM; wiersze z przezroczystością/cieniem po staremu).
+
+Amiga 1, scene2 640×400: ×1 45,4 kl./s, ×2 **50,4** (pułap – rysowana ćwiartka mapy, 320×200),
+z powrotem 45,5. Sprawdzone zrzutami F9; rolkę sprawdził użytkownik.
+
+0.51: stopnie zależne od szerokości ekranu (`max_map_zoom`): ×2 powyżej 400×300, ×3 od 800×600
+(widok ~267×200); rolka ±1 stopień, `Z` po kolei; szybka ścieżka skalowania dla ×2 i ×3. 800×600,
+scene2: ×1 32,3, ×2 30,1 (widok 400×300 składany w Fast RAM bez blittera + zapis całego ekranu do
+VRAM – wolniej niż ×1), ×3 43,0. Sprawdzone zrzutami (×1, ×2, ×3, ×3 bez zmian, rolka w dół ×2).
+
+0.52: `STATS=FULL` pokazał, że to rozciąganie (`OTHER`) kosztuje 16–21 ms na klatkę (480 KB do VRAM);
+`memcpy` zamiast pętli long – bez zmian (30,2). Na kartę idzie tylko to, co się zmieniło:
+`scaled_prev` (poprzedni obraz widoku w Fast RAM) – wiersz bez zmian pominięty, zmieniony od pierwszej
+do ostatniej różnicy; wiersze ekranu, na których rysowano coś innego (panel, okienka, kursor, napisy –
+`mark_rows` w rysowaniu na ekran w VRAM) – w całości; bez obrazu z poprzedniej klatki – całość.
+Maska bajtowa tylko dla obrazków o krótkich odcinkach (< 4 piksele średnio: trójkąty terenu), sprite'y
+odcinkami (widok powiększony składa się w Fast RAM). 800×600 scene2: ×2 30,2 → **41,3**, ×3 44,5 →
+**49,5**, ×1 32,5 bez zmian. `VERIFY` 0 przy ×2 i ×3, z przewijaniem, z okienkiem nad mapą i po
+powrocie do ×1. Przy zmianie stopnia kafelki terenu są rysowane od nowa (6 kafelków, ~0,3 s).
 
 ## Wydajność (Warp1260 i Warp7060 – wydajnościowo równoważne)
 

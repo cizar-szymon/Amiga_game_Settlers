@@ -11,7 +11,9 @@
 #define PORT_VIDEO_AMIGA_H_
 
 #include <cstdint>
+#include <algorithm>
 #include <string>
+#include <vector>
 #include <unordered_map>
 
 #include "src/video.h"
@@ -131,6 +133,13 @@ class VideoAmiga : public Video {
   /* VERIFY: every blended row is checked against the reference version. */
   static bool verify;
   uint32_t verify_errors;
+  /* The magnified map view (draw_frame_scaled) is sent to the card only
+     where it changed: its last picture, and the screen rows anything else
+     was drawn on (panel, boxes, cursor) since, which are sent whole. */
+  std::vector<uint8_t> scaled_prev;
+  std::vector<uint8_t> touched;
+  uint32_t frame_no;
+  uint32_t scaled_frame;
   void blend_row(uint8_t *d, const uint8_t *s, int w);
   void copy_row(uint8_t *d, const uint8_t *s, int w);
   void blend_runs(uint8_t *d, const uint8_t *runs, const uint8_t *s, int w,
@@ -204,6 +213,11 @@ class VideoAmiga : public Video {
   int row_stride(const Video::Frame *dest) const;
   bool in_vram(const Video::Frame *dest) const {
     return vram && !to_fast && dest == screen;
+  }
+  void mark_rows(const Video::Frame *dest, int y, int h) {
+    if (touched.empty() || !in_vram(dest)) return;
+    int e = std::min(static_cast<int>(touched.size()), y + h);
+    for (int j = std::max(0, y); j < e; j++) touched[j] = 1;
   }
   void touch(Video::Frame *dest) {
     dest->changed = true;

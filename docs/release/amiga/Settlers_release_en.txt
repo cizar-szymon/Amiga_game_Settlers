@@ -6,8 +6,33 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
-0.48 (25.10.2026) - release candidate
+0.52 (26.10.2026) - release candidate
 -------------------------------------
+
+- A faster magnified map: only what changed goes to the card. 800x600:
+  x2 30 -> 41 frames/s, x3 44 -> 50 frames/s.
+
+
+0.51 (25.10.2026)
+-----------------
+
+- At 800x600 a second step of the magnified map: x3 (a view of about
+  267x200, as in the original). The wheel up/down changes it by a step,
+  Z goes through x1, x2, x3 and back.
+
+
+0.50 (25.10.2026)
+-----------------
+
+- The map magnified 2x around the middle of the screen: the Z key
+  (switches) or the mouse wheel (up: magnified, down: normal; AmigaOS 3.2
+  or a NewMouse driver). Only above 400x300; the panel and the boxes stay
+  as they are. The magnified view is even faster (a quarter of the map is
+  drawn).
+
+
+0.48 (25.10.2026)
+-----------------
 
 - Fix: after "Making the map" the map preview did not appear.
 

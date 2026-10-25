@@ -140,6 +140,14 @@ EventLoopAmiga::handle_key(const AmigaEvent &ev) {
     case ARAW_F10:
       save_state();
       return;
+    /* The mouse wheel (AmigaOS 3.2, NewMouse drivers: RAWKEY_WHEEL_UP and
+       _DOWN): the map view magnified, or normal again. */
+    case 0x7a:
+      if (on_zoom) on_zoom(1);
+      return;
+    case 0x7b:
+      if (on_zoom) on_zoom(-1);
+      return;
     case ARAW_F9:
       static_cast<VideoAmiga &>(Video::get_instance())
         .save_screenshot("RAM:Settlers-shot.ppm");
@@ -150,6 +158,10 @@ EventLoopAmiga::handle_key(const AmigaEvent &ev) {
 
   if (ev.ascii == 'q' && (modifier & 1)) {
     quit();
+    return;
+  }
+  if (ev.ascii == 'z' && modifier == 0 && on_zoom) {
+    on_zoom(0);
     return;
   }
   if (ev.ascii != 0) {

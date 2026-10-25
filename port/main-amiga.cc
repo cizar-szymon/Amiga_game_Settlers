@@ -42,6 +42,14 @@ option_value(const char *arg, const char *key) {
   return nullptr;
 }
 
+/* The steps of the magnified map view a screen width allows: x2 above
+   400x300, x3 too from 800x600 (a view of about 267x200, the original's
+   size). */
+static int
+max_map_zoom(unsigned int width) {
+  return width >= 800 ? 3 : (width > 400 ? 2 : 1);
+}
+
 static std::list<std::string> data_dirs;
 static std::string save_file;
 static unsigned int width = 640, height = 480;
@@ -216,12 +224,40 @@ main(int argc, char *argv[]) {
     EventLoopAmiga &event_loop =
       static_cast<EventLoopAmiga &>(EventLoop::get_instance());
     event_loop.on_mode_change = [&interface, screen_frame]() {
-      interface.use_frame(screen_frame);
-      Settings &s = Settings::get_instance();
       unsigned int w = 0, h = 0;
       Graphics::get_instance().get_resolution(&w, &h);
+      int most = max_map_zoom(w);
+      if (Graphics::get_instance().get_map_zoom() > most) {
+        /* Less magnified at a smaller mode. */
+        Graphics::get_instance().set_map_zoom(static_cast<float>(most));
+        interface.set_size(w, h);
+      }
+      interface.use_frame(screen_frame);
+      Settings &s = Settings::get_instance();
       s.set("amiga", "mode", std::to_string(w) + "x" + std::to_string(h));
       s.save();
+    };
+    /* Z and the mouse wheel: the map view magnified around the middle of
+       the screen, in steps of x2 and x3 (max_map_zoom). The panel and the
+       boxes stay as they are. */
+    event_loop.on_zoom = [&interface, screen_frame](int step) {
+      Graphics &g = Graphics::get_instance();
+      unsigned int w = 0, h = 0;
+      g.get_resolution(&w, &h);
+      Viewport *viewport = interface.get_viewport();
+      int most = max_map_zoom(w);
+      int now = static_cast<int>(g.get_map_zoom());
+      int want = (step == 0) ? (now >= most ? 1 : now + 1) : now + step;
+      want = std::max(1, std::min(most, want));
+      float zoom = static_cast<float>(want);
+      if (viewport == nullptr || zoom == g.get_map_zoom()) {
+        return;
+      }
+      MapPos centre = viewport->get_current_map_pos();
+      g.set_map_zoom(zoom);
+      interface.set_size(w, h);
+      interface.use_frame(screen_frame);
+      interface.get_viewport()->move_to_map_pos(centre);
     };
     /* The start picture stays at least 4 s (with the music, when it is
        on); Ctrl-C quits. */

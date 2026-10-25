@@ -23,6 +23,10 @@ class EventLoopAmiga : public EventLoop {
   /* Called after a change of the screen mode (main gives the interface
      the screen frame again). */
   std::function<void()> on_mode_change;
+  /* The map view magnified (main): 0 the next step, back to normal after
+     the last (Z), +1 a step more (wheel up), -1 a step less (wheel
+     down). */
+  std::function<void(int)> on_zoom;
 
  protected:
   std::list<DeferredCall> deferred_calls;
