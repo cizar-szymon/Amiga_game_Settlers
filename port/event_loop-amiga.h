@@ -35,7 +35,7 @@ class EventLoopAmiga : public EventLoop {
   bool dragged;
   unsigned int last_click[4];
   int last_click_x, last_click_y;
-  std::string stats_lines[3];
+  std::string stats_lines[4];
   std::string fps_text;
   std::string message_text;
   unsigned int message_until;

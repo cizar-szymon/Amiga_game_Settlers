@@ -29,6 +29,7 @@
 #include "port/amiga_screen.h"
 #include "port/audio-amiga.h"
 #include "port/amiga_wb.h"
+#include "src/viewport.h"
 
 extern "C" const char ver[];
 const char ver[] = "$VER: Settlers " SETTLERS_VERSION " (" SETTLERS_DATE ")";
@@ -57,6 +58,16 @@ parse_option(const char *a) {
       width = w;
       height = h;
       mode_given = true;
+    }
+  } else if ((v = option_value(a, "SFXAREA")) != nullptr) {
+    /* Map sounds from a WxH area around the centre (default 320x200, the
+       original's screen), ALL: from the whole screen. */
+    unsigned int w = 0, h = 0;
+    if (strcasecmp(v, "ALL") == 0) {
+      Viewport::hear_width = Viewport::hear_height = 0;
+    } else if (sscanf(v, "%ux%u", &w, &h) == 2 && w > 0 && h > 0) {
+      Viewport::hear_width = static_cast<int>(w);
+      Viewport::hear_height = static_cast<int>(h);
     }
   } else if ((v = option_value(a, "DATA")) != nullptr) {
     data_dirs.push_back(v);
@@ -111,7 +122,8 @@ main(int argc, char *argv[]) {
       if (!parse_option(argv[i])) {
         amiga_message("Settlers " SETTLERS_VERSION "\n"
                       "usage: Settlers [MODE=400x300|640x400|640x480|800x600] "
-                      "[DATA=path] [LOAD=savefile] [NOSOUND] [FPS] [STATS[=FULL]] "
+                      "[DATA=path] [LOAD=savefile] [NOSOUND] [SFXAREA=WxH|ALL] [FPS] "
+                      "[STATS[=FULL]] "
                       "[VERIFY] [RENDER=VRAM|FAST] [LOCK=FRAME|CALL] "
                       "[BLIT=0|1|2] [DEBUG=n]");
         return 5;

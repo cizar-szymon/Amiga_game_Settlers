@@ -6,6 +6,24 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.36 (25.10.2026)
+-----------------
+
+- Szybsze rysowanie mapy z wieloma postaciami: gra z kilkoma budynkami
+  i wieloma tragarzami 14 -> 32 klatek/s (640x400, 68060), scena testowa
+  43 -> 50 klatek/s. Glowa kazdej postaci nie jest juz dekodowana z danych
+  w kazdej klatce.
+
+
+0.35 (25.10.2026)
+-----------------
+
+- Efekty dzwiekowe tylko z okolic srodka mapy (obszar 320x200 jak ekran
+  oryginalu): w duzych rozdzielczosciach nie naklada sie juz wiele
+  dzwiekow naraz. Tool Type SFXAREA=ALL - jak wczesniej, z calego
+  ekranu; SFXAREA=SxW - inny obszar. Bez wplywu na szybkosc.
+
+
 0.34 (25.10.2026)
 -----------------
 

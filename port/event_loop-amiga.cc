@@ -15,6 +15,7 @@
 #include "src/freeserf.h"
 #include "src/gfx.h"
 #include "src/game.h"
+#include "src/viewport.h"
 #include "src/game-manager.h"
 #include "src/savegame.h"
 #include "port/settlers_version.h"
@@ -282,6 +283,20 @@ EventLoopAmiga::draw_stats(Frame *screen) {
   screen->draw_string(2, 2, fps_text, Color::green, Color::transparent);
 }
 
+/* STATS=FULL: E-clock ticks spent in each part of the map view
+   (Viewport::draw_probe). */
+static uint32_t view_ticks[Viewport::ProbeCount];
+static uint32_t view_last;
+static int view_part = Viewport::ProbeEnd;
+
+static void
+view_probe(int part) {
+  uint32_t now = static_cast<uint32_t>(amiga_eclock());
+  if (view_part != Viewport::ProbeEnd) view_ticks[view_part] += now - view_last;
+  view_part = part;
+  view_last = now;
+}
+
 void
 EventLoopAmiga::run() {
   static const int kMaxCatchUpSteps = 5;
@@ -295,6 +310,8 @@ EventLoopAmiga::run() {
   unsigned int frames = 0, steps_done = 0;
   unsigned int logic_ms = 0, draw_ms = 0;
   video.blit_ms = 0;
+
+  if (VideoAmiga::profile) Viewport::draw_probe = view_probe;
 
   running = true;
   while (running) {
@@ -374,6 +391,8 @@ EventLoopAmiga::run() {
       }
       stats_lines[0] = line;
       stats_lines[1].clear();
+      stats_lines[2].clear();
+      stats_lines[3].clear();
       snprintf(line, sizeof(line), "FPS %u.%u", frames * 1000 / span,
                (frames * 10000 / span) % 10);
       fps_text = line;
@@ -407,6 +426,18 @@ EventLoopAmiga::run() {
                  (unsigned long)(video.prof_shade_px / span),
                  (unsigned long)(video.prof_box_px / span));
         stats_lines[2] = line;
+        /* The map view, ms per second: landscape, paths, waves, serfs
+           behind objects, objects, serfs, cursor. */
+        unsigned long v[Viewport::ProbeEnd];
+        for (int i = 0; i < Viewport::ProbeEnd; i++) {
+          v[i] = view_ticks[i] / per * 1000 / span;
+          view_ticks[i] = 0;
+        }
+        snprintf(line, sizeof(line),
+                 "VIEW LAND %lu PATHS %lu WAVES %lu BEHIND %lu OBJ %lu "
+                 "SERFS %lu CURSOR %lu", v[0], v[1], v[2], v[3], v[4], v[5],
+                 v[6]);
+        stats_lines[3] = line;
         video.prof_reset();
       }
       /* STATS, for AmiAgent: the same lines in a file, with the game tick
@@ -414,8 +445,9 @@ EventLoopAmiga::run() {
       FILE *f = fopen("RAM:Settlers-stats.tmp", "w");
       if (f != nullptr) {
         PGame game = GameManager::get_instance().get_current_game();
-        fprintf(f, "%s\n%s\n%s\nGAME TICK %u%s\n", stats_lines[0].c_str(),
-                stats_lines[1].c_str(), stats_lines[2].c_str(),
+        fprintf(f, "%s\n%s\n%s\n%s\nGAME TICK %u%s\n",
+                stats_lines[0].c_str(), stats_lines[1].c_str(),
+                stats_lines[2].c_str(), stats_lines[3].c_str(),
                 game ? game->get_tick() : 0,
                 (game && game->is_paused()) ? " PAUSED" : "");
         unsigned long under = 0, bufs = 0, ticks = 0;

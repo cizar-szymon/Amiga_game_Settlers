@@ -1,0 +1,342 @@
+From a617c492f2a67fc326b5d5cfb766ce2ce9ed0ecd Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sun, 25 Oct 2026 17:58:41 +0100
+Subject: [PATCH 6/7] Map sounds only from an area around the centre of the
+ view
+
+A large screen draws many more objects than the original's 320x200 one,
+and each of them can play its sounds: they overlapped. Buildings, serfs,
+trees and water now sound only inside Viewport::hear_width x hear_height
+(default 320x200) around the centre; 0 restores the whole view.
+---
+ src/viewport.cc | 76 ++++++++++++++++++++++++++++++-------------------
+ src/viewport.h  | 13 +++++++++
+ 2 files changed, 59 insertions(+), 30 deletions(-)
+
+diff --git a/src/viewport.cc b/src/viewport.cc
+index a07dc1a..67d5905 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -810,7 +810,7 @@ Viewport::draw_unharmed_building(Building *building, int lx, int ly) {
+         if ((((interface->get_game()->get_tick() +
+                reinterpret_cast<uint8_t*>(&pos)[1]) >> 3) & 7) == 0
+             && random->random() < 40000) {
+-          play_sound(Audio::TypeSfxElevator);
++          play_map_sound(Audio::TypeSfxElevator);
+         }
+       }
+       draw_shadow_and_building_sprite(lx, ly, map_building_sprite[type]);
+@@ -824,7 +824,7 @@ Viewport::draw_unharmed_building(Building *building, int lx, int ly) {
+       if (building->get_res_count_in_stock(1) > 0) {
+         if ((random->random() & 0x7f) <
+             static_cast<int>(building->get_res_count_in_stock(1))) {
+-          play_sound(Audio::TypeSfxPigOink);
++          play_map_sound(Audio::TypeSfxPigOink);
+         }
+ 
+         int pigs_count = building->get_res_count_in_stock(1);
+@@ -859,7 +859,7 @@ Viewport::draw_unharmed_building(Building *building, int lx, int ly) {
+           building->stop_playing_sfx();
+         } else if (!building->is_playing_sfx()) {
+           building->start_playing_sfx();
+-          play_sound(Audio::TypeSfxMillGrinding);
++          play_map_sound(Audio::TypeSfxMillGrinding);
+         }
+         draw_shadow_and_building_sprite(lx, ly, map_building_sprite[type] +
+                                 ((interface->get_game()->get_tick() >> 4) & 3));
+@@ -880,7 +880,7 @@ Viewport::draw_unharmed_building(Building *building, int lx, int ly) {
+         int i = (interface->get_game()->get_tick() >> 3) & 7;
+         if (i == 0 || (i == 7 && !building->is_playing_sfx())) {
+           building->start_playing_sfx();
+-          play_sound(Audio::TypeSfxGoldBoils);
++          play_map_sound(Audio::TypeSfxGoldBoils);
+         } else if (i != 7) {
+           building->stop_playing_sfx();
+         }
+@@ -914,7 +914,7 @@ Viewport::draw_unharmed_building(Building *building, int lx, int ly) {
+         int i = (interface->get_game()->get_tick() >> 3) & 7;
+         if (i == 0 || (i == 7 && !building->is_playing_sfx())) {
+           building->start_playing_sfx();
+-          play_sound(Audio::TypeSfxGoldBoils);
++          play_map_sound(Audio::TypeSfxGoldBoils);
+         } else if (i != 7) {
+           building->stop_playing_sfx();
+         }
+@@ -1151,7 +1151,7 @@ Viewport::draw_burning_building(Building *building, int lx, int ly) {
+   if (((building->get_burning_counter() >> 3) & 3) == 3 &&
+       !building->is_playing_sfx()) {
+     building->start_playing_sfx();
+-    play_sound(Audio::TypeSfxBurning);
++    play_map_sound(Audio::TypeSfxBurning);
+   } else {
+     building->stop_playing_sfx();
+   }
+@@ -1183,9 +1183,22 @@ Viewport::draw_burning_building(Building *building, int lx, int ly) {
+   }
+ }
+ 
++int Viewport::hear_width = 320;
++int Viewport::hear_height = 200;
++
++bool
++Viewport::hears(int lx, int ly) const {
++  if (hear_width <= 0) return true;
++  int dx = lx - width / 2;
++  int dy = ly - height / 2;
++  return dx >= -hear_width / 2 && dx < hear_width / 2 &&
++         dy >= -hear_height / 2 && dy < hear_height / 2;
++}
++
+ void
+ Viewport::draw_building(MapPos pos, int lx, int ly) {
+   Building *building = interface->get_game()->get_building_at_pos(pos);
++  sfx_heard = hears(lx, ly);
+ 
+   if (building->is_burning()) {
+     draw_burning_building(building, lx, ly);
+@@ -1218,7 +1231,7 @@ Viewport::draw_water_waves_row(MapPos pos, int y_base, int cols,
+        pos = map->move_right(pos)) {
+     if (map->type_up(pos) <= Map::TerrainWater3 ||
+         map->type_down(pos) <= Map::TerrainWater3) {
+-      water_in_view += 1;
++      if (hears(x_base, y_base)) water_in_view += 1;
+       draw_water_waves(pos, x_base, y_base);
+     }
+   }
+@@ -1275,7 +1288,7 @@ Viewport::draw_map_objects_row(MapPos pos, int y_base, int cols, int x_base) {
+       int sprite = map->get_obj(pos) - Map::ObjectTree0;
+       if (sprite < 24) {
+         /* Trees */
+-        trees_in_view += 1;
++        if (hears(x_base, ly)) trees_in_view += 1;
+ 
+         /* Adding sprite number to animation ensures
+            that the tree animation won't be synchronized
+@@ -1433,7 +1446,7 @@ Viewport::serf_get_body(Serf *serf) {
+       if (((t & 7) == 4 && !serf->playing_sfx()) ||
+           (t & 7) == 3) {
+         serf->start_playing_sfx();
+-        play_sound(Audio::TypeSfxRowing);
++        play_map_sound(Audio::TypeSfxRowing);
+       } else {
+         serf->stop_playing_sfx();
+       }
+@@ -1447,7 +1460,7 @@ Viewport::serf_get_body(Serf *serf) {
+         if (((t & 7) == 4 && !serf->playing_sfx()) ||
+             (t & 7) == 3) {
+           serf->start_playing_sfx();
+-          play_sound(Audio::TypeSfxRowing);
++          play_map_sound(Audio::TypeSfxRowing);
+         } else {
+           serf->stop_playing_sfx();
+         }
+@@ -1465,7 +1478,7 @@ Viewport::serf_get_body(Serf *serf) {
+     } else if (t == 0x83 || t == 0x84) {
+       if (t == 0x83 || !serf->playing_sfx()) {
+         serf->start_playing_sfx();
+-        play_sound(Audio::TypeSfxDigging);
++        play_map_sound(Audio::TypeSfxDigging);
+       }
+       t += 0x380;
+     } else {
+@@ -1479,7 +1492,7 @@ Viewport::serf_get_body(Serf *serf) {
+     } else if ((t & 7) == 4 || (t & 7) == 5) {
+       if ((t & 7) == 4 || !serf->playing_sfx()) {
+         serf->start_playing_sfx();
+-        play_sound(Audio::TypeSfxHammerBlow);
++        play_map_sound(Audio::TypeSfxHammerBlow);
+       }
+       t += 0x580;
+     } else {
+@@ -1507,12 +1520,12 @@ Viewport::serf_get_body(Serf *serf) {
+     } else if ((t == 0x86 && !serf->playing_sfx()) ||
+          t == 0x85) {
+       serf->start_playing_sfx();
+-      play_sound(Audio::TypeSfxAxBlow);
++      play_map_sound(Audio::TypeSfxAxBlow);
+       /* TODO Dangerous reference to unknown state vars.
+          It is probably free walking. */
+       if (serf->get_free_walking_neg_dist2() == 0 &&
+           serf->get_counter() < 64) {
+-        play_sound(Audio::TypeSfxTreeFall);
++        play_map_sound(Audio::TypeSfxTreeFall);
+       }
+       t += 0xe80;
+     } else if (t != 0x86) {
+@@ -1535,7 +1548,7 @@ Viewport::serf_get_body(Serf *serf) {
+           (!serf->playing_sfx() && (t == 0xb7 || t == 0xbf ||
+                 t == 0xc7 || t == 0xcf))) {
+         serf->start_playing_sfx();
+-        play_sound(Audio::TypeSfxSawing);
++        play_map_sound(Audio::TypeSfxSawing);
+       } else if (t != 0xb7 && t != 0xbf && t != 0xc7 && t != 0xcf) {
+         serf->stop_playing_sfx();
+       }
+@@ -1555,7 +1568,7 @@ Viewport::serf_get_body(Serf *serf) {
+       }
+     } else if (t == 0x85 || (t == 0x86 && !serf->playing_sfx())) {
+       serf->start_playing_sfx();
+-      play_sound(Audio::TypeSfxPickBlow);
++      play_map_sound(Audio::TypeSfxPickBlow);
+       t += 0x1280;
+     } else if (t != 0x86) {
+       serf->stop_playing_sfx();
+@@ -1567,7 +1580,7 @@ Viewport::serf_get_body(Serf *serf) {
+       t += 0xe00;
+     } else if (t == 0x86 || (t == 0x87 && !serf->playing_sfx())) {
+       serf->start_playing_sfx();
+-      play_sound(Audio::TypeSfxPlanting);
++      play_map_sound(Audio::TypeSfxPlanting);
+       t += 0x1080;
+     } else if (t != 0x87) {
+       serf->stop_playing_sfx();
+@@ -1638,7 +1651,7 @@ Viewport::serf_get_body(Serf *serf) {
+       }
+     } else {
+       if (t != 0x80 && t != 0x87 && t != 0x88 && t != 0x8f) {
+-        play_sound(Audio::TypeSfxFishingRodReel);
++        play_map_sound(Audio::TypeSfxFishingRodReel);
+       }
+ 
+       /* TODO no check for state */
+@@ -1676,7 +1689,7 @@ Viewport::serf_get_body(Serf *serf) {
+       if ((t == 0xb2 || t == 0xba || t == 0xc2 || t == 0xca) &&
+           !serf->playing_sfx()) {
+         serf->start_playing_sfx();
+-        play_sound(Audio::TypeSfxBackswordBlow);
++        play_map_sound(Audio::TypeSfxBackswordBlow);
+       } else if (t != 0xb2 && t != 0xba && t != 0xc2 && t != 0xca) {
+         serf->stop_playing_sfx();
+       }
+@@ -1698,7 +1711,7 @@ Viewport::serf_get_body(Serf *serf) {
+         t += 0x3d80;
+       } else if (t == 0x83 || (t == 0x84 && !serf->playing_sfx())) {
+         serf->start_playing_sfx();
+-        play_sound(Audio::TypeSfxMowing);
++        play_map_sound(Audio::TypeSfxMowing);
+         t += 0x3e80;
+       } else if (t != 0x83 && t != 0x84) {
+         serf->stop_playing_sfx();
+@@ -1746,7 +1759,7 @@ Viewport::serf_get_body(Serf *serf) {
+     } else if (t == 0x84 || t == 0x85) {
+       if (t == 0x84 || !serf->playing_sfx()) {
+         serf->start_playing_sfx();
+-        play_sound(Audio::TypeSfxWoodHammering);
++        play_map_sound(Audio::TypeSfxWoodHammering);
+       }
+       t += 0x4e80;
+     } else {
+@@ -1778,10 +1791,10 @@ Viewport::serf_get_body(Serf *serf) {
+       /* edi10 += 4; */
+       if (t == 0x83 || (t == 0xb2 && !serf->playing_sfx())) {
+         serf->start_playing_sfx();
+-        play_sound(Audio::TypeSfxSawing);
++        play_map_sound(Audio::TypeSfxSawing);
+       } else if (t == 0x87 || (t == 0xb6 && !serf->playing_sfx())) {
+         serf->start_playing_sfx();
+-        play_sound(Audio::TypeSfxWoodHammering);
++        play_map_sound(Audio::TypeSfxWoodHammering);
+       } else if (t != 0xb2 && t != 0xb6) {
+         serf->stop_playing_sfx();
+       }
+@@ -1805,7 +1818,7 @@ Viewport::serf_get_body(Serf *serf) {
+       /* edi10 += 4; */
+       if (t == 0x83 || (t == 0x84 && !serf->playing_sfx())) {
+         serf->start_playing_sfx();
+-        play_sound(Audio::TypeSfxMetalHammering);
++        play_map_sound(Audio::TypeSfxMetalHammering);
+       } else if (t != 0x84) {
+         serf->stop_playing_sfx();
+       }
+@@ -1818,13 +1831,13 @@ Viewport::serf_get_body(Serf *serf) {
+     } else if (t == 0x83 || t == 0x84 || t == 0x86) {
+       if (t == 0x83 || !serf->playing_sfx()) {
+         serf->start_playing_sfx();
+-        play_sound(Audio::TypeSfxGeologistSampling);
++        play_map_sound(Audio::TypeSfxGeologistSampling);
+       }
+       t += 0x4c80;
+     } else if (t == 0x8c || t == 0x8d) {
+       if (t == 0x8c || !serf->playing_sfx()) {
+         serf->start_playing_sfx();
+-        play_sound(Audio::TypeSfxResourceFound);
++        play_map_sound(Audio::TypeSfxResourceFound);
+       }
+       t += 0x4c80;
+     } else {
+@@ -1850,12 +1863,12 @@ Viewport::serf_get_body(Serf *serf) {
+           serf->start_playing_sfx();
+           if (serf->get_attacking_field_D() == 0 ||
+               serf->get_attacking_field_D() == 4) {
+-            play_sound(Audio::TypeSfxFight01);
++            play_map_sound(Audio::TypeSfxFight01);
+           } else if (serf->get_attacking_field_D() == 2) {
+             /* TODO when is TypeSfxFight02 played? */
+-            play_sound(Audio::TypeSfxFight03);
++            play_map_sound(Audio::TypeSfxFight03);
+           } else {
+-            play_sound(Audio::TypeSfxFight04);
++            play_map_sound(Audio::TypeSfxFight04);
+           }
+         }
+       }
+@@ -1871,7 +1884,7 @@ Viewport::serf_get_body(Serf *serf) {
+          (t == 2 || t == 5)) ||
+         (t == 1 || t == 4)) {
+       serf->start_playing_sfx();
+-      play_sound(Audio::TypeSfxSerfDying);
++      play_map_sound(Audio::TypeSfxSerfDying);
+     } else {
+       serf->stop_playing_sfx();
+     }
+@@ -1924,6 +1937,7 @@ Viewport::draw_active_serf(Serf *serf, MapPos pos, int x_base, int y_base) {
+ 
+   int lx = x_base + animation.x;
+   int ly = y_base + animation.y - 4 * map->get_height(pos);
++  sfx_heard = hears(lx, ly);
+   int body = serf_get_body(serf);
+ 
+   if (body > -1) {
+@@ -1954,6 +1968,7 @@ Viewport::draw_active_serf(Serf *serf, MapPos pos, int x_base, int y_base) {
+ 
+       int lx = x_base + animation.x;
+       int ly = y_base + animation.y - 4 * map->get_height(pos);
++      sfx_heard = hears(lx, ly);
+       int body = serf_get_body(def_serf);
+ 
+       if (body > -1) {
+@@ -2616,6 +2631,7 @@ Viewport::Viewport(Interface *_interface, PMap _map)
+   last_tick = 0;
+   water_in_view = 0;
+   trees_in_view = 0;
++  sfx_heard = true;
+ 
+   data_source = Data::get_instance().get_data_source();
+ }
+diff --git a/src/viewport.h b/src/viewport.h
+index 4d0af1a..f11ea8c 100644
+--- a/src/viewport.h
++++ b/src/viewport.h
+@@ -72,6 +72,19 @@ class Viewport : public GuiObject, public Map::Handler {
+   /* Water and trees seen by the last draw, for the ambient sounds. */
+   int water_in_view;
+   int trees_in_view;
++  /* Whether the object being drawn is in the hearing area. */
++  bool sfx_heard;
++
++ public:
++  /* Sounds of the map come only from this area around the centre of the
++     view: the original's 320x200 screen, so that a large screen does not
++     play many more sounds at once. 0: from the whole view. */
++  static int hear_width;
++  static int hear_height;
++
++ protected:
++  bool hears(int lx, int ly) const;
++  void play_map_sound(int sound) { if (sfx_heard) play_sound(sound); }
+ 
+  public:
+   Viewport(Interface *interface, PMap map);
+-- 
+2.45.2.windows.1
+

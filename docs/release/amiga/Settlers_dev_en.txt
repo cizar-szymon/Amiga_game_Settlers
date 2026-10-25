@@ -1,7 +1,7 @@
 THE SETTLERS (Freeserf) for the Amiga - notes for developers
 ============================================================
 
-Version 0.34. The full description of the port, decisions and
+Version 0.36. The full description of the port, decisions and
 measurements: docs/PORTING.md in the Settlers repository (Polish).
 
 
@@ -27,10 +27,14 @@ OPTIONS (Shell and Tool Types)
   DATA=path        drawer with the data (it looks in its amiga subdrawer)
   LOAD=file        load a Freeserf save
   NOSOUND          no sound
+  SFXAREA=WxH|ALL  map sounds from a WxH area around the centre of the view
+                   (default 320x200) or from all of it
+                   (Viewport::hear_width/height)
   FPS              Freeserf's frame counter (also Options -> Advanced)
   STATS            every second: numbers to RAM:Settlers-stats.txt, FPS on
                    the screen
-  STATS=FULL       plus E-clock probes (they slow the game down!) and the
+  STATS=FULL       plus E-clock probes (they slow the game down!; the VIEW
+                   line: ms/s of the parts of the map view) and the
                    music module written to RAM:Settlers-music0.mod
   VERIFY           every fast drawing path compared with the reference one,
                    count of differences in RAM:Settlers-stats.txt (slow)

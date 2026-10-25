@@ -275,6 +275,9 @@ tylko 35 kroków logiki/s zamiast 50 (limit 5 kroków nadrabiania na klatkę). T
 4. `popup.cc`, `advanced-box.*`, `interface.*`: Options → Screen (Amiga), Advanced → Show FPS,
    ukryte opcje danych i języka, mniejsze okno Advanced, licznik FPS zielony na czarnym.
 5. `map.cc`, `savegame.*`: szybsze wczytywanie i zapis zapisów tekstowych (ten sam plik wyjściowy).
+6. `viewport.*`: efekty mapy tylko z obszaru wokół środka widoku (`hear_width/height`).
+7. `viewport.*`, `gfx.*`: szybsze rysowanie widoku (przesunięcia sprite'ów, tablice `static`, bez
+   float, hash obrazków) i sonda `draw_probe`.
 
 Wszystkie jako commity w `freeserf/` (gałąź `settlers-pin`) i pliki `port/freeserf-patches/`.
 
@@ -463,6 +466,39 @@ do pierwszej klatki). Bez pliku ekran jest czarny. Plik robi `tools/make_start.p
 (800×445, 128 kolorów, 86 KB). Obraz to grafika oryginału (`data/START.png` od użytkownika), więc
 jak dane gry nie trafia do repozytorium ani do wydań. Uwaga: zrzuty AmiAgenta (`shot`) z ekranu
 8-bit gry mają przekłamane kolory także bez obrazu startowego – prawdziwe kolory daje F9.
+
+## Strefa słyszenia efektów (0.35)
+
+Freeserf odtwarza logikę dźwięku oryginału (4 kanały, kolejka 4 efektów na 1/50 s, niższy numer
+efektu ważniejszy), ale efekty wyzwala każdy rysowany budynek i tragarz – w 800×600 widać kilka razy
+więcej mapy niż na ekranie 320×200 oryginału, więc efektów było dużo więcej i nakładały się. Łatka
+`0006`: dźwięki obiektów mapy (28 miejsc w `viewport.cc`) oraz liczniki drzew i wody (ptaki, fale)
+tylko z prostokąta `Viewport::hear_width × hear_height` wokół środka widoku, domyślnie 320×200.
+Kliknięcia interfejsu bez zmian. Tool Type `SFXAREA=WxH|ALL`. Koszt: jedno porównanie na obiekt –
+scena 43,3 kl./s (było 43,2), miksowanie 0,81 ms na bufor (było ~1,1 ms), 0 przerw.
+
+## Scena z wieloma postaciami (0.36)
+
+Zgłoszenie użytkownika: przy kilku budynkach i wielu postaciach 12–13 kl./s, choć animacje (woda,
+chorągiewki) wyglądają tak samo płynnie – liczone są z licznika gry (100/s, faza co 80 ms), nie
+z klatek, a pętla nadrabia do 5 kroków logiki na klatkę. Zapis F10 (takt 38886, 640×400) jako
+`WorkSD:Settlers/scene2.save`, skrypty `run-fps2`, `run-scene2`, `run-verify2`.
+
+Nowa sonda (`STATS=FULL`, linia `VIEW`, `Viewport::draw_probe`): czas części widoku mapy w ms/s.
+Na starcie (10,7 kl./s z sondami): postacie 462, obiekty 249, drogi i granice 138, teren 10.
+Samo rysowanie pikseli sprite'ów (IMAGE) 273 – reszta to kod Freeserf przed rysowaniem.
+
+| Krok (łatka `0007`) | scene2 kl./s | Uwagi |
+|---|---|---|
+| 0.35 | 14,3 | |
+| tablice w `draw_row_serf`, `draw_serf_row`, `serf_get_body`, `draw_active_serf`, `draw_burning_building` jako `static` (były kopiowane na stos przy każdym wywołaniu, do 2,3 KB na postać) | 15,3 | |
+| `draw_sprite_relatively` (głowa postaci) pamięta przesunięcia tułowia – wcześniej **dekodowało tułów z danych Amigi w każdej klatce dla każdej postaci** | **29,9** | postacie 449 → 134 ms/s |
+| pamięć obrazków: `unordered_map` z własnym hashem zamiast `std::map` | 30,4 | w granicach szumu |
+| bez arytmetyki float (programowej) dla całych sprite'ów (`progress` = 1) | **31,9** | +5% |
+
+Scena wzorcowa scene1 (640×480 z dźwiękiem): 43,3 → **50,0** (pułap). `VERIFY` 0 różnic w obu
+scenach. Dalsze możliwości: obiekty (budynki, drzewa, flagi – teraz największa część), drogi
+(maskowane sprite'y).
 
 ## Wydajność (Warp1260 i Warp7060 – wydajnościowo równoważne)
 

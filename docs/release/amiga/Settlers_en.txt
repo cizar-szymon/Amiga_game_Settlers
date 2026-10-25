@@ -1,7 +1,7 @@
 THE SETTLERS - Freeserf for the Amiga with a graphics card
 ==========================================================
 
-Version 0.34 (beta), 25.10.2026
+Version 0.36 (beta), 25.10.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) on an Amiga with a graphics
 card (Picasso96) and a 68040/68060, at up to 800x600. It is based on
@@ -75,6 +75,9 @@ are off - remove the brackets to switch them on.
 
   FPS            frame counter in the corner of the screen
   MODE=640x480   resolution at the start (otherwise the one from Options)
+  SFXAREA=ALL    sound effects from the whole screen (default: only from a
+                 320x200 area around the centre, as in the original);
+                 SFXAREA=480x300 - a larger one
   NOSOUND        no sound
   DATA=path      another drawer with the game data (default PROGDIR:data)
 

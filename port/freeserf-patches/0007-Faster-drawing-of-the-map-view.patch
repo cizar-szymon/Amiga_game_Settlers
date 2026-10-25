@@ -1,0 +1,312 @@
+From af184f97e8d4541c91bf8ce59462f9562f097576 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sun, 25 Oct 2026 18:34:24 +0100
+Subject: [PATCH 7/7] Faster drawing of the map view
+
+- draw_sprite_relatively keeps the deltas of the sprites it draws
+  relative to: getting them decoded the serf's torso again for every
+  head in every frame.
+- The tables of the serf and burning building drawing are static, not
+  copied onto the stack at each call (up to 2.3 KB per serf).
+- No float arithmetic for whole sprites (progress 1).
+- The image cache is a hash table.
+- Viewport::draw_probe: optional profiling hook for each part of the view.
+
+On a 68060 (Warp7060), 640x400, a game with many serfs: 14.3 -> 31.9
+frames per second.
+---
+ src/gfx.cc      | 38 ++++++++++++++++++++++++++++----------
+ src/gfx.h       | 11 ++++++++++-
+ src/viewport.cc | 33 +++++++++++++++++++++++----------
+ src/viewport.h  |  8 ++++++++
+ 4 files changed, 69 insertions(+), 21 deletions(-)
+
+diff --git a/src/gfx.cc b/src/gfx.cc
+index bd93db5..cd6cfae 100644
+--- a/src/gfx.cc
++++ b/src/gfx.cc
+@@ -25,6 +25,7 @@
+ #include <memory>
+ #include <string>
+ 
++#include <unordered_map>
+ #include <utility>
+ #include <vector>
+ #include <algorithm>
+@@ -94,6 +95,10 @@ Image::~Image() {
+ /* Sprite cache hash table */
+ Image::ImageCache Image::image_cache;
+ 
++/* Deltas of the sprites others are drawn relative to (the serfs' torsos):
++   getting them decoded the sprite again, for every head in every frame. */
++static std::unordered_map<uint32_t, std::pair<int, int>> sprite_deltas;
++
+ void
+ Image::cache_image(uint64_t id, Image *image) {
+   image_cache[id] = image;
+@@ -159,6 +164,7 @@ Graphics::set_cursor_from_data() {
+ void
+ Graphics::data_changed() {
+   Image::clear_cache();
++  sprite_deltas.clear();
+   set_cursor_from_data();
+ }
+ 
+@@ -204,8 +210,13 @@ Frame::draw_sprite(int x, int y, Data::Resource res, unsigned int index,
+     x += image->get_offset_x();
+     y += image->get_offset_y();
+   }
+-  int y_off = image->get_height() - static_cast<int>(image->get_height() *
+-                                                     progress);
++  /* Almost always whole: no float arithmetic then (in software on a CPU
++     without an FPU). */
++  int y_off = 0;
++  if (progress < 1.f) {
++    y_off = image->get_height() - static_cast<int>(image->get_height() *
++                                                   progress);
++  }
+   video->draw_image(image->get_video_image(), x, y, y_off, video_frame);
+ }
+ 
+@@ -233,16 +244,23 @@ Frame::draw_sprite_relatively(int x, int y, Data::Resource res,
+                               unsigned int index,
+                               Data::Resource relative_to_res,
+                               unsigned int relative_to_index) {
+-  Data::PSprite s = data_source->get_sprite(relative_to_res, relative_to_index,
+-                                            {0, 0, 0, 0});
+-  if (s == nullptr) {
+-    Log::Warn["graphics"] << "Failed to decode sprite #"
+-                          << Data::get_resource_name(res) << ":" << index;
+-    return;
++  uint32_t key = (static_cast<uint32_t>(relative_to_res) << 16) |
++                 relative_to_index;
++  auto it = sprite_deltas.find(key);
++  if (it == sprite_deltas.end()) {
++    Data::PSprite s = data_source->get_sprite(relative_to_res,
++                                              relative_to_index, {0, 0, 0, 0});
++    if (s == nullptr) {
++      Log::Warn["graphics"] << "Failed to decode sprite #"
++                            << Data::get_resource_name(res) << ":" << index;
++      return;
++    }
++    it = sprite_deltas.emplace(key, std::make_pair(s->get_delta_x(),
++                                            s->get_delta_y())).first;
+   }
+ 
+-  x += s->get_delta_x();
+-  y += s->get_delta_y();
++  x += it->second.first;
++  y += it->second.second;
+ 
+   draw_sprite(x, y, res, index, true, Color::transparent, 1.f);
+ }
+diff --git a/src/gfx.h b/src/gfx.h
+index c74a5b4..98d985b 100644
+--- a/src/gfx.h
++++ b/src/gfx.h
+@@ -25,6 +25,7 @@
+ #include <cstdint>
+ #include <map>
+ #include <string>
++#include <unordered_map>
+ #include <memory>
+ 
+ #include "src/data.h"
+@@ -92,7 +93,15 @@ class Image {
+   Video *video;
+   Video::Image *video_image;
+ 
+-  typedef std::map<uint64_t, Image*> ImageCache;
++  /* A hash table: looked up for every sprite drawn. Both halves of the id
++     are mixed, size_t may have only 32 bits. */
++  struct IdHash {
++    size_t operator()(uint64_t id) const {
++      return (static_cast<uint32_t>(id >> 32) * 0x9e3779b1u) ^
++             static_cast<uint32_t>(id);
++    }
++  };
++  typedef std::unordered_map<uint64_t, Image*, IdHash> ImageCache;
+   static ImageCache image_cache;
+ 
+  public:
+diff --git a/src/viewport.cc b/src/viewport.cc
+index 67d5905..03d0e3c 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -938,13 +938,13 @@ Viewport::draw_unharmed_building(Building *building, int lx, int ly) {
+ 
+ void
+ Viewport::draw_burning_building(Building *building, int lx, int ly) {
+-  const int building_anim_offset_from_type[] = {
++  static const int building_anim_offset_from_type[] = {
+     0, 10, 26, 39, 49, 62, 78, 97, 97, 116,
+     129, 157, 167, 198, 211, 236, 255, 277, 305, 324,
+     349, 362, 381, 418, 446
+   };
+ 
+-  const int building_burn_animation[] = {
++  static const int building_burn_animation[] = {
+     /* Unfinished */
+     0, -8, 2,
+     8, 0, 4,
+@@ -1184,6 +1184,7 @@ Viewport::draw_burning_building(Building *building, int lx, int ly) {
+ }
+ 
+ int Viewport::hear_width = 320;
++void (*Viewport::draw_probe)(int part) = nullptr;
+ int Viewport::hear_height = 200;
+ 
+ bool
+@@ -1309,7 +1310,7 @@ Viewport::draw_map_objects_row(MapPos pos, int y_base, int cols, int x_base) {
+ void
+ Viewport::draw_row_serf(int lx, int ly, bool shadow, const Color &color,
+                         int body) {
+-  const int index1[] = {
++  static const int index1[] = {
+     0, 0, 48, 6, 96, -1, 48, 24,
+     240, -1, 48, 30, 248, -1, 48, 12,
+     48, 18, 96, 306, 96, 300, 48, 54,
+@@ -1347,7 +1348,7 @@ Viewport::draw_row_serf(int lx, int ly, bool shadow, const Color &color,
+     192, -1
+   };
+ 
+-  const int index2[] = {
++  static const int index2[] = {
+     0, 0, 1, 0, 2, 0, 3, 0,
+     4, 0, 5, 0, 6, 0, 7, 0,
+     8, 1, 9, 1, 10, 1, 11, 1,
+@@ -1412,14 +1413,14 @@ Viewport::draw_row_serf(int lx, int ly, bool shadow, const Color &color,
+ /* Translate serf type into the corresponding sprite code. */
+ int
+ Viewport::serf_get_body(Serf *serf) {
+-  const int transporter_type[] = {
++  static const int transporter_type[] = {
+     0, 0x3000, 0x3500, 0x3b00, 0x4100, 0x4600, 0x4b00, 0x1400,
+     0x700, 0x5100, 0x800, 0x1c00, 0x1d00, 0x1e00, 0x1a00, 0x1b00,
+     0x6800, 0x6d00, 0x6500, 0x6700, 0x6b00, 0x6a00, 0x6600, 0x6900,
+     0x6c00, 0x5700, 0x5600, 0, 0, 0, 0, 0
+   };
+ 
+-  const int sailor_type[] = {
++  static const int sailor_type[] = {
+     0, 0x3100, 0x3600, 0x3c00, 0x4200, 0x4700, 0x4c00, 0x1500,
+     0x900, 0x7700, 0xa00, 0x2100, 0x2200, 0x2300, 0x1f00, 0x2000,
+     0x6e00, 0x6f00, 0x7000, 0x7100, 0x7200, 0x7300, 0x7400, 0x7500,
+@@ -1900,7 +1901,7 @@ Viewport::serf_get_body(Serf *serf) {
+ 
+ void
+ Viewport::draw_active_serf(Serf *serf, MapPos pos, int x_base, int y_base) {
+-  const int arr_4[] = {
++  static const int arr_4[] = {
+      9, 5,
+     10, 7,
+     10, 2,
+@@ -2011,12 +2012,12 @@ Viewport::draw_active_serf(Serf *serf, MapPos pos, int x_base, int y_base) {
+    so they are drawn seperately from active serfs. */
+ void
+ Viewport::draw_serf_row(MapPos pos, int y_base, int cols, int x_base) {
+-  const int arr_1[] = {
++  static const int arr_1[] = {
+     0x240, 0x40, 0x380, 0x140, 0x300, 0x80, 0x180, 0x200,
+     0, 0x340, 0x280, 0x100, 0x1c0, 0x2c0, 0x3c0, 0xc0
+   };
+ 
+-  const int arr_2[] = {
++  static const int arr_2[] = {
+     0x8800, 0x8800, 0x8800, 0x8800, 0x8801, 0x8802, 0x8803, 0x8804,
+     0x8804, 0x8804, 0x8804, 0x8804, 0x8803, 0x8802, 0x8801, 0x8800,
+     0x8800, 0x8800, 0x8800, 0x8800, 0x8801, 0x8802, 0x8803, 0x8804,
+@@ -2035,7 +2036,7 @@ Viewport::draw_serf_row(MapPos pos, int y_base, int cols, int x_base) {
+     0x8803, 0x8803, 0x8803, 0x8802, 0x8802, 0x8801, 0x8801, 0x8801
+   };
+ 
+-  const int arr_3[] = {
++  static const int arr_3[] = {
+     0, 0, 0, 0, 0, 0, -2, 1, 0, 0, 2, 2, 0, 5, 0, 0,
+     0, 0, 0, 3, -2, 2, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0,
+     0, 0, -1, 2, -2, 1, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0,
+@@ -2136,13 +2137,17 @@ Viewport::draw_game_objects(int layers_) {
+   /* Loop until objects drawn fall outside the frame. */
+   while (1) {
+     /* short row */
++    if (draw_probe) draw_probe(ProbeWaves);
+     if (draw_landscape) draw_water_waves_row(pos, ly, short_row_len, lx);
++    if (draw_probe) draw_probe(ProbeSerfsBehind);
+     if (draw_serfs) {
+       draw_serf_row_behind(pos, ly, short_row_len, lx);
+     }
++    if (draw_probe) draw_probe(ProbeObjects);
+     if (draw_objects) {
+       draw_map_objects_row(pos, ly, short_row_len, lx);
+     }
++    if (draw_probe) draw_probe(ProbeSerfs);
+     if (draw_serfs) {
+       draw_serf_row(pos, ly, short_row_len, lx);
+     }
+@@ -2153,15 +2158,19 @@ Viewport::draw_game_objects(int layers_) {
+     pos = map->move_down(pos);
+ 
+     /* long row */
++    if (draw_probe) draw_probe(ProbeWaves);
+     if (draw_landscape) {
+       draw_water_waves_row(pos, ly, long_row_len, lx - 16);
+     }
++    if (draw_probe) draw_probe(ProbeSerfsBehind);
+     if (draw_serfs) {
+       draw_serf_row_behind(pos, ly, long_row_len, lx - 16);
+     }
++    if (draw_probe) draw_probe(ProbeObjects);
+     if (draw_objects) {
+       draw_map_objects_row(pos, ly, long_row_len, lx - 16);
+     }
++    if (draw_probe) draw_probe(ProbeSerfs);
+     if (draw_serfs) {
+       draw_serf_row(pos, ly, long_row_len, lx - 16);
+     }
+@@ -2334,6 +2343,7 @@ Viewport::internal_draw() {
+     return;
+   }
+ 
++  if (draw_probe) draw_probe(ProbeLandscape);
+   if (layers & LayerLandscape) {
+     draw_landscape();
+   }
+@@ -2341,13 +2351,16 @@ Viewport::internal_draw() {
+     draw_base_grid_overlay(Color(0xcf, 0x63, 0x63));
+     draw_height_grid_overlay(Color(0xef, 0xef, 0x8f));
+   }
++  if (draw_probe) draw_probe(ProbePaths);
+   if (layers & LayerPaths) {
+     draw_paths_and_borders();
+   }
+   draw_game_objects(layers);
++  if (draw_probe) draw_probe(ProbeCursor);
+   if (layers & LayerCursor) {
+     draw_map_cursor();
+   }
++  if (draw_probe) draw_probe(ProbeEnd);
+ }
+ 
+ /* Click on a neighbour of the cursor while a road is being built; a
+diff --git a/src/viewport.h b/src/viewport.h
+index f11ea8c..a541340 100644
+--- a/src/viewport.h
++++ b/src/viewport.h
+@@ -82,6 +82,14 @@ class Viewport : public GuiObject, public Map::Handler {
+   static int hear_width;
+   static int hear_height;
+ 
++  /* Profiling: when set, called as each part of the drawing starts:
++     ProbeLandscape ... ProbeCursor, ProbeEnd when the view is done. */
++  enum Probe {
++    ProbeLandscape, ProbePaths, ProbeWaves, ProbeSerfsBehind, ProbeObjects,
++    ProbeSerfs, ProbeCursor, ProbeEnd, ProbeCount
++  };
++  static void (*draw_probe)(int part);
++
+  protected:
+   bool hears(int lx, int ly) const;
+   void play_map_sound(int sound) { if (sfx_heard) play_sound(sound); }
+-- 
+2.45.2.windows.1
+
