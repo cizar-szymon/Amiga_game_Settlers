@@ -1,0 +1,44 @@
+From 58818f3637c8ca305e031244385531a27fc15a8a Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sun, 25 Oct 2026 16:44:51 +0100
+Subject: [PATCH 2/4] Fix make_transparent on big-endian hosts
+
+The pixel was compared as a uint32_t masked with 0x00FFFFFF, which holds
+R, G, B only on little-endian machines. On the 68k the transparent colour
+never matched: blue streaks along the water (0x0000BB of the waves) and
+black boxes around the territory borders. Compare the B, G, R bytes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Uqv2KDnCV91tQsZeLq3naz
+---
+ src/data-source-amiga.cc | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/src/data-source-amiga.cc b/src/data-source-amiga.cc
+index 134d667..9bfd714 100644
+--- a/src/data-source-amiga.cc
++++ b/src/data-source-amiga.cc
+@@ -1539,13 +1539,16 @@ DataSourceAmiga::SpriteAmiga::get_amiga_masked(Data::PSprite mask) {
+ 
+ void
+ DataSourceAmiga::SpriteAmiga::make_transparent(uint32_t rc) {
+-  uint32_t *p = reinterpret_cast<uint32_t*>(data);
++  /* Pixels are B, G, R, A in memory: compare the bytes, which works on
++     big-endian hosts too (a uint32_t would hold B, G, R, A there). */
++  uint8_t *p = data;
+   for (unsigned int y = 0; y < height; y++) {
+     for (unsigned int x = 0; x < width; x++) {
+-      if ((*p & 0x00FFFFFF) == rc) {
+-        *p = 0x00000000;
++      if (p[0] == (rc & 0xFF) && p[1] == ((rc >> 8) & 0xFF) &&
++          p[2] == ((rc >> 16) & 0xFF)) {
++        p[0] = p[1] = p[2] = p[3] = 0;
+       }
+-      p++;
++      p += 4;
+     }
+   }
+ }
+-- 
+2.45.2.windows.1
+

@@ -1,0 +1,22 @@
+THE SETTLERS (Freeserf) for the Amiga - version history
+=======================================================
+
+Reporting bugs: give the version number (start screen, "Version Settlers")
+and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
+the F10 key when the bug happens.
+
+
+0.32 (25.10.2026) - first beta
+------------------------------
+
+- Freeserf with the data of the original Amiga disks.
+- Picasso96 8-bit screen: 400x300, 640x400, 640x480 and 800x600, changed at
+  once in Options -> Screen.
+- Music (the module from the disks) and sound effects through Paula.
+- The game's own cursor, scrolling with the mouse and the cursor keys.
+- Options -> Advanced: Show FPS; options without a use on the Amiga hidden.
+- Start from the icon, settings in Tool Types (FPS, MODE, NOSOUND, DATA).
+- F9: screenshot, F10: state saved for a bug report.
+- Speed: on a 68060 at 100 MHz (Warp7060) about 43 frames/s at 640x480
+  while playing with music; the frame is put together in the card's
+  memory, the card's blitter copies the landscape.

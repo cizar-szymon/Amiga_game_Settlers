@@ -1,0 +1,7 @@
+micromod (micromod-c), Martin Cameron, BSD 3-Clause (licence.txt).
+Source: https://github.com/martincameron/micromod/tree/master/micromod-c
+(fetched 25.10.2026, version string "Micromod Protracker replay 20260303").
+
+Change for the Settlers port: MICROMOD_VBLANK (defined in port/CMakeLists.txt)
+makes every Fxx a speed command with the tempo fixed at 125, like the game's
+own vertical-blank replayer. See the comment at "Set Speed" in micromod.c.

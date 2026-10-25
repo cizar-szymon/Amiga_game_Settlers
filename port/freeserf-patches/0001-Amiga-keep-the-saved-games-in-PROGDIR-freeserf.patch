@@ -1,0 +1,31 @@
+From 9e8f658138e5f623321095f84edaaebf52b0060d Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sun, 25 Oct 2026 16:44:51 +0100
+Subject: [PATCH 1/4] Amiga: keep the saved games in PROGDIR:freeserf
+
+getenv("HOME") is unset on most Amigas, and std::string(nullptr) crashed
+the game store at its first use.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Uqv2KDnCV91tQsZeLq3naz
+---
+ src/savegame.cc | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/savegame.cc b/src/savegame.cc
+index 33b216b..677285d 100644
+--- a/src/savegame.cc
++++ b/src/savegame.cc
+@@ -490,6 +490,9 @@ GameStore::GameStore() {
+                         (LPSTR)folder_path.data(), len, nullptr, nullptr);
+   ::CoTaskMemFree(saved_games_path);
+   folder_path += '\\';
++#elif defined(__AMIGA__)
++  /* Next to the program: PROGDIR:freeserf */
++  folder_path = "PROGDIR:";
+ #elif defined(__APPLE__)
+   folder_path = std::string(std::getenv("HOME"));
+   folder_path += "/Library/Application Support";
+-- 
+2.45.2.windows.1
+

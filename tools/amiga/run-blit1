@@ -1,0 +1,4 @@
+Stack 1000000
+Delete RAM:Settlers-stats.txt QUIET
+CD WorkSD:Settlers
+WorkSD:Settlers/Settlers LOAD=WorkSD:Settlers/scene1.save STATS BLIT=1

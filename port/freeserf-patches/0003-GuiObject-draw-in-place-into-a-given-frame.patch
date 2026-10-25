@@ -1,0 +1,114 @@
+From 0aef36e7047355e4189e99d0b99e49d29a77617a Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sun, 25 Oct 2026 16:44:51 +0100
+Subject: [PATCH 3/4] GuiObject: draw in place into a given frame
+
+use_frame() makes an object draw straight into a target frame instead of
+a frame of its own that is then copied there (the interface on the
+screen). A child at 0,0 with the size of such a parent draws in place too
+(the map view), redrawing whenever the parent does. On the Amiga this
+saves two copies of the whole screen per frame.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Uqv2KDnCV91tQsZeLq3naz
+---
+ src/gui.cc | 31 ++++++++++++++++++++++++++++---
+ src/gui.h  |  6 ++++++
+ 2 files changed, 34 insertions(+), 3 deletions(-)
+
+diff --git a/src/gui.cc b/src/gui.cc
+index dedf971..fe2f44c 100644
+--- a/src/gui.cc
++++ b/src/gui.cc
+@@ -51,6 +51,7 @@ GuiObject::GuiObject() {
+   redraw = true;
+   parent = nullptr;
+   frame = nullptr;
++  frame_borrowed = false;
+   focused = false;
+ }
+ 
+@@ -63,10 +64,19 @@ GuiObject::~GuiObject() {
+ 
+ void
+ GuiObject::delete_frame() {
+-  if (frame != nullptr) {
++  if (frame != nullptr && !frame_borrowed) {
+     delete frame;
+-    frame = nullptr;
+   }
++  frame = nullptr;
++  frame_borrowed = false;
++}
++
++void
++GuiObject::use_frame(Frame *target) {
++  delete_frame();
++  frame = target;
++  frame_borrowed = true;
++  set_redraw();
+ }
+ 
+ void
+@@ -75,11 +85,23 @@ GuiObject::draw(Frame *_frame) {
+     return;
+   }
+ 
++  /* A child that covers all of a parent drawing in place draws in place
++     too (the map view on the screen): one copy of the whole screen less.
++     It has no picture of its own then, so it draws whenever the parent
++     does. */
++  if (!frame_borrowed && parent != nullptr && parent->frame_borrowed &&
++      parent->frame == _frame && x == 0 && y == 0 &&
++      width == parent->width && height == parent->height && zoom == 1.f) {
++    delete_frame();
++    frame = _frame;
++    frame_borrowed = true;
++  }
++
+   if (frame == nullptr) {
+     frame = Graphics::get_instance().create_frame(width, height);
+   }
+ 
+-  if (redraw) {
++  if (redraw || (frame_borrowed && parent != nullptr)) {
+     internal_draw();
+ 
+     for (GuiObject *float_window : floats) {
+@@ -88,6 +110,9 @@ GuiObject::draw(Frame *_frame) {
+ 
+     redraw = false;
+   }
++  if (frame_borrowed) {
++    return;  /* Drawn in place. */
++  }
+   if (zoom == 1.f) {
+     _frame->draw_frame(x, y, 0, 0, frame, width, height);
+   } else {
+diff --git a/src/gui.h b/src/gui.h
+index 4eb6f02..705ea25 100644
+--- a/src/gui.h
++++ b/src/gui.h
+@@ -45,6 +45,8 @@ class GuiObject : public EventLoop::Handler {
+   bool redraw;
+   GuiObject *parent;
+   Frame *frame;
++  /* The frame is the target given to use_frame(), not one of our own. */
++  bool frame_borrowed;
+   static GuiObject *focused_object;
+   bool focused;
+ 
+@@ -71,6 +73,10 @@ class GuiObject : public EventLoop::Handler {
+   virtual ~GuiObject();
+ 
+   void draw(Frame *frame);
++  /* Draw straight into target instead of a frame of our own that is then
++     copied there. Only for an object that alone draws the whole target
++     (the interface on the screen), whose content stays between draws. */
++  void use_frame(Frame *target);
+   void move_to(int x, int y);
+   void get_position(int *x, int *y);
+   void set_size(int width, int height);
+-- 
+2.45.2.windows.1
+

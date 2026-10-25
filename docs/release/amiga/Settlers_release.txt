@@ -1,0 +1,21 @@
+THE SETTLERS (Freeserf) na Amige - historia wersji
+==================================================
+
+Zglaszanie bledow: podaj numer wersji (ekran startowy, "Version Settlers")
+i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
+zapisane klawiszem F10 w chwili bledu.
+
+
+0.32 (25.10.2026) - pierwsza wersja beta
+----------------------------------------
+
+- Gra Freeserf z danymi z oryginalnych dyskietek na Amige.
+- Ekran Picasso96 8-bit: 400x300, 640x400, 640x480 i 800x600, zmiana od
+  razu w Options -> Screen.
+- Muzyka (modul z dyskietki) i efekty dzwiekowe przez Paule.
+- Kursor z gry, przewijanie mysza i strzalkami.
+- Options -> Advanced: Show FPS; ukryte opcje bez znaczenia na Amidze.
+- Start z ikony, ustawienia w Tool Types (FPS, MODE, NOSOUND, DATA).
+- F9: zrzut ekranu, F10: zapis stanu do zgloszenia bledu.
+- Szybkosc: na 68060 100 MHz (Warp7060) ok. 43 klatek/s w 640x480 w trakcie
+  gry z muzyka; obraz skladany w pamieci karty, teren kopiuje blitter karty.

@@ -1,0 +1,94 @@
+THE SETTLERS - Freeserf na Amige z karta graficzna
+==================================================
+
+Wersja 0.32 (beta), 25.10.2026
+
+The Settlers (Die Siedler, Blue Byte 1993) na Amige z karta graficzna
+(Picasso96) i procesorem 68040/68060, w rozdzielczosci do 800x600.
+Podstawa jest Freeserf - otwarta wersja gry (GPL-3.0). Grafika, dzwieki
+i muzyka pochodza z oryginalnych dyskietek gry na Amige, ktore trzeba miec.
+
+
+WYMAGANIA
+---------
+
+- AmigaOS 3.x, karta graficzna z Picasso96 (tryby 8-bit), np. Warp
+- 68040 albo 68060 (testowane na Warp7060 i Warp1260), ok. 32 MB Fast RAM
+- oryginalne dyskietki The Settlers na Amige (3 dyskietki)
+
+
+JAK ZACZAC
+----------
+
+1. Skopiuj szuflade Settlers na dysk.
+2. Z dyskietek oryginalu skopiuj do szuflady Settlers/data/amiga pliki:
+     z dyskietki 3: gfxheader, gfxfast, gfxchip, sounds, extro
+     z dyskietki 2: gfxpics, music
+3. Dwuklik na ikonie Settlers.
+
+Danych gry nie ma w tym archiwum - pochodza z Twoich dyskietek.
+
+
+STEROWANIE
+----------
+
+  mysz                     wszystko w grze (jak w oryginale)
+  prawy przycisk + ruch    przewijanie mapy
+  strzalki                 przewijanie mapy
+  P                        pauza (drugi raz: dalej)
+  1 ... 5                  przyciski panelu
+  B                        miejsca pod budowe
+  Tab                      nastepna wiadomosc
+  + / - / 0                szybciej / wolniej / normalnie
+  M / S                    muzyka / efekty wl. i wyl.
+  Ctrl+Z                   szybki zapis gry
+  Esc                      zamyka okienko w grze
+  Shift+Esc, Ctrl+Q        koniec gry
+  F9                       zrzut ekranu do RAM:Settlers-shot.ppm
+  F10                      zapis stanu do zgloszenia bledu
+
+
+USTAWIENIA W GRZE
+-----------------
+
+Options:
+  Screen     rozdzielczosc: strzalki obok zmieniaja ja od razu
+             (400x300, 640x400, 640x480, 800x600); wybor jest
+             zapamietany na nastepny raz
+Options -> Advanced:
+  Invert scrolling, Large numbers, Autosave, Stock box until occupied,
+  Show FPS (licznik klatek w rogu ekranu)
+
+Ustawienia zapisuja sie w pliku Settlers.ini obok gry, zapisy gier
+w szufladzie freeserf.
+
+
+USTAWIENIA W IKONIE (Tool Types)
+--------------------------------
+
+Zaznacz ikone Settlers, menu Ikony -> Informacje. Pozycje w nawiasach
+sa wylaczone - usun nawiasy, zeby wlaczyc.
+
+  FPS            licznik klatek w rogu ekranu
+  MODE=640x480   rozdzielczosc na starcie (inaczej: ta z Options)
+  NOSOUND        bez dzwieku
+  DATA=sciezka   inna szuflada z danymi gry (domyslnie PROGDIR:data)
+
+Stos programu w ikonie: 1000000 (gra potrzebuje duzego stosu).
+
+
+ZGLASZANIE BLEDOW
+-----------------
+
+Podaj numer wersji (na ekranie startowym i "Version Settlers" w Shellu).
+Nacisnij F10 w chwili bledu: gra zapisze RAM:Settlers-state.save
+i RAM:Settlers-state.txt - dolacz oba pliki do zgloszenia.
+Zmiany w kolejnych wersjach: Settlers_release.txt.
+
+
+LICENCJA
+--------
+
+Freeserf i ten port: GPL-3.0 (plik COPYING). Odtwarzacz muzyki micromod:
+BSD (Martin Cameron). The Settlers: Blue Byte - dane gry nie sa czescia
+tego archiwum.

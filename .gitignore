@@ -1,0 +1,8 @@
+# Dane oryginalnej gry - nie dystrybuujemy
+AmigaSettlersADF/
+*.adf
+/data/
+/build/
+# Freeserf: osobne repozytorium (upstream), przypiety commit w docs/PORTING.md,
+# nasze latki w port/freeserf-patches/
+/freeserf/

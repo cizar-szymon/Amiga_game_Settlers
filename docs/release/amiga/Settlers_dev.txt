@@ -1,0 +1,71 @@
+THE SETTLERS (Freeserf) na Amige - opis dla programistow
+========================================================
+
+Wersja 0.32. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
+w repozytorium Settlers.
+
+
+BUDOWA
+------
+
+Kompilator: bebbo m68k-amigaos-gcc 6.5 w Dockerze (obraz
+sacredbanana/amiga-compiler:m68k-amigaos), CMake: port/CMakeLists.txt,
+toolchain port/cmake/amiga-m68k.cmake. Flagi: -mcpu=68020 -msoft-float
+-mtune=68060 -O1 -noixemul (-O2 psuje wyjatki C++, -m68040 wybiera
+biblioteke dla 68881).
+
+  PowerShell:  docker\build.ps1        -> build/amiga/Settlers (+ .s bez symboli)
+
+Freeserf: kopia w freeserf/ (galaz settlers-pin, commit 9b9270e +
+latki z port/freeserf-patches/).
+
+
+OPCJE (Shell i Tool Types)
+--------------------------
+
+  MODE=WxH         400x300, 640x400, 640x480, 800x600 (tryby 8-bit karty)
+  DATA=sciezka     szuflada z danymi (szuka podszuflady amiga)
+  LOAD=plik        wczytanie zapisu Freeserf
+  NOSOUND          bez dzwieku
+  FPS              licznik klatek Freeserf (tez Options -> Advanced)
+  STATS            co 1 s: liczby do RAM:Settlers-stats.txt i FPS na ekranie
+  STATS=FULL       do tego sondy E-clock (spowalniaja!) i zapis muzyki do
+                   RAM:Settlers-music0.mod
+  VERIFY           kazda szybka sciezka rysowania porownana ze wzorcowa,
+                   licznik roznic w RAM:Settlers-stats.txt (wolno)
+  RENDER=VRAM|FAST skladanie klatki w pamieci karty (domyslnie) albo w Fast
+                   RAM i wysylka calosci
+  LOCK=FRAME|CALL  blokada bitmapy karty na klatke (domyslnie) albo na
+                   kazde rysowanie (~29 us kazda)
+  BLIT=0|1|2       RENDER=FAST: WriteChunkyPixels / dlugie slowa / MOVE16
+  DEBUG=0..4       poziom komunikatow do RAM:Settlers-log.txt
+
+
+PLIKI W RAM:
+------------
+
+  Settlers-log.txt     komunikaty Freeserf (nigdy na konsole: przy
+                       zablokowanej bitmapie karty tekst w oknie Shella
+                       zatrzymalby Amige)
+  Settlers-stats.txt   STATS: fps, czasy, dzwiek (przerwy, koszt miksowania)
+  Settlers-shot.ppm    F9: zrzut z prawdziwa paleta
+  Settlers-state.*     F10: zapis Freeserf (tekst) + opis
+
+
+NARZEDZIA (tools/ w repozytorium)
+---------------------------------
+
+  amiga_remote.py   AmiAgent (wgrywanie, start, klawisze, zrzuty)
+  measure.sh        pomiar w scenie WorkSD:Settlers/scene1.save
+  getstats.sh       odczyt RAM:Settlers-stats.txt
+  exittest.sh       wielokrotny start i Ctrl-C (bledy przy wyjsciu)
+  reboot.sh         C:Reboot przez AmiAgenta
+  addr2sym.py       adresy z dziennika strazniaka sterty -> funkcje
+  modinfo.py        komendy Fxx modulu MOD
+  make_icon.py      ikona z kadru gry
+  embed_images.py   obrazki zasobow Freeserf do port/gen/
+
+Programy testowe (build/amiga): simtest (logika: CRC stanu po N krokach,
+-c buduje zamek gracza 0, -s zapis sceny), datacheck (dane: CRC wszystkich
+zasobow, arkusze sprite'ow), modelist (tryby Picasso96), Settlers-hg
+(straznik sterty z AmiXcom, dziennik RAM:Settlers-heap.txt).

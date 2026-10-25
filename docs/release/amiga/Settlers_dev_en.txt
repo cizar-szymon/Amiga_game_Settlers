@@ -1,0 +1,72 @@
+THE SETTLERS (Freeserf) for the Amiga - notes for developers
+============================================================
+
+Version 0.32. The full description of the port, decisions and
+measurements: docs/PORTING.md in the Settlers repository (Polish).
+
+
+BUILDING
+--------
+
+Compiler: bebbo m68k-amigaos-gcc 6.5 in Docker (image
+sacredbanana/amiga-compiler:m68k-amigaos), CMake: port/CMakeLists.txt,
+toolchain port/cmake/amiga-m68k.cmake. Flags: -mcpu=68020 -msoft-float
+-mtune=68060 -O1 -noixemul (-O2 breaks C++ exceptions, -m68040 selects the
+68881 library).
+
+  PowerShell:  docker\build.ps1        -> build/amiga/Settlers (+ stripped .s)
+
+Freeserf: a copy in freeserf/ (branch settlers-pin, commit 9b9270e +
+the patches in port/freeserf-patches/).
+
+
+OPTIONS (Shell and Tool Types)
+------------------------------
+
+  MODE=WxH         400x300, 640x400, 640x480, 800x600 (the card's 8-bit modes)
+  DATA=path        drawer with the data (it looks in its amiga subdrawer)
+  LOAD=file        load a Freeserf save
+  NOSOUND          no sound
+  FPS              Freeserf's frame counter (also Options -> Advanced)
+  STATS            every second: numbers to RAM:Settlers-stats.txt, FPS on
+                   the screen
+  STATS=FULL       plus E-clock probes (they slow the game down!) and the
+                   music module written to RAM:Settlers-music0.mod
+  VERIFY           every fast drawing path compared with the reference one,
+                   count of differences in RAM:Settlers-stats.txt (slow)
+  RENDER=VRAM|FAST compose the frame in the card's memory (default) or in
+                   Fast RAM and send all of it
+  LOCK=FRAME|CALL  lock the card's bitmap per frame (default) or per drawing
+                   call (~29 us each)
+  BLIT=0|1|2       RENDER=FAST: WriteChunkyPixels / longwords / MOVE16
+  DEBUG=0..4       message level, to RAM:Settlers-log.txt
+
+
+FILES IN RAM:
+-------------
+
+  Settlers-log.txt     Freeserf messages (never to the console: with the
+                       card's bitmap locked, text in a Shell window would
+                       stop the Amiga)
+  Settlers-stats.txt   STATS: fps, times, sound (gaps, cost of mixing)
+  Settlers-shot.ppm    F9: screenshot with the true palette
+  Settlers-state.*     F10: Freeserf save (text) + description
+
+
+TOOLS (tools/ in the repository)
+--------------------------------
+
+  amiga_remote.py   AmiAgent (upload, start, keys, screenshots)
+  measure.sh        measurement in the scene WorkSD:Settlers/scene1.save
+  getstats.sh       reads RAM:Settlers-stats.txt
+  exittest.sh       repeated start and Ctrl-C (crashes at exit)
+  reboot.sh         C:Reboot through AmiAgent
+  addr2sym.py       addresses from the heap guard log -> functions
+  modinfo.py        Fxx commands of a MOD module
+  make_icon.py      the icon from a frame of the game
+  embed_images.py   Freeserf's resource images into port/gen/
+
+Test programs (build/amiga): simtest (logic: CRC of the state after N
+steps, -c builds player 0's castle, -s saves the scene), datacheck (data:
+CRC of all resources, sprite sheets), modelist (Picasso96 modes),
+Settlers-hg (AmiXcom's heap guard, log RAM:Settlers-heap.txt).

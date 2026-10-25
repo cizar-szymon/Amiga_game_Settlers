@@ -1,0 +1,94 @@
+THE SETTLERS - Freeserf for the Amiga with a graphics card
+==========================================================
+
+Version 0.32 (beta), 25.10.2026
+
+The Settlers (Die Siedler, Blue Byte 1993) on an Amiga with a graphics
+card (Picasso96) and a 68040/68060, at up to 800x600. It is based on
+Freeserf, the open source version of the game (GPL-3.0). The graphics,
+sounds and music come from the original Amiga disks, which you need.
+
+
+REQUIREMENTS
+------------
+
+- AmigaOS 3.x, a Picasso96 graphics card with 8-bit modes (e.g. Warp)
+- 68040 or 68060 (tested on Warp7060 and Warp1260), about 32 MB Fast RAM
+- the original The Settlers Amiga disks (3 disks)
+
+
+GETTING STARTED
+---------------
+
+1. Copy the Settlers drawer to your hard disk.
+2. Copy these files from the original disks to Settlers/data/amiga:
+     from disk 3: gfxheader, gfxfast, gfxchip, sounds, extro
+     from disk 2: gfxpics, music
+3. Double-click the Settlers icon.
+
+The game data is not in this archive - it comes from your disks.
+
+
+CONTROLS
+--------
+
+  mouse                    everything in the game (as in the original)
+  right button + move      scroll the map
+  cursor keys              scroll the map
+  P                        pause (again: continue)
+  1 ... 5                  panel buttons
+  B                        building sites
+  Tab                      next message
+  + / - / 0                faster / slower / normal speed
+  M / S                    music / sound effects on and off
+  Ctrl+Z                   quick save
+  Esc                      close a box in the game
+  Shift+Esc, Ctrl+Q        quit
+  F9                       screenshot to RAM:Settlers-shot.ppm
+  F10                      save the state for a bug report
+
+
+SETTINGS IN THE GAME
+--------------------
+
+Options:
+  Screen     resolution: the arrows next to it change it at once
+             (400x300, 640x400, 640x480, 800x600); it is kept for the
+             next start
+Options -> Advanced:
+  Invert scrolling, Large numbers, Autosave, Stock box until occupied,
+  Show FPS (frame counter in the corner)
+
+Settings are kept in Settlers.ini next to the game, saved games in the
+freeserf drawer.
+
+
+ICON SETTINGS (Tool Types)
+--------------------------
+
+Select the Settlers icon, menu Icons -> Information. Entries in brackets
+are off - remove the brackets to switch them on.
+
+  FPS            frame counter in the corner of the screen
+  MODE=640x480   resolution at the start (otherwise the one from Options)
+  NOSOUND        no sound
+  DATA=path      another drawer with the game data (default PROGDIR:data)
+
+Program stack in the icon: 1000000 (the game needs a large stack).
+
+
+REPORTING BUGS
+--------------
+
+Give the version number (on the start screen, and "Version Settlers" in a
+Shell). Press F10 when the bug happens: the game writes
+RAM:Settlers-state.save and RAM:Settlers-state.txt - attach both files.
+Changes of each version: Settlers_release_en.txt.
+
+
+LICENCE
+-------
+
+Freeserf and this port: GPL-3.0 (file COPYING). Music player micromod:
+BSD (Martin Cameron). The Settlers: Blue Byte - the game data is not part
+of this archive.

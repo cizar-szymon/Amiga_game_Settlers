@@ -1,0 +1,7 @@
+# Amiga scripts and texts need LF; binaries (Amiga executables, icons,
+# archives) are found by git itself.
+* text=auto eol=lf
+*.lha binary
+*.info binary
+*.pdf binary
+*.png binary

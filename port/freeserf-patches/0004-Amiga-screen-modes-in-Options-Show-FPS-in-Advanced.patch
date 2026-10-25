@@ -1,0 +1,224 @@
+From 7a46a543b5714467a03077987f59dbd7960eaced Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sun, 25 Oct 2026 16:44:51 +0100
+Subject: [PATCH 4/4] Amiga: screen modes in Options, Show FPS in Advanced
+
+Options gets a Screen row with arrows for the previous and the next
+mode (400x300, 640x400, 640x480, 800x600). Advanced gets Show FPS,
+drops the data source and language rows (the port has only the Amiga
+data and no translations) and is small enough for 400x300. The FPS
+counter is drawn green on black, the setting is stored.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Uqv2KDnCV91tQsZeLq3naz
+---
+ src/advanced-box.cc |  8 +++++++
+ src/advanced-box.h  |  6 +++++
+ src/interface.cc    | 20 +++++++++++++++++
+ src/interface.h     |  2 ++
+ src/popup.cc        | 55 ++++++++++++++++++++++++++++++++++++++++++++-
+ 5 files changed, 90 insertions(+), 1 deletion(-)
+
+diff --git a/src/advanced-box.cc b/src/advanced-box.cc
+index 178482b..de576c9 100644
+--- a/src/advanced-box.cc
++++ b/src/advanced-box.cc
+@@ -93,6 +93,13 @@ static const Option options[] = {
+     &Interface::next_autosave_interval },
+   { N_("Stock box until occupied"), &Interface::get_stock_box_occupied, nullptr,
+     &Interface::switch_stock_box_occupied },
++#ifdef __AMIGA__
++  /* Amiga port: the frame rate in the corner (also the FPS Tool Type).
++     The port has only the Amiga data and no translations, so the choice
++     of the data and the language is left out. */
++  { N_("Show FPS"), &Interface::get_show_fps, nullptr,
++    &Interface::switch_show_fps },
++#else
+   /* With the data of several versions installed. */
+   { N_("Graphics"), nullptr, graphics_text,
+     &Interface::next_graphics_source },
+@@ -100,6 +107,7 @@ static const Option options[] = {
+   { N_("Music"), nullptr, music_text, &Interface::next_music_source },
+   /* With a translation installed. */
+   { N_("Language"), nullptr, language_text, &Interface::next_language },
++#endif
+ };
+ 
+ /* Width of the value texts, right aligned to the check boxes. */
+diff --git a/src/advanced-box.h b/src/advanced-box.h
+index 1060912..90cd12c 100644
+--- a/src/advanced-box.h
++++ b/src/advanced-box.h
+@@ -30,8 +30,14 @@ class Interface;
+    from the options box. */
+ class AdvancedBox : public GuiObject {
+  public:
++#ifdef __AMIGA__
++  /* Amiga port: five options; small enough for a 320x200 screen. */
++  static const int kWidth = 288;
++  static const int kHeight = 152;
++#else
+   static const int kWidth = 360;
+   static const int kHeight = 256;
++#endif
+ 
+  protected:
+   Interface *interface;
+diff --git a/src/interface.cc b/src/interface.cc
+index a5e801f..5f050e1 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -204,6 +204,9 @@ Interface::apply_settings() {
+   invert_scrolling = settings.get("advanced", "invert_scrolling", false);
+   large_numbers = settings.get("advanced", "large_numbers", false);
+   stock_box_occupied = settings.get("advanced", "stock_box_occupied", false);
++  if (settings.get("advanced", "show_fps", show_fps) != show_fps) {
++    switch_show_fps();
++  }
+   autosave_minutes = settings.get("advanced", "autosave", 0u);
+   Translation::get_instance().set_language(
+     settings.get("advanced", "language", std::string()));
+@@ -243,6 +246,7 @@ Interface::store_settings() {
+   settings.set("advanced", "invert_scrolling", invert_scrolling);
+   settings.set("advanced", "large_numbers", large_numbers);
+   settings.set("advanced", "stock_box_occupied", stock_box_occupied);
++  settings.set("advanced", "show_fps", show_fps);
+   settings.set("advanced", "autosave", autosave_minutes);
+   settings.set("advanced", "language",
+                Translation::get_instance().get_language());
+@@ -1135,6 +1139,14 @@ Interface::autosave() {
+   }
+ }
+ 
++void
++Interface::switch_show_fps() {
++  show_fps = !show_fps;
++  fps = 0;
++  fps_frames = 0;
++  fps_start = EventLoop::get_instance().get_ticks();
++}
++
+ /* Count the drawn frames and show the rate of the last second in the top
+    left corner of the screen. */
+ void
+@@ -1152,7 +1164,15 @@ Interface::draw_fps(Frame *frame) {
+     fps_start = now;
+   }
+ 
++#ifdef __AMIGA__
++  /* Amiga port: green on black, readable on any part of the map. */
++  std::string text = "FPS " + std::to_string(fps);
++  frame->fill_rect(0, 0, 8 * static_cast<int>(text.size()) + 4, 11,
++                   Color::black);
++  frame->draw_string(2, 2, text, Color::green, Color::transparent);
++#else
+   frame->draw_string(4, 4, "FPS " + std::to_string(fps), Color::black);
++#endif
+ }
+ 
+ /* Called periodically when the game progresses. */
+diff --git a/src/interface.h b/src/interface.h
+index 2a5e815..b4a87f0 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -161,6 +161,8 @@ class Interface : public GuiObject, public GameManager::Handler {
+   void next_message_level() {
+     message_level = (message_level == 0) ? 3 : message_level - 1; }
+   /* Mouse dragging moves the map vertically the other way. */
++  bool get_show_fps() const { return show_fps; }
++  void switch_show_fps();
+   bool get_invert_scrolling() const { return invert_scrolling; }
+   void switch_invert_scrolling() { invert_scrolling = !invert_scrolling; }
+   /* Counts over 999 in the boxes shortened (15K, .2M) instead of >999. */
+diff --git a/src/popup.cc b/src/popup.cc
+index 93cbb05..9220489 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -289,9 +289,21 @@ typedef enum Action {
+   ACTION_OPTIONS_SFX,
+   ACTION_SAVE,
+   ACTION_OPTIONS_ADVANCED,
+-  ACTION_NEW_NAME
++  ACTION_NEW_NAME,
++  ACTION_OPTIONS_SCREEN_PREV,
++  ACTION_OPTIONS_SCREEN_NEXT
+ } Action;
+ 
++#ifdef __AMIGA__
++/* Amiga port: the screen modes of the Options box, switched in turn.
++   The lowest is 400x300: the game's boxes were made for the Amiga's PAL
++   overscan screen (start box 360x254, panel 352 wide), which 320x200
++   cannot show. */
++static const unsigned int amiga_screen_modes[][2] = {
++  { 400, 300 }, { 640, 400 }, { 640, 480 }, { 800, 600 }
++};
++#endif
++
+ PopupBox::PopupBox(Interface *_interface)
+   : minimap(new MinimapGame(_interface, _interface->get_game()))
+   , file_list(new ListSavedFiles())
+@@ -1981,6 +1993,17 @@ PopupBox::draw_options_box() {
+   draw_green_string(1, 94, _("Messages"));
+   draw_green_string(11, 94, C_("messages", value));
+ 
++#ifdef __AMIGA__
++  /* Amiga port: the screen mode, with arrows for the previous and the
++     next mode, as the volume. */
++  unsigned int sw = 0, sh = 0;
++  Graphics::get_instance().get_resolution(&sw, &sh);
++  draw_green_string(1, 106, _("Screen"));
++  draw_green_string(1, 115, std::to_string(sw) + "x" + std::to_string(sh));
++  draw_popup_icon(11, 106, 220); /* previous mode */
++  draw_popup_icon(13, 106, 221); /* next mode */
++#endif
++
+   /* Advanced options (not in the original game) */
+   frame->draw_resource_image(8 * 0 + 8, 128 + 9, "button-advanced.png");
+   draw_popup_icon(14, 128, 60); /* exit */
+@@ -3746,6 +3769,32 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+                                     !Graphics::get_instance().is_fullscreen());
+     play_sound(Audio::TypeSfxClick);
+     break;
++#ifdef __AMIGA__
++  case ACTION_OPTIONS_SCREEN_PREV:
++  case ACTION_OPTIONS_SCREEN_NEXT: {
++    /* The mode before or after the current one, no wrapping around; the
++       port opens the new screen between frames. */
++    unsigned int sw = 0, sh = 0;
++    Graphics::get_instance().get_resolution(&sw, &sh);
++    const int n = sizeof(amiga_screen_modes) / sizeof(amiga_screen_modes[0]);
++    int cur = 2;  /* 640x480 when the mode is none of the list */
++    for (int i = 0; i < n; i++) {
++      if (amiga_screen_modes[i][0] == sw && amiga_screen_modes[i][1] == sh) {
++        cur = i;
++      }
++    }
++    int next = cur + (action == ACTION_OPTIONS_SCREEN_NEXT ? 1 : -1);
++    if (next < 0 || next >= n) {
++      play_sound(Audio::TypeSfxNotAccepted);
++      break;
++    }
++    Graphics::get_instance().set_resolution(amiga_screen_modes[next][0],
++                                            amiga_screen_modes[next][1],
++                                            true);
++    play_sound(Audio::TypeSfxClick);
++    break;
++  }
++#endif
+   case ACTION_OPTIONS_VOLUME_MINUS: {
+     Audio &audio = Audio::get_instance();
+     Audio::VolumeController *volume_controller = audio.get_volume_controller();
+@@ -3837,6 +3886,10 @@ PopupBox::handle_box_options_clk(int cx, int cy) {
+     ACTION_OPTIONS_MESSAGE_COUNT_1, 90, 90, 32, 16,
+     ACTION_CLOSE_OPTIONS, 112, 126, 16, 16,
+     ACTION_OPTIONS_ADVANCED, 0, 126, 56, 16,
++#ifdef __AMIGA__
++    ACTION_OPTIONS_SCREEN_PREV, 90, 106, 16, 16,
++    ACTION_OPTIONS_SCREEN_NEXT, 106, 106, 16, 16,
++#endif
+     -1
+   };
+   handle_clickmap(cx, cy, clkmap);
+-- 
+2.45.2.windows.1
+
