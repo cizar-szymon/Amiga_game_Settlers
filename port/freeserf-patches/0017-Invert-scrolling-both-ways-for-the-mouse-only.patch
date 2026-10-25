@@ -1,0 +1,68 @@
+From b365b21e4d7259f17c38dc3936da3bff2c520308 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Mon, 26 Oct 2026 00:18:24 +0100
+Subject: [PATCH 17/17] Invert scrolling both ways, for the mouse only
+
+Invert scrolling inverted only the vertical drag. Both directions are
+inverted now, and only for the mouse: GuiObject keeps the button of the
+drag it handles, and the Amiga port scrolls with the cursor keys by drags
+of button 0, which keep their direction.
+---
+ src/gui.cc      | 2 ++
+ src/gui.h       | 3 +++
+ src/viewport.cc | 5 ++++-
+ 3 files changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/src/gui.cc b/src/gui.cc
+index fe2f44c..0aaf1b8 100644
+--- a/src/gui.cc
++++ b/src/gui.cc
+@@ -45,6 +45,7 @@ GuiObject::GuiObject() {
+   height = 0;
+   zoom = 1.f;
+   drag_rest_x = 0.f;
++  drag_button = 0;
+   drag_rest_y = 0.f;
+   displayed = false;
+   enabled = true;
+@@ -176,6 +177,7 @@ GuiObject::handle_event(const Event *event) {
+       int dy = static_cast<int>(drag_rest_y);
+       drag_rest_x -= static_cast<float>(dx);
+       drag_rest_y -= static_cast<float>(dy);
++      drag_button = event->button;
+       result = handle_drag(dx, dy);
+       break;
+     }
+diff --git a/src/gui.h b/src/gui.h
+index 705ea25..956ea26 100644
+--- a/src/gui.h
++++ b/src/gui.h
+@@ -40,6 +40,9 @@ class GuiObject : public EventLoop::Handler {
+      height * zoom of the parent. */
+   float zoom;
+   float drag_rest_x, drag_rest_y;
++  /* The button of the drag being handled; 0 for the cursor keys of the
++     Amiga port, which scroll by drags too. */
++  int drag_button;
+   bool displayed;
+   bool enabled;
+   bool redraw;
+diff --git a/src/viewport.cc b/src/viewport.cc
+index d6c7180..1e92713 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -2698,7 +2698,10 @@ Viewport::open_object_box(MapPos clk_pos) {
+ 
+ bool
+ Viewport::handle_drag(int lx, int ly) {
+-  if (interface->get_invert_scrolling()) {
++  /* Both ways, and for the mouse only: the cursor keys scroll the way
++     they point. */
++  if (interface->get_invert_scrolling() && drag_button != 0) {
++    lx = -lx;
+     ly = -ly;
+   }
+   if (lx != 0 || ly != 0) {
+-- 
+2.45.2.windows.1
+

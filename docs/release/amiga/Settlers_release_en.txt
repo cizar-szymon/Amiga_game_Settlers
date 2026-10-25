@@ -6,8 +6,16 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
-0.52 (26.10.2026) - release candidate
+0.53 (26.10.2026) - release candidate
 -------------------------------------
+
+- Options -> Advanced -> Invert scrolling inverts scrolling with the mouse
+  both ways (it was only up and down). The cursor keys always scroll the
+  way they point.
+
+
+0.52 (26.10.2026)
+-----------------
 
 - A faster magnified map: only what changed goes to the card. 800x600:
   x2 30 -> 41 frames/s, x3 44 -> 50 frames/s.

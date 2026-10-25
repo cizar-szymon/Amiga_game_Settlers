@@ -1,7 +1,7 @@
 From a617c492f2a67fc326b5d5cfb766ce2ce9ed0ecd Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Sun, 25 Oct 2026 17:58:41 +0100
-Subject: [PATCH 06/16] Map sounds only from an area around the centre of the
+Subject: [PATCH 06/17] Map sounds only from an area around the centre of the
  view
 
 A large screen draws many more objects than the original's 320x200 one,

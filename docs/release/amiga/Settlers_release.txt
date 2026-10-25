@@ -6,8 +6,16 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
-0.52 (26.10.2026) - kandydat do wydania
+0.53 (26.10.2026) - kandydat do wydania
 ----------------------------------------
+
+- Options -> Advanced -> Invert scrolling odwraca przewijanie mysza
+  w obu kierunkach (bylo tylko w pionie). Strzalki przewijaja zawsze
+  w kierunku, ktory wskazuja.
+
+
+0.52 (26.10.2026)
+-----------------
 
 - Szybsze powiekszenie: na karte idzie tylko to, co sie zmienilo.
   800x600: x2 30 -> 41 klatek/s, x3 44 -> 50 klatek/s.

@@ -113,6 +113,10 @@ EventLoopAmiga::deferred_call(DeferredCall call, void *data) {
   deferred_calls.push_back(call);
 }
 
+/* The cursor keys scroll the map by drags of "button 0": the map view
+   inverts the mouse's drags only (Invert scrolling). */
+static const Event::Button kKeyDrag = static_cast<Event::Button>(0);
+
 void
 EventLoopAmiga::handle_key(const AmigaEvent &ev) {
   unsigned char modifier = 0;
@@ -122,10 +126,10 @@ EventLoopAmiga::handle_key(const AmigaEvent &ev) {
 
   switch (ev.code) {
     /* Map scroll */
-    case ARAW_UP:    notify_drag(0, 0, 0, -32, Event::ButtonLeft); return;
-    case ARAW_DOWN:  notify_drag(0, 0, 0, 32, Event::ButtonLeft); return;
-    case ARAW_LEFT:  notify_drag(0, 0, -32, 0, Event::ButtonLeft); return;
-    case ARAW_RIGHT: notify_drag(0, 0, 32, 0, Event::ButtonLeft); return;
+    case ARAW_UP:    notify_drag(0, 0, 0, -32, kKeyDrag); return;
+    case ARAW_DOWN:  notify_drag(0, 0, 0, 32, kKeyDrag); return;
+    case ARAW_LEFT:  notify_drag(0, 0, -32, 0, kKeyDrag); return;
+    case ARAW_RIGHT: notify_drag(0, 0, 32, 0, kKeyDrag); return;
     case ARAW_ESC:
       /* Shift+Esc ends the program; Esc alone closes boxes in the game. */
       if (modifier & 2) {

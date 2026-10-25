@@ -1,7 +1,7 @@
 From 2eca6b7412041d01ad8690d80fec15f87bd39a4c Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Sun, 25 Oct 2026 17:21:49 +0100
-Subject: [PATCH 05/16] Faster loading and saving of text saves
+Subject: [PATCH 05/17] Faster loading and saving of text saves
 
 The map sections looked their values up for every tile (a name copied,
 lowered and searched in a map, ten times per tile), the lists were split

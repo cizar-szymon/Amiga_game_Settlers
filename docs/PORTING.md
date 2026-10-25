@@ -26,9 +26,8 @@ z oryginalnych danych z wersji na Amigę. Ogólne zasady: `C:\Workprojects\Amiga
 | F5 Dźwięk | ✅ | efekty i muzyka bez spadku fps poniżej celu | 0.22: Paula 22 kHz, efekty i muzyka potwierdzone odsłuchem; ~43 fps; AHI – opcja na później |
 | F6 Wydanie | ✅ | czysta instalacja z archiwum `Settlers-0.32.lha` na Amidze 2 | 0.32 beta, 25.10.2026 |
 
-**Kandydat do wydania: 0.52** (decyzja użytkownika, 26.10.2026: najnowsza wersja), znacznik
-`v0.52-rc`, archiwum `releases/amiga/Settlers-0.52.lha`. Wcześniejsi: 0.48 (`v0.48-rc`), 0.41
-(`v0.41-rc`).
+**Kandydat do wydania: 0.53** (decyzja użytkownika: zawsze najnowsza sprawdzona wersja), znacznik
+`v0.53-rc`, archiwum `releases/amiga/Settlers-0.53.lha`. Wcześniejsi: 0.52, 0.48, 0.41 (`v0.xx-rc`).
 
 ## Decyzje
 
@@ -294,6 +293,8 @@ tylko 35 kroków logiki/s zamiast 50 (limit 5 kroków nadrabiania na klatkę). T
 14. `popup.cc`: napis EXIT małymi literami.
 15. `game-init.*`, `map-generator.cc`: podgląd mapy po chwili spokoju, pomiar etapów generatora,
     `remove_islands` z listą.
+16. `game-init.*`, `interface.cc`: podgląd mapy generowany, gdy minie czas (okno rysuje się na żądanie).
+17. `gui.*`, `viewport.cc`: Invert scrolling w obu osiach, tylko mysz.
 
 Wszystkie jako commity w `freeserf/` (gałąź `settlers-pin`) i pliki `port/freeserf-patches/`.
 
@@ -678,6 +679,13 @@ Maska bajtowa tylko dla obrazków o krótkich odcinkach (< 4 piksele średnio: t
 odcinkami (widok powiększony składa się w Fast RAM). 800×600 scene2: ×2 30,2 → **41,3**, ×3 44,5 →
 **49,5**, ×1 32,5 bez zmian. `VERIFY` 0 przy ×2 i ×3, z przewijaniem, z okienkiem nad mapą i po
 powrocie do ×1. Przy zmianie stopnia kafelki terenu są rysowane od nowa (6 kafelków, ~0,3 s).
+
+## Invert scrolling w obu osiach (0.53)
+
+Freeserf odwracał tylko oś pionową przeciągania (`Viewport::handle_drag`, `ly = -ly`). Łatka `0017`:
+obie osie, tylko dla myszy – `GuiObject::drag_button` (przycisk przeciągania); strzałki portu Amigi
+przewijają przeciąganiem „przycisku 0” (`kKeyDrag`), więc zawsze w swoją stronę (wcześniej przy
+włączonej opcji góra/dół były odwrócone). Sprawdził użytkownik (mysz).
 
 ## Wydajność (Warp1260 i Warp7060 – wydajnościowo równoważne)
 
