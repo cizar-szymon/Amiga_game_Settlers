@@ -1,0 +1,1485 @@
+From c86f64a68291cf09d12e6dfe5db40f3017e37c1f Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Mon, 26 Oct 2026 15:24:56 +0100
+Subject: [PATCH 25/27] LAN game: lockstep - the players' commands done on both
+ computers at the same turn
+
+---
+ src/interface.cc   |  93 +++++++++++++---
+ src/interface.h    |   8 ++
+ src/lan-box.cc     |   3 +-
+ src/lan-command.cc | 265 +++++++++++++++++++++++++++++++++++++++++++++
+ src/lan-command.h  |  98 +++++++++++++++++
+ src/lan-game.cc    | 130 ++++++++++++++++++++--
+ src/lan-game.h     |  41 ++++++-
+ src/lan-sync.cc    |  22 ++--
+ src/lan-sync.h     |  13 ++-
+ src/popup.cc       | 177 +++++++++++++-----------------
+ src/popup.h        |   2 +
+ src/viewport.cc    |   7 +-
+ 12 files changed, 709 insertions(+), 150 deletions(-)
+ create mode 100644 src/lan-command.cc
+ create mode 100644 src/lan-command.h
+
+diff --git a/src/interface.cc b/src/interface.cc
+index 1735fd3..031698e 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -349,7 +349,8 @@ Interface::open_lan_box(PGameInfo mission) {
+ bool
+ Interface::start_lan_game(const std::string &setup, bool server) {
+   Random seed;
+-  PGameInfo mission = lan_decode_setup(setup, &seed);
++  unsigned int delay = 0;
++  PGameInfo mission = lan_decode_setup(setup, &seed, &delay);
+   if (!mission) {
+     return false;
+   }
+@@ -358,7 +359,7 @@ Interface::start_lan_game(const std::string &setup, bool server) {
+     return false;
+   }
+   /* The link goes on in the game; the boxes go. */
+-  lan_game.reset(new LanGame(this, lan_link, server));
++  lan_game.reset(new LanGame(this, lan_link, server, delay));
+   if (!server) {
+     set_player(1);
+   }
+@@ -368,6 +369,23 @@ Interface::start_lan_game(const std::string &setup, bool server) {
+   return true;
+ }
+ 
++bool
++Interface::command(const LanCommand &cmd) {
++  if (!game) return false;
++  LanCommand c = cmd;
++  c.player = static_cast<uint8_t>(player->get_index());
++  if (lan_game) {
++    lan_game->queue(c);
++    return true;
++  }
++  return c.apply(game.get());
++}
++
++bool
++Interface::command(LanCommand::Type type, MapPos pos, int a, int b, int c) {
++  return command(LanCommand(type, 0, pos, a, b, c));
++}
++
+ void
+ Interface::close_lan_box() {
+   if (lan_box != nullptr) {
+@@ -858,7 +876,9 @@ Interface::build_road_segment(Direction dir, bool special) {
+   PMap map = game->get_map();
+   MapPos target = map->move(map_cursor_pos, dir);
+   if (map->paths(target) != 0 && !map->has_flag(target)) {
+-    if (!special || !game->can_join_road(map_cursor_pos, dir, player)) {
++    /* Not in a LAN game: the flag would be there only a turn later. */
++    if (!special || lan_game ||
++        !game->can_join_road(map_cursor_pos, dir, player)) {
+       return -1;
+     }
+     if (!game->build_flag(target, player)) {
+@@ -877,7 +897,9 @@ Interface::build_road_segment(Direction dir, bool special) {
+ 
+   if (game->get_map()->get_obj(dest) == Map::ObjectFlag) {
+     /* Existing flag at destination, try to connect. */
+-    if (!game->build_road(building_road, player)) {
++    LanCommand road_command(LanCommand::TypeBuildRoad, 0);
++    road_command.road = building_road;
++    if (!command(road_command)) {
+       build_road_end();
+       return -1;
+     } else {
+@@ -889,8 +911,15 @@ Interface::build_road_segment(Direction dir, bool special) {
+     /* No existing paths at destination, build segment. A special click
+        also builds a flag there and finishes the road. */
+     if (special && game->can_build_flag(dest, player) &&
+-        game->build_flag(dest, player)) {
+-      bool built = game->build_road(building_road, player);
++        (lan_game || game->build_flag(dest, player))) {
++      bool built;
++      if (lan_game) {
++        LanCommand road_command(LanCommand::TypeBuildRoad, 0, 0, 1);
++        road_command.road = building_road;
++        built = command(road_command);
++      } else {
++        built = game->build_road(building_road, player);
++      }
+       build_road_end();
+       update_map_cursor_pos(dest);
+       return built ? 1 : -1;
+@@ -949,7 +978,7 @@ Interface::demolish_object() {
+ 
+   if (map_cursor_type == CursorTypeRemovableFlag) {
+     play_sound(Audio::TypeSfxClick);
+-    game->demolish_flag(map_cursor_pos, player);
++    command(LanCommand::TypeDemolishFlag, map_cursor_pos);
+   } else if (map_cursor_type == CursorTypeBuilding) {
+     Building *building = game->get_building_at_pos(map_cursor_pos);
+ 
+@@ -961,7 +990,7 @@ Interface::demolish_object() {
+     }
+ 
+     play_sound(Audio::TypeSfxAhhh);
+-    game->demolish_building(map_cursor_pos, player);
++    command(LanCommand::TypeDemolishBuilding, map_cursor_pos);
+   } else {
+     play_sound(Audio::TypeSfxNotAccepted);
+     update_interface();
+@@ -971,7 +1000,8 @@ Interface::demolish_object() {
+ /* Build new flag. */
+ void
+ Interface::build_flag() {
+-  if (!game->build_flag(map_cursor_pos, player)) {
++  if ((lan_game && !game->can_build_flag(map_cursor_pos, player)) ||
++      !command(LanCommand::TypeBuildFlag, map_cursor_pos)) {
+     play_sound(Audio::TypeSfxNotAccepted);
+     return;
+   }
+@@ -987,7 +1017,7 @@ Interface::build_building(Building::Type type, bool special) {
+     if (!special) {
+       return;
+     }
+-    if (!game->replace_building(map_cursor_pos, type, player)) {
++    if (!command(LanCommand::TypeReplaceBuilding, map_cursor_pos, type)) {
+       play_sound(Audio::TypeSfxNotAccepted);
+       return;
+     }
+@@ -997,7 +1027,8 @@ Interface::build_building(Building::Type type, bool special) {
+     return;
+   }
+ 
+-  if (!game->build_building(map_cursor_pos, type, player)) {
++  if ((lan_game && !game->can_build_building(map_cursor_pos, type, player)) ||
++      !command(LanCommand::TypeBuildBuilding, map_cursor_pos, type)) {
+     play_sound(Audio::TypeSfxNotAccepted);
+     return;
+   }
+@@ -1013,7 +1044,8 @@ Interface::build_building(Building::Type type, bool special) {
+ /* Build castle. */
+ void
+ Interface::build_castle() {
+-  if (!game->build_castle(map_cursor_pos, player)) {
++  if ((lan_game && !game->can_build_castle(map_cursor_pos, player)) ||
++      !command(LanCommand::TypeBuildCastle, map_cursor_pos)) {
+     play_sound(Audio::TypeSfxNotAccepted);
+     return;
+   }
+@@ -1022,6 +1054,26 @@ Interface::build_castle() {
+   update_map_cursor_pos(map_cursor_pos);
+ }
+ 
++bool
++Interface::build_road_to_new_flag() {
++  if (!lan_game) {
++    if (!game->build_flag(map_cursor_pos, player)) {
++      return false;
++    }
++    build_road();
++    return true;
++  }
++  if (!game->can_build_flag(map_cursor_pos, player)) {
++    return false;
++  }
++  LanCommand road_command(LanCommand::TypeBuildRoad, 0, 0, 1);
++  road_command.road = building_road;
++  command(road_command);
++  play_sound(Audio::TypeSfxAccepted);
++  build_road_end();
++  return true;
++}
++
+ void
+ Interface::build_road() {
+   bool r = game->build_road(building_road, player);
+@@ -1393,9 +1445,13 @@ Interface::update() {
+     return;
+   }
+ 
++  /* A LAN game steps only with the other side's commands of the turn. */
++  if (lan_game && !lan_game->before_step()) {
++    return;
++  }
+   game->update();
+   if (lan_game) {
+-    lan_game->update();
++    lan_game->after_step();
+   }
+   play_ambient_sounds();
+   autosave();
+@@ -1413,7 +1469,8 @@ Interface::update() {
+           box == PopupBox::TypeNoSaveQuitConfirm ||
+           box == PopupBox::TypeOptions)) {
+       game->clear_game_end_pending();
+-      if (!game->is_paused()) {
++      /* In a LAN game the other side goes on: no pause. */
++      if (!lan_game && !game->is_paused()) {
+         game->pause();
+       }
+       open_popup(PopupBox::TypeGameEnd);
+@@ -1500,19 +1557,19 @@ Interface::handle_key_pressed(char key, int modifier) {
+ 
+     /* Game speed */
+     case '+': {
+-      game->speed_increase();
++      command(LanCommand::TypeSpeed, 0, 1);
+       break;
+     }
+     case '-': {
+-      game->speed_decrease();
++      command(LanCommand::TypeSpeed, 0, -1);
+       break;
+     }
+     case '0': {
+-      game->speed_reset();
++      command(LanCommand::TypeSpeed, 0, 0);
+       break;
+     }
+     case 'p': {
+-      game->pause();
++      command(LanCommand::TypePause);
+       break;
+     }
+     case 'i': {
+diff --git a/src/interface.h b/src/interface.h
+index 32ca226..8da7134 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -33,6 +33,7 @@
+ #include "src/building.h"
+ #include "src/gui.h"
+ #include "src/game-manager.h"
++#include "src/lan-command.h"
+ 
+ static const unsigned int map_building_sprite[] = {
+   0, 0xa7, 0xa8, 0xae, 0xa9,
+@@ -262,6 +263,11 @@ class Interface : public GuiObject, public GameManager::Handler {
+      the one who joined plays player 2. false: a bad SETUP. */
+   bool start_lan_game(const std::string &setup, bool server);
+   LanGame *get_lan_game() { return lan_game.get(); }
++  /* A command of this player: done at once, in a LAN game on both
++     computers a little later. The result: done (in a LAN game: sent). */
++  bool command(const LanCommand &command);
++  bool command(LanCommand::Type type, MapPos pos = 0, int a = 0, int b = 0,
++               int c = 0);
+   void close_lan_box();
+ 
+   /* A box of the platform, opened by a button next to Advanced in the
+@@ -305,6 +311,8 @@ class Interface : public GuiObject, public GameManager::Handler {
+   void build_building(Building::Type type, bool special = false);
+   void build_castle();
+   void build_road();
++  /* A flag at the cursor and the road being built to it. */
++  bool build_road_to_new_flag();
+ 
+   void update();
+   void play_ambient_sounds();
+diff --git a/src/lan-box.cc b/src/lan-box.cc
+index 63189db..3aeaefb 100644
+--- a/src/lan-box.cc
++++ b/src/lan-box.cc
+@@ -392,7 +392,8 @@ LanBox::handle_click_left(int x, int y) {
+           play_sound(Audio::TypeSfxClick);
+           /* The other side makes the same game from the same SETUP; a new
+              seed for the random numbers of this game. */
+-          std::string setup = lan_encode_setup(mission, Random());
++          std::string setup = lan_encode_setup(
++            mission, Random(), LanGame::delay_for_ping(l->get_ping_ms()));
+           if (l->send(LanGame::MessageSetup, setup) &&
+               interface->start_lan_game(setup, true)) {
+             return true;  /* This box is gone. */
+diff --git a/src/lan-command.cc b/src/lan-command.cc
+new file mode 100644
+index 0000000..fb12c9c
+--- /dev/null
++++ b/src/lan-command.cc
+@@ -0,0 +1,265 @@
++/*
++ * lan-command.cc - The commands of the players in a LAN game
++ *
++ * Copyright (C) 2026  Wicked_Digger <wicked_digger@mail.ru>
++ *
++ * This file is part of freeserf.
++ *
++ * freeserf is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * freeserf is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "src/lan-command.h"
++
++#include <algorithm>
++#include <string>
++
++#include "src/game.h"
++#include "src/player.h"
++#include "src/building.h"
++#include "src/flag.h"
++
++LanCommand::LanCommand()
++  : type(0), player(0), pos(0), a(0), b(0), c(0) {
++}
++
++LanCommand::LanCommand(Type _type, unsigned int _player, MapPos _pos, int _a,
++                       int _b, int _c)
++  : type(static_cast<uint8_t>(_type))
++  , player(static_cast<uint8_t>(_player))
++  , pos(_pos), a(_a), b(_b), c(_c) {
++}
++
++static void
++put32(std::string *out, uint32_t v) {
++  out->push_back(static_cast<char>(v >> 24));
++  out->push_back(static_cast<char>(v >> 16));
++  out->push_back(static_cast<char>(v >> 8));
++  out->push_back(static_cast<char>(v));
++}
++
++static uint32_t
++get32(const std::string &in, size_t at) {
++  return (static_cast<uint32_t>(static_cast<uint8_t>(in[at])) << 24) |
++         (static_cast<uint32_t>(static_cast<uint8_t>(in[at + 1])) << 16) |
++         (static_cast<uint32_t>(static_cast<uint8_t>(in[at + 2])) << 8) |
++         static_cast<uint32_t>(static_cast<uint8_t>(in[at + 3]));
++}
++
++/* type, player, pos, a, b, c (big endian); a road: its length (2 bytes)
++   and its directions, two to a byte. */
++void
++LanCommand::encode(std::string *out) const {
++  out->push_back(static_cast<char>(type));
++  out->push_back(static_cast<char>(player));
++  /* A road's place is where it starts. */
++  put32(out, type == TypeBuildRoad ? road.get_source() : pos);
++  put32(out, static_cast<uint32_t>(a));
++  put32(out, static_cast<uint32_t>(b));
++  put32(out, static_cast<uint32_t>(c));
++  if (type == TypeBuildRoad) {
++    Road::Dirs dirs = road.get_dirs();
++    size_t n = dirs.size();
++    out->push_back(static_cast<char>(n >> 8));
++    out->push_back(static_cast<char>(n));
++    int half = -1;
++    for (Direction d : dirs) {
++      if (half < 0) {
++        half = d;
++      } else {
++        out->push_back(static_cast<char>((half << 4) | d));
++        half = -1;
++      }
++    }
++    if (half >= 0) out->push_back(static_cast<char>(half << 4));
++  }
++}
++
++bool
++LanCommand::decode(const std::string &in, size_t *at) {
++  size_t p = *at;
++  if (in.size() < p + 18) return false;
++  type = static_cast<uint8_t>(in[p]);
++  player = static_cast<uint8_t>(in[p + 1]);
++  pos = get32(in, p + 2);
++  a = static_cast<int32_t>(get32(in, p + 6));
++  b = static_cast<int32_t>(get32(in, p + 10));
++  c = static_cast<int32_t>(get32(in, p + 14));
++  p += 18;
++  road.invalidate();
++  if (type == TypeBuildRoad) {
++    if (in.size() < p + 2) return false;
++    size_t n = (static_cast<size_t>(static_cast<uint8_t>(in[p])) << 8) |
++               static_cast<uint8_t>(in[p + 1]);
++    p += 2;
++    if (in.size() < p + (n + 1) / 2) return false;
++    road.start(pos);
++    for (size_t i = 0; i < n; i++) {
++      uint8_t byte = static_cast<uint8_t>(in[p + i / 2]);
++      int d = (i % 2 == 0) ? (byte >> 4) : (byte & 0x0f);
++      if (d > DirectionUp) return false;
++      road.extend(static_cast<Direction>(d));
++    }
++    p += (n + 1) / 2;
++  }
++  *at = p;
++  return true;
++}
++
++void
++LanCommand::move_prio(int *prio, int item, bool up, bool to_end) {
++  int cur_value = prio[item];
++  int next_value = up ? (to_end ? 26 : cur_value + 1)
++                      : (to_end ? 1 : cur_value - 1);
++  if (next_value >= 1 && next_value < 27) {
++    int delta = next_value > cur_value ? -1 : 1;
++    int min = next_value > cur_value ? cur_value + 1 : next_value;
++    int max = next_value > cur_value ? next_value : cur_value - 1;
++    for (int i = 0; i < 26; i++) {
++      if (prio[i] >= min && prio[i] <= max) prio[i] += delta;
++    }
++    prio[item] = next_value;
++  }
++}
++
++bool
++LanCommand::apply(Game *game) const {
++  Player *p = game->get_player(player);
++  if (p == nullptr) return false;
++  switch (type) {
++    case TypeBuildFlag:
++      return game->build_flag(pos, p);
++    case TypeBuildRoad: {
++      if (!road.is_valid()) return false;
++      MapPos end = road.get_end(game->get_map().get());
++      if (a != 0 && !game->build_flag(end, p)) return false;
++      if (!game->build_road(road, p)) {
++        if (a != 0) game->demolish_flag(end, p);
++        return false;
++      }
++      return true;
++    }
++    case TypeBuildBuilding:
++      return game->build_building(pos, static_cast<Building::Type>(a), p);
++    case TypeReplaceBuilding:
++      return game->replace_building(pos, static_cast<Building::Type>(a), p);
++    case TypeBuildCastle:
++      return game->build_castle(pos, p);
++    case TypeDemolishFlag:
++      return game->demolish_flag(pos, p);
++    case TypeDemolishBuilding:
++      return game->demolish_building(pos, p);
++    case TypePullRoads:
++      return game->pull_roads_through_flag(pos, p);
++    case TypeSendGeologist: {
++      Flag *flag = game->get_flag_at_pos(pos);
++      return flag != nullptr && game->send_geologist(flag);
++    }
++    case TypeInventoryResMode:
++    case TypeInventorySerfMode: {
++      Building *building = game->get_building(a);
++      if (building == nullptr || building->get_inventory() == nullptr) {
++        return false;
++      }
++      if (type == TypeInventoryResMode) {
++        game->set_inventory_resource_mode(building->get_inventory(), b);
++      } else {
++        game->set_inventory_serf_mode(building->get_inventory(), b);
++      }
++      return true;
++    }
++    case TypePromoteKnights:
++      return p->promote_serfs_to_knights(a) != 0;
++    case TypeAttack: {
++      Building *building = game->get_building_at_pos(pos);
++      if (building == nullptr) return false;
++      p->building_attacked = building->get_index();
++      p->knights_available_for_attack(pos);
++      p->knights_attacking = std::min(a, std::min(p->total_attacking_knights,
++                                                  100));
++      if (p->knights_attacking <= 0 || p->attacking_building_count <= 0) {
++        return false;
++      }
++      p->start_attack();
++      return true;
++    }
++    case TypePause:
++      game->pause();
++      return true;
++    case TypeSpeed:
++      if (a > 0) {
++        game->speed_increase();
++      } else if (a < 0) {
++        game->speed_decrease();
++      } else {
++        game->speed_reset();
++      }
++      return true;
++    case TypeSetting:
++      break;
++    default:
++      return false;
++  }
++
++  switch (a) {
++    case SettingFoodStonemine: p->set_food_stonemine(b); break;
++    case SettingFoodCoalmine: p->set_food_coalmine(b); break;
++    case SettingFoodIronmine: p->set_food_ironmine(b); break;
++    case SettingFoodGoldmine: p->set_food_goldmine(b); break;
++    case SettingPlanksConstruction: p->set_planks_construction(b); break;
++    case SettingPlanksBoatbuilder: p->set_planks_boatbuilder(b); break;
++    case SettingPlanksToolmaker: p->set_planks_toolmaker(b); break;
++    case SettingSteelToolmaker: p->set_steel_toolmaker(b); break;
++    case SettingSteelWeaponsmith: p->set_steel_weaponsmith(b); break;
++    case SettingCoalSteelsmelter: p->set_coal_steelsmelter(b); break;
++    case SettingCoalGoldsmelter: p->set_coal_goldsmelter(b); break;
++    case SettingCoalWeaponsmith: p->set_coal_weaponsmith(b); break;
++    case SettingWheatPigfarm: p->set_wheat_pigfarm(b); break;
++    case SettingWheatMill: p->set_wheat_mill(b); break;
++    case SettingKnightOccupation:
++      p->change_knight_occupation(b, c / 2 != 0 ? 1 : 0, (c % 2) ? 1 : -1);
++      break;
++    case SettingToolPrio: p->set_tool_prio(b, c); break;
++    case SettingSerfToKnightRate: p->set_serf_to_knight_rate(b); break;
++    case SettingCycleKnights: p->cycle_knights(); break;
++    case SettingSendStrongest:
++      if (b != 0) {
++        p->set_send_strongest();
++      } else {
++        p->drop_send_strongest();
++      }
++      break;
++    case SettingCastleKnights:
++      if (b > 0) {
++        p->increase_castle_knights_wanted();
++      } else {
++        p->decrease_castle_knights_wanted();
++      }
++      break;
++    case SettingResetFood: p->reset_food_priority(); break;
++    case SettingResetPlanks: p->reset_planks_priority(); break;
++    case SettingResetSteel: p->reset_steel_priority(); break;
++    case SettingResetCoal: p->reset_coal_priority(); break;
++    case SettingResetWheat: p->reset_wheat_priority(); break;
++    case SettingResetTools: p->reset_tool_priority(); break;
++    case SettingResetFlagPrio: p->reset_flag_priority(); break;
++    case SettingResetInventoryPrio: p->reset_inventory_priority(); break;
++    case SettingMovePrio:
++      move_prio(b == 0 ? p->get_flag_prio() : p->get_inventory_prio(),
++                c / 4, (c / 2) % 2 != 0, c % 2 != 0);
++      break;
++    default:
++      return false;
++  }
++  return true;
++}
+diff --git a/src/lan-command.h b/src/lan-command.h
+new file mode 100644
+index 0000000..ce82d16
+--- /dev/null
++++ b/src/lan-command.h
+@@ -0,0 +1,98 @@
++/*
++ * lan-command.h - The commands of the players in a LAN game
++ *
++ * Copyright (C) 2026  Wicked_Digger <wicked_digger@mail.ru>
++ *
++ * This file is part of freeserf.
++ *
++ * freeserf is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * freeserf is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef SRC_LAN_COMMAND_H_
++#define SRC_LAN_COMMAND_H_
++
++#include <cstdint>
++#include <string>
++
++#include "src/map.h"
++
++class Game;
++
++/* Everything a player does that changes the game. In a game on one
++   computer it is done at once; in a LAN game it goes to both computers
++   and is done there at the same step (LanGame). */
++class LanCommand {
++ public:
++  typedef enum Type {
++    TypeBuildFlag = 1,      /* pos */
++    TypeBuildRoad,          /* road; a: 1 = a flag at its end first */
++    TypeBuildBuilding,      /* pos, a: Building::Type */
++    TypeReplaceBuilding,    /* pos, a: Building::Type */
++    TypeBuildCastle,        /* pos */
++    TypeDemolishFlag,       /* pos */
++    TypeDemolishBuilding,   /* pos */
++    TypePullRoads,          /* pos of the flag */
++    TypeSendGeologist,      /* pos of the flag */
++    TypeInventoryResMode,   /* a: building index, b: mode */
++    TypeInventorySerfMode,  /* a: building index, b: mode */
++    TypePromoteKnights,     /* a: number */
++    TypeSetting,            /* a: Setting, b, c */
++    TypeAttack,             /* pos of the building, a: knights */
++    TypePause,
++    TypeSpeed               /* a: +1, -1, 0 = normal */
++  } Type;
++
++  /* The settings boxes of a player (TypeSetting). */
++  typedef enum Setting {
++    SettingFoodStonemine, SettingFoodCoalmine, SettingFoodIronmine,
++    SettingFoodGoldmine, SettingPlanksConstruction, SettingPlanksBoatbuilder,
++    SettingPlanksToolmaker, SettingSteelToolmaker, SettingSteelWeaponsmith,
++    SettingCoalSteelsmelter, SettingCoalGoldsmelter, SettingCoalWeaponsmith,
++    SettingWheatPigfarm, SettingWheatMill,          /* b: value */
++    SettingKnightOccupation,                        /* b: index, c: max*2+d */
++    SettingToolPrio,                                /* b: tool, c: value */
++    SettingSerfToKnightRate,                        /* b: value */
++    SettingCycleKnights,
++    SettingSendStrongest,                           /* b: 1 set, 0 drop */
++    SettingCastleKnights,                           /* b: +1 / -1 */
++    SettingResetFood, SettingResetPlanks, SettingResetSteel,
++    SettingResetCoal, SettingResetWheat, SettingResetTools,
++    SettingResetFlagPrio, SettingResetInventoryPrio,
++    SettingMovePrio      /* b: 0 flag, 1 inventory; c: item*4+up*2+to_end */
++  } Setting;
++
++  uint8_t type;
++  uint8_t player;
++  MapPos pos;
++  int32_t a, b, c;
++  Road road;
++
++  LanCommand();
++  LanCommand(Type type, unsigned int player, MapPos pos = 0, int a = 0,
++             int b = 0, int c = 0);
++
++  /* Appended to / read from a TURN frame. */
++  void encode(std::string *out) const;
++  bool decode(const std::string &in, size_t *at);
++
++  /* Done to the game; the result for the player's sound in a game on one
++     computer. */
++  bool apply(Game *game) const;
++
++  /* The order of the flag (Sett5) or inventory (Sett6) priorities after
++     moving item up or down (to the end), as the settings box does it. */
++  static void move_prio(int *prio, int item, bool up, bool to_end);
++};
++
++#endif  // SRC_LAN_COMMAND_H_
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index 23b422e..9ede90d 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -21,6 +21,7 @@
+ 
+ #include "src/lan-game.h"
+ 
++#include <algorithm>
+ #include <sstream>
+ #include <string>
+ 
+@@ -30,16 +31,22 @@
+ #include "src/game.h"
+ #include "src/map.h"
+ #include "src/gfx.h"
++#include "src/event_loop.h"
+ 
+ /* The largest screen of a LAN game. */
+ static const unsigned int kMaxWidth = 640;
+ static const unsigned int kMaxHeight = 480;
++/* "Waiting" shows after this long without the other side's turn. */
++static const unsigned int kShowWaitingMs = 300;
+ 
+-LanGame::LanGame(Interface *_interface, LanLink *_link, bool _server)
++LanGame::LanGame(Interface *_interface, LanLink *_link, bool _server,
++                 unsigned int _delay)
+   : interface(_interface)
+   , link(_link)
+   , server(_server)
++  , delay(std::max(1u, _delay))
+   , steps(0)
++  , waiting_since(0)
+   , last_checked(0)
+   , out_of_step(false)
+   , out_of_step_at(0)
+@@ -57,6 +64,16 @@ LanGame::~LanGame() {
+   }
+ }
+ 
++unsigned int
++LanGame::delay_for_ping(int ms) {
++  if (ms < 0) ms = 100;
++  /* The time there and back plus a margin for the jitter of a WiFi, in
++     turns of 80 ms; at least 2 (160 ms). */
++  unsigned int turns = 1 + static_cast<unsigned int>(ms + 40) /
++                           (kTurnSteps * 20);
++  return std::min(8u, std::max(2u, turns));
++}
++
+ void
+ LanGame::started() {
+   Graphics &gfx = Graphics::get_instance();
+@@ -70,11 +87,40 @@ LanGame::started() {
+ }
+ 
+ void
+-LanGame::update() {
+-  steps++;
+-  if (link == nullptr) {
+-    return;
+-  }
++LanGame::queue(const LanCommand &command) {
++  pending.push_back(command);
++}
++
++/* TURN: turn (4 bytes), 1 if more frames of the turn follow, commands.
++   A frame takes what fits; an empty turn is one frame too. */
++void
++LanGame::send_turn(unsigned int turn, const std::vector<LanCommand> &cmds) {
++  if (link == nullptr || gone) return;
++  size_t i = 0;
++  do {
++    std::string body;
++    while (i < cmds.size()) {
++      std::string one;
++      cmds[i].encode(&one);
++      if (!body.empty() && body.size() + one.size() > LanLink::kMaxData - 5) {
++        break;
++      }
++      body += one;
++      i++;
++    }
++    std::string frame;
++    frame.push_back(static_cast<char>(turn >> 24));
++    frame.push_back(static_cast<char>(turn >> 16));
++    frame.push_back(static_cast<char>(turn >> 8));
++    frame.push_back(static_cast<char>(turn));
++    frame.push_back(static_cast<char>(i < cmds.size() ? 1 : 0));
++    link->send(MessageTurn, frame + body);
++  } while (i < cmds.size());
++}
++
++void
++LanGame::receive() {
++  if (link == nullptr) return;
+   link->poll();
+   if (!gone && link->get_state() != LanLink::StateConnected) {
+     gone = true;
+@@ -89,15 +135,78 @@ LanGame::update() {
+       if (s >> step >> sum) {
+         other_sums[step] = sum;
+       }
++    } else if (type == MessageTurn && data.size() >= 5) {
++      unsigned int turn =
++        (static_cast<unsigned int>(static_cast<uint8_t>(data[0])) << 24) |
++        (static_cast<unsigned int>(static_cast<uint8_t>(data[1])) << 16) |
++        (static_cast<unsigned int>(static_cast<uint8_t>(data[2])) << 8) |
++        static_cast<unsigned int>(static_cast<uint8_t>(data[3]));
++      Turn &t = other_turns[turn];
++      size_t at = 5;
++      LanCommand command;
++      while (at < data.size() && command.decode(data, &at)) {
++        t.commands.push_back(command);
++      }
++      t.complete = (data[4] == 0);
++    }
++  }
++}
++
++bool
++LanGame::before_step() {
++  receive();
++  if (steps % kTurnSteps != 0) {
++    return true;
++  }
++  unsigned int turn = steps / kTurnSteps;
++  auto theirs = other_turns.find(turn);
++  bool have = gone || turn < delay ||
++              (theirs != other_turns.end() && theirs->second.complete);
++  if (!have) {
++    if (waiting_since == 0) {
++      waiting_since = EventLoop::get_instance().get_ticks() | 1;
+     }
++    return false;
++  }
++  waiting_since = 0;
++
++  /* The commands of the turn: the server's (player 1) first, on both. */
++  std::vector<LanCommand> none;
++  auto mine = own_turns.find(turn);
++  const std::vector<LanCommand> &own =
++    (mine != own_turns.end()) ? mine->second : none;
++  const std::vector<LanCommand> &other =
++    (theirs != other_turns.end()) ? theirs->second.commands : none;
++  PGame game = interface->get_game();
++  if (game) {
++    for (const LanCommand &c : server ? own : other) c.apply(game.get());
++    for (const LanCommand &c : server ? other : own) c.apply(game.get());
++  }
++  if (mine != own_turns.end()) own_turns.erase(mine);
++  if (theirs != other_turns.end()) other_turns.erase(theirs);
++
++  /* What this side did meanwhile goes to the turn delay ahead. */
++  own_turns[turn + delay] = pending;
++  send_turn(turn + delay, pending);
++  pending.clear();
++  return true;
++}
++
++void
++LanGame::after_step() {
++  steps++;
++  if (link == nullptr) {
++    return;
+   }
+   if ((steps - 1) % kSumSteps == 0) {
+     PGame game = interface->get_game();
+     if (game) {
+       uint32_t sum = lan_checksum(game.get());
+       own_sums[steps] = sum;
+-      link->send(MessageSum, std::to_string(steps) + " " +
+-                             std::to_string(sum));
++      if (!gone) {
++        link->send(MessageSum, std::to_string(steps) + " " +
++                               std::to_string(sum));
++      }
+     }
+   }
+   compare();
+@@ -140,6 +249,11 @@ LanGame::draw(Frame *frame) {
+     text += link->get_peer_name();
+     int ms = link->get_ping_ms();
+     if (ms >= 0) text += " " + std::to_string(ms) + " ms";
++    if (waiting_since != 0 &&
++        EventLoop::get_instance().get_ticks() - waiting_since >
++          kShowWaitingMs) {
++      text += " WAITING";
++    }
+   }
+   if (out_of_step) {
+     text += " OUT OF STEP " + std::to_string(out_of_step_at);
+diff --git a/src/lan-game.h b/src/lan-game.h
+index 86347c4..df61534 100644
+--- a/src/lan-game.h
++++ b/src/lan-game.h
+@@ -25,9 +25,11 @@
+ #include <cstdint>
+ #include <map>
+ #include <string>
++#include <vector>
+ 
+ #include "src/mission.h"
+ #include "src/random.h"
++#include "src/lan-command.h"
+ 
+ class Interface;
+ class LanLink;
+@@ -37,24 +39,42 @@ class Frame;
+ /* Both computers make the same game from the same settings (SETUP: the
+    map, the players and the seed of the game's random numbers) and, as the
+    logic of the game depends on nothing else, it stays the same on both as
+-   long as the players' commands reach both at the same step (point 4 of
+-   the plan). To see that, both send a checksum of the game every
++   long as the players' commands are done on both at the same step.
++   Lockstep: the steps go in turns of kTurnSteps. What a player does in
++   turn t is sent to the other side and done on both at the start of turn
++   t + delay (delay turns from SETUP, chosen by the server from the time
++   there and back); a turn starts only when the other side's commands for
++   it are there. To see that the games agree, both send a checksum every
+    kSumSteps steps and compare it with their own of the same step. */
+ class LanGame {
+  public:
+   /* The frames of the game through the link. */
+   typedef enum Message {
+     MessageSetup = 0,  /* START GAME: the settings of the game */
+-    MessageSum = 1     /* step and checksum */
++    MessageSum = 1,    /* step and checksum */
++    MessageTurn = 2    /* turn, more frames follow, commands */
+   } Message;
+ 
+   static const unsigned int kSumSteps = 250;  /* 5 s */
++  static const unsigned int kTurnSteps = 4;   /* 80 ms */
+ 
+  protected:
++  typedef struct Turn {
++    std::vector<LanCommand> commands;
++    bool complete;
++  } Turn;
++
+   Interface *interface;
+   LanLink *link;
+   bool server;
++  unsigned int delay;
+   unsigned int steps;
++  /* This side's commands not yet sent, and those sent, by turn. */
++  std::vector<LanCommand> pending;
++  std::map<unsigned int, std::vector<LanCommand>> own_turns;
++  std::map<unsigned int, Turn> other_turns;
++  /* When the game started to wait for the other side, 0: not waiting. */
++  unsigned int waiting_since;
+   std::map<unsigned int, uint32_t> own_sums;
+   std::map<unsigned int, uint32_t> other_sums;
+   unsigned int last_checked;
+@@ -65,18 +85,29 @@ class LanGame {
+   unsigned int old_width, old_height;
+ 
+  public:
+-  LanGame(Interface *interface, LanLink *link, bool server);
++  LanGame(Interface *interface, LanLink *link, bool server,
++          unsigned int delay);
+   ~LanGame();
+ 
+   /* After the game started: the screen to at most 640x480. */
+   void started();
++  /* A command of this side, done on both at the start of a later turn. */
++  void queue(const LanCommand &command);
++  /* Before a step of the game: false while the other side's commands of
++     the turn are not there (the step waits). Does the commands of a turn
++     that starts. */
++  bool before_step();
+   /* After every step of the game. */
+-  void update();
++  void after_step();
+   /* The state of the link in the top left corner of the game. */
+   void draw(Frame *frame);
+   bool is_server() const { return server; }
++  /* The time there and back -> the turns a command waits (SETUP). */
++  static unsigned int delay_for_ping(int ms);
+ 
+  protected:
++  void receive();
++  void send_turn(unsigned int turn, const std::vector<LanCommand> &cmds);
+   void compare();
+ };
+ 
+diff --git a/src/lan-sync.cc b/src/lan-sync.cc
+index 502c2f6..8c45da9 100644
+--- a/src/lan-sync.cc
++++ b/src/lan-sync.cc
+@@ -29,16 +29,18 @@
+ #include "src/player.h"
+ 
+ /* The version of SETUP. */
+-static const int kSetupVersion = 1;
++static const int kSetupVersion = 2;
+ 
+-/* "1 <map size> <random base> <seed> <players>" and for each player
+-   "<face> <r> <g> <b> <intelligence> <supplies> <reproduction>". */
++/* "2 <map size> <random base> <seed> <delay turns> <players>" and for
++   each player "<face> <r> <g> <b> <intelligence> <supplies> <reproduction>". */
+ std::string
+-lan_encode_setup(PGameInfo mission, const Random &seed) {
++lan_encode_setup(PGameInfo mission, const Random &seed,
++                 unsigned int delay) {
+   std::ostringstream s;
+   s << kSetupVersion << ' ' << mission->get_map_size() << ' '
+     << std::string(mission->get_random_base()) << ' '
+-    << std::string(seed) << ' ' << mission->get_player_count();
++    << std::string(seed) << ' ' << delay << ' '
++    << mission->get_player_count();
+   for (size_t i = 0; i < mission->get_player_count(); i++) {
+     PPlayerInfo p = mission->get_player(i);
+     Player::Color c = p->get_color();
+@@ -51,15 +53,18 @@ lan_encode_setup(PGameInfo mission, const Random &seed) {
+ }
+ 
+ PGameInfo
+-lan_decode_setup(const std::string &data, Random *seed) {
++lan_decode_setup(const std::string &data, Random *seed,
++                 unsigned int *delay) {
+   std::istringstream s(data);
+   int version = 0;
+   unsigned int map_size = 0;
+   size_t count = 0;
+   std::string base, seed_text;
+-  s >> version >> map_size >> base >> seed_text >> count;
++  unsigned int turns = 0;
++  s >> version >> map_size >> base >> seed_text >> turns >> count;
+   if (!s || version != kSetupVersion || base.size() != 16 ||
+-      seed_text.size() != 16 || count < 2 || count > 4) {
++      seed_text.size() != 16 || turns < 1 || turns > 16 || count < 2 ||
++      count > 4) {
+     return nullptr;
+   }
+   PGameInfo mission = std::make_shared<GameInfo>(Random(base));
+@@ -76,6 +81,7 @@ lan_decode_setup(const std::string &data, Random *seed) {
+     mission->add_player(face, c, intelligence, supplies, reproduction);
+   }
+   *seed = Random(seed_text);
++  *delay = turns;
+   return mission;
+ }
+ 
+diff --git a/src/lan-sync.h b/src/lan-sync.h
+index 480bdf0..5a00ff5 100644
+--- a/src/lan-sync.h
++++ b/src/lan-sync.h
+@@ -30,12 +30,15 @@
+ 
+ class Game;
+ 
+-/* SETUP: the settings of the start box (map, players) and the seed of the
+-   game's random numbers, as text; both computers make their game from it,
+-   the server too (from its own text), so the two are the same. */
+-std::string lan_encode_setup(PGameInfo mission, const Random &seed);
++/* SETUP: the settings of the start box (map, players), the seed of the
++   game's random numbers and the turns a command waits (LanGame), as text;
++   both computers make their game from it, the server too (from its own
++   text), so the two are the same. */
++std::string lan_encode_setup(PGameInfo mission, const Random &seed,
++                             unsigned int delay);
+ /* nullptr: not a SETUP of this version. */
+-PGameInfo lan_decode_setup(const std::string &data, Random *seed);
++PGameInfo lan_decode_setup(const std::string &data, Random *seed,
++                           unsigned int *delay);
+ 
+ /* What the two games have to agree on at the same step. */
+ uint32_t lan_checksum(Game *game);
+diff --git a/src/popup.cc b/src/popup.cc
+index f981b07..832fd67 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -3035,42 +3035,16 @@ PopupBox::activate_sett_5_6_item(int index) {
+ 
+ void
+ PopupBox::move_sett_5_6_item(int up, int to_end) {
+-  int *prio = nullptr;
+-  int cur = -1;
+-
+-  if (interface->get_popup_box()->get_box() == TypeSett5) {
+-    prio = interface->get_player()->get_flag_prio();
+-    cur = current_sett_5_item-1;
+-  } else {
+-    prio = interface->get_player()->get_inventory_prio();
+-    cur = current_sett_6_item-1;
+-  }
+-
+-  int cur_value = prio[cur];
+-  int next_value = -1;
+-  if (up) {
+-    if (to_end) {
+-      next_value = 26;
+-    } else {
+-      next_value = cur_value + 1;
+-    }
+-  } else {
+-    if (to_end) {
+-      next_value = 1;
+-    } else {
+-      next_value = cur_value - 1;
+-    }
+-  }
++  bool flags = interface->get_popup_box()->get_box() == TypeSett5;
++  int cur = flags ? current_sett_5_item - 1 : current_sett_6_item - 1;
++  /* LanCommand::move_prio, through a command (LAN game). */
++  setting(LanCommand::SettingMovePrio, flags ? 0 : 1,
++          cur * 4 + (up ? 2 : 0) + (to_end ? 1 : 0));
++}
+ 
+-  if (next_value >= 1 && next_value < 27) {
+-    int delta = next_value > cur_value ? -1 : 1;
+-    int min = next_value > cur_value ? cur_value+1 : next_value;
+-    int max = next_value > cur_value ? next_value : cur_value-1;
+-    for (int i = 0; i < 26; i++) {
+-      if (prio[i] >= min && prio[i] <= max) prio[i] += delta;
+-    }
+-    prio[cur] = next_value;
+-  }
++void
++PopupBox::setting(int which, int b, int c) {
++  interface->command(LanCommand::TypeSetting, 0, which, b, c);
+ }
+ 
+ void
+@@ -3078,7 +3052,8 @@ PopupBox::handle_send_geologist() {
+   MapPos pos = interface->get_map_cursor_pos();
+   Flag *flag = interface->get_game()->get_flag_at_pos(pos);
+ 
+-  if (!interface->get_game()->send_geologist(flag)) {
++  if (flag == nullptr ||
++      !interface->command(LanCommand::TypeSendGeologist, pos)) {
+     play_sound(Audio::TypeSfxNotAccepted);
+   } else {
+     play_sound(Audio::TypeSfxAccepted);
+@@ -3088,7 +3063,7 @@ PopupBox::handle_send_geologist() {
+ 
+ void
+ PopupBox::sett_8_train(int number) {
+-  int r = interface->get_player()->promote_serfs_to_knights(number);
++  int r = interface->command(LanCommand::TypePromoteKnights, 0, number);
+ 
+   if (r == 0) {
+     play_sound(Audio::TypeSfxNotAccepted);
+@@ -3101,16 +3076,18 @@ void
+ PopupBox::set_inventory_resource_mode(int mode) {
+   Building *building = interface->get_game()->get_building(
+                                            interface->get_player()->temp_index);
+-  Inventory *inventory = building->get_inventory();
+-  interface->get_game()->set_inventory_resource_mode(inventory, mode);
++  if (building == nullptr || building->get_inventory() == nullptr) return;
++  interface->command(LanCommand::TypeInventoryResMode, 0,
++                     building->get_index(), mode);
+ }
+ 
+ void
+ PopupBox::set_inventory_serf_mode(int mode) {
+   Building *building = interface->get_game()->get_building(
+                                            interface->get_player()->temp_index);
+-  Inventory *inventory = building->get_inventory();
+-  interface->get_game()->set_inventory_serf_mode(inventory, mode);
++  if (building == nullptr || building->get_inventory() == nullptr) return;
++  interface->command(LanCommand::TypeInventorySerfMode, 0,
++                     building->get_index(), mode);
+ }
+ 
+ void
+@@ -3327,9 +3304,12 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     break;
+   case ACTION_START_ATTACK:
+     if (player->knights_attacking > 0) {
+-      if (player->attacking_building_count > 0) {
++      Building *target =
++        interface->get_game()->get_building(player->building_attacked);
++      if (player->attacking_building_count > 0 && target != nullptr) {
+         play_sound(Audio::TypeSfxAccepted);
+-        player->start_attack();
++        interface->command(LanCommand::TypeAttack, target->get_position(),
++                           player->knights_attacking);
+       }
+       interface->close_popup();
+     } else {
+@@ -3363,159 +3343,159 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     break;
+   case ACTION_SETT_1_ADJUST_STONEMINE:
+     interface->open_popup(TypeSett1);
+-    player->set_food_stonemine(gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingFoodStonemine, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_1_ADJUST_COALMINE:
+     interface->open_popup(TypeSett1);
+-    player->set_food_coalmine(gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingFoodCoalmine, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_1_ADJUST_IRONMINE:
+     interface->open_popup(TypeSett1);
+-    player->set_food_ironmine(gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingFoodIronmine, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_1_ADJUST_GOLDMINE:
+     interface->open_popup(TypeSett1);
+-    player->set_food_goldmine(gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingFoodGoldmine, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_2_ADJUST_CONSTRUCTION:
+     interface->open_popup(TypeSett2);
+-    player->set_planks_construction(gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingPlanksConstruction, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_2_ADJUST_BOATBUILDER:
+     interface->open_popup(TypeSett2);
+-    player->set_planks_boatbuilder(gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingPlanksBoatbuilder, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_2_ADJUST_TOOLMAKER_PLANKS:
+     interface->open_popup(TypeSett2);
+-    player->set_planks_toolmaker(gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingPlanksToolmaker, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_2_ADJUST_TOOLMAKER_STEEL:
+     interface->open_popup(TypeSett2);
+-    player->set_steel_toolmaker(gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingSteelToolmaker, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_2_ADJUST_WEAPONSMITH:
+     interface->open_popup(TypeSett2);
+-    player->set_steel_weaponsmith(gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingSteelWeaponsmith, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_3_ADJUST_STEELSMELTER:
+     interface->open_popup(TypeSett3);
+-    player->set_coal_steelsmelter(gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingCoalSteelsmelter, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_3_ADJUST_GOLDSMELTER:
+     interface->open_popup(TypeSett3);
+-    player->set_coal_goldsmelter(gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingCoalGoldsmelter, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_3_ADJUST_WEAPONSMITH:
+     interface->open_popup(TypeSett3);
+-    player->set_coal_weaponsmith(gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingCoalWeaponsmith, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_3_ADJUST_PIGFARM:
+     interface->open_popup(TypeSett3);
+-    player->set_wheat_pigfarm(gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingWheatPigfarm, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_3_ADJUST_MILL:
+     interface->open_popup(TypeSett3);
+-    player->set_wheat_mill(gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingWheatMill, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_KNIGHT_LEVEL_CLOSEST_MIN_DEC:
+-    player->change_knight_occupation(3, 0, -1);
++    setting(LanCommand::SettingKnightOccupation, 3, 0);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_KNIGHT_LEVEL_CLOSEST_MIN_INC:
+-    player->change_knight_occupation(3, 0, 1);
++    setting(LanCommand::SettingKnightOccupation, 3, 1);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_KNIGHT_LEVEL_CLOSEST_MAX_DEC:
+-    player->change_knight_occupation(3, 1, -1);
++    setting(LanCommand::SettingKnightOccupation, 3, 2);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_KNIGHT_LEVEL_CLOSEST_MAX_INC:
+-    player->change_knight_occupation(3, 1, 1);
++    setting(LanCommand::SettingKnightOccupation, 3, 3);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_KNIGHT_LEVEL_CLOSE_MIN_DEC:
+-    player->change_knight_occupation(2, 0, -1);
++    setting(LanCommand::SettingKnightOccupation, 2, 0);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_KNIGHT_LEVEL_CLOSE_MIN_INC:
+-    player->change_knight_occupation(2, 0, 1);
++    setting(LanCommand::SettingKnightOccupation, 2, 1);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_KNIGHT_LEVEL_CLOSE_MAX_DEC:
+-    player->change_knight_occupation(2, 1, -1);
++    setting(LanCommand::SettingKnightOccupation, 2, 2);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_KNIGHT_LEVEL_CLOSE_MAX_INC:
+-    player->change_knight_occupation(2, 1, 1);
++    setting(LanCommand::SettingKnightOccupation, 2, 3);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_KNIGHT_LEVEL_FAR_MIN_DEC:
+-    player->change_knight_occupation(1, 0, -1);
++    setting(LanCommand::SettingKnightOccupation, 1, 0);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_KNIGHT_LEVEL_FAR_MIN_INC:
+-    player->change_knight_occupation(1, 0, 1);
++    setting(LanCommand::SettingKnightOccupation, 1, 1);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_KNIGHT_LEVEL_FAR_MAX_DEC:
+-    player->change_knight_occupation(1, 1, -1);
++    setting(LanCommand::SettingKnightOccupation, 1, 2);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_KNIGHT_LEVEL_FAR_MAX_INC:
+-    player->change_knight_occupation(1, 1, 1);
++    setting(LanCommand::SettingKnightOccupation, 1, 3);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_KNIGHT_LEVEL_FARTHEST_MIN_DEC:
+-    player->change_knight_occupation(0, 0, -1);
++    setting(LanCommand::SettingKnightOccupation, 0, 0);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_KNIGHT_LEVEL_FARTHEST_MIN_INC:
+-    player->change_knight_occupation(0, 0, 1);
++    setting(LanCommand::SettingKnightOccupation, 0, 1);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_KNIGHT_LEVEL_FARTHEST_MAX_DEC:
+-    player->change_knight_occupation(0, 1, -1);
++    setting(LanCommand::SettingKnightOccupation, 0, 2);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_KNIGHT_LEVEL_FARTHEST_MAX_INC:
+-    player->change_knight_occupation(0, 1, 1);
++    setting(LanCommand::SettingKnightOccupation, 0, 3);
+     interface->open_popup(TypeKnightLevel);
+     break;
+   case ACTION_SETT_4_ADJUST_SHOVEL:
+     interface->open_popup(TypeSett4);
+-    player->set_tool_prio(0, gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingToolPrio, 0, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_4_ADJUST_HAMMER:
+     interface->open_popup(TypeSett4);
+-    player->set_tool_prio(1, gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingToolPrio, 1, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_4_ADJUST_AXE:
+     interface->open_popup(TypeSett4);
+-    player->set_tool_prio(5, gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingToolPrio, 5, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_4_ADJUST_SAW:
+     interface->open_popup(TypeSett4);
+-    player->set_tool_prio(6, gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingToolPrio, 6, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_4_ADJUST_SCYTHE:
+     interface->open_popup(TypeSett4);
+-    player->set_tool_prio(4, gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingToolPrio, 4, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_4_ADJUST_PICK:
+     interface->open_popup(TypeSett4);
+-    player->set_tool_prio(7, gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingToolPrio, 7, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_4_ADJUST_PINCER:
+     interface->open_popup(TypeSett4);
+-    player->set_tool_prio(8, gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingToolPrio, 8, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_4_ADJUST_CLEAVER:
+     interface->open_popup(TypeSett4);
+-    player->set_tool_prio(3, gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingToolPrio, 3, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_4_ADJUST_ROD:
+     interface->open_popup(TypeSett4);
+-    player->set_tool_prio(2, gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingToolPrio, 2, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_5_6_ITEM_1:
+   case ACTION_SETT_5_6_ITEM_2:
+@@ -3592,7 +3572,7 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     break;
+     /* TODO */
+   case ACTION_SETT_8_CYCLE:
+-    player->cycle_knights();
++    setting(LanCommand::SettingCycleKnights);
+     play_sound(Audio::TypeSfxAccepted);
+     break;
+   case ACTION_CLOSE_OPTIONS:
+@@ -3609,20 +3589,20 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     break;
+   case ACTION_DEFAULT_SETT_1:
+     interface->open_popup(TypeSett1);
+-    player->reset_food_priority();
++    setting(LanCommand::SettingResetFood);
+     break;
+   case ACTION_DEFAULT_SETT_2:
+     interface->open_popup(TypeSett2);
+-    player->reset_planks_priority();
+-    player->reset_steel_priority();
++    setting(LanCommand::SettingResetPlanks);
++    setting(LanCommand::SettingResetSteel);
+     break;
+   case ACTION_DEFAULT_SETT_5_6:
+     switch (box) {
+       case TypeSett5:
+-        player->reset_flag_priority();
++        setting(LanCommand::SettingResetFlagPrio);
+         break;
+       case TypeSett6:
+-        player->reset_inventory_priority();
++        setting(LanCommand::SettingResetInventoryPrio);
+         break;
+       default:
+         NOT_REACHED();
+@@ -3649,8 +3629,7 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     Flag *flag =
+            interface->get_game()->get_flag(interface->get_player()->temp_index);
+     if ((flag != nullptr) &&
+-        interface->get_game()->pull_roads_through_flag(flag->get_position(),
+-                                                    interface->get_player())) {
++        interface->command(LanCommand::TypePullRoads, flag->get_position())) {
+       play_sound(Audio::TypeSfxAccepted);
+     } else {
+       play_sound(Audio::TypeSfxNotAccepted);
+@@ -3682,7 +3661,7 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     set_box(TypeSett6);
+     break;
+   case ACTION_SETT_8_ADJUST_RATE:
+-    player->set_serf_to_knight_rate(gui_get_slider_click_value(x_));
++    setting(LanCommand::SettingSerfToKnightRate, gui_get_slider_click_value(x_));
+     break;
+   case ACTION_SETT_8_TRAIN_1:
+     sett_8_train(1);
+@@ -3698,15 +3677,15 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     break;
+   case ACTION_DEFAULT_SETT_3:
+     interface->open_popup(TypeSett3);
+-    player->reset_coal_priority();
+-    player->reset_wheat_priority();
++    setting(LanCommand::SettingResetCoal);
++    setting(LanCommand::SettingResetWheat);
+     break;
+   case ACTION_SETT_8_SET_COMBAT_MODE_WEAK:
+-    player->drop_send_strongest();
++    setting(LanCommand::SettingSendStrongest, 0);
+     play_sound(Audio::TypeSfxAccepted);
+     break;
+   case ACTION_SETT_8_SET_COMBAT_MODE_STRONG:
+-    player->set_send_strongest();
++    setting(LanCommand::SettingSendStrongest, 1);
+     play_sound(Audio::TypeSfxAccepted);
+     break;
+   case ACTION_ATTACKING_SELECT_ALL_1:
+@@ -3769,7 +3748,7 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     break;
+   case ACTION_DEFAULT_SETT_4:
+     interface->open_popup(TypeSett4);
+-    player->reset_tool_priority();
++    setting(LanCommand::SettingResetTools);
+     break;
+   case ACTION_SHOW_PLAYER_FACES:
+     set_box(TypePlayerFaces);
+@@ -3781,10 +3760,10 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     break;
+     /* TODO */
+   case ACTION_SETT_8_CASTLE_DEF_DEC:
+-    player->decrease_castle_knights_wanted();
++    setting(LanCommand::SettingCastleKnights, -1);
+     break;
+   case ACTION_SETT_8_CASTLE_DEF_INC:
+-    player->increase_castle_knights_wanted();
++    setting(LanCommand::SettingCastleKnights, 1);
+     break;
+   case ACTION_OPTIONS_MUSIC: {
+     Audio &audio = Audio::get_instance();
+@@ -4410,7 +4389,7 @@ PopupBox::handle_game_end_click(int /*cx*/, int /*cy*/) {
+   PGame game = interface->get_game();
+   Interface *iface = interface;
+   iface->close_popup();
+-  if (game->is_paused()) {
++  if (game->is_paused() && iface->get_lan_game() == nullptr) {
+     game->pause();
+   }
+   iface->open_popup(TypeQuitConfirm);
+diff --git a/src/popup.h b/src/popup.h
+index 857de90..9436d59 100644
+--- a/src/popup.h
++++ b/src/popup.h
+@@ -255,6 +255,8 @@ class PopupBox : public GuiObject {
+   void draw_save_box();
+   void activate_sett_5_6_item(int index);
+   void move_sett_5_6_item(int up, int to_end);
++  /* A setting of the player (LanCommand::Setting), as a command. */
++  void setting(int which, int b = 0, int c = 0);
+   void handle_send_geologist();
+   void sett_8_train(int number);
+   void set_inventory_resource_mode(int mode);
+diff --git a/src/viewport.cc b/src/viewport.cc
+index 7526d61..cd99011 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -2588,12 +2588,7 @@ Viewport::handle_dbl_click(int lx, int ly, Event::Button button) {
+         play_sound(Audio::TypeSfxNotAccepted);
+       }
+     } else {
+-      bool r = interface->get_game()->build_flag(
+-                                                interface->get_map_cursor_pos(),
+-                                                 player);
+-      if (r) {
+-        interface->build_road();
+-      } else {
++      if (!interface->build_road_to_new_flag()) {
+         play_sound(Audio::TypeSfxNotAccepted);
+       }
+     }
+-- 
+2.45.2.windows.1
+

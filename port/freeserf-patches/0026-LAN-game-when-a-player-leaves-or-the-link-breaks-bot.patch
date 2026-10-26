@@ -1,0 +1,152 @@
+From 0be04016a8e147fb70d9fdb6ca9cc41d31d393da Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Mon, 26 Oct 2026 16:32:42 +0100
+Subject: [PATCH 26/27] LAN game: when a player leaves or the link breaks, both
+ games end with a notice
+
+---
+ src/lan-game.cc | 58 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ src/lan-game.h  | 16 +++++++++++++-
+ 2 files changed, 72 insertions(+), 2 deletions(-)
+
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index 9ede90d..36cfb24 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -51,12 +51,22 @@ LanGame::LanGame(Interface *_interface, LanLink *_link, bool _server,
+   , out_of_step(false)
+   , out_of_step_at(0)
+   , gone(false)
++  , other_quit(false)
++  , end_seen(false)
++  , peer_name(_link != nullptr ? _link->get_peer_name() : "")
++  , notice_until(0)
++  , leave_at(0)
+   , old_width(0)
+   , old_height(0) {
+ }
+ 
+ LanGame::~LanGame() {
+   if (link != nullptr) {
++    /* The other side learns that this one left (sent before the BYE of
++       close()). */
++    if (!gone && !other_quit) {
++      link->send(MessageQuit, std::string());
++    }
+     link->close();
+   }
+   if (old_width != 0) {
+@@ -128,7 +138,9 @@ LanGame::receive() {
+   int type = 0;
+   std::string data;
+   while (link->receive(&type, &data)) {
+-    if (type == MessageSum) {
++    if (type == MessageQuit) {
++      other_quit = true;
++    } else if (type == MessageSum) {
+       std::istringstream s(data);
+       unsigned int step = 0;
+       uint32_t sum = 0;
+@@ -152,9 +164,39 @@ LanGame::receive() {
+   }
+ }
+ 
++void
++LanGame::other_side_ended() {
++  end_seen = true;
++  unsigned int now = EventLoop::get_instance().get_ticks();
++  std::string who = peer_name.empty() ? std::string("The other player")
++                                      : peer_name;
++  /* Both sides end: the game of one player alone would no longer be the
++     LAN game (a save of it could not go on together). */
++  if (other_quit) {
++    notice = who + (server ? " left the game." : " ended the game.");
++  } else {
++    notice = "The connection to " + who + " is lost.";
++  }
++  notice_until = now + 4000;
++  leave_at = now + 4000;
++}
++
+ bool
+ LanGame::before_step() {
+   receive();
++  if (!end_seen && (gone || other_quit)) {
++    gone = true;
++    other_side_ended();
++  }
++  if (leave_at != 0) {
++    /* The game stands while the notice is up, then the start menu. */
++    if (static_cast<int>(EventLoop::get_instance().get_ticks() - leave_at)
++        >= 0) {
++      leave_at = 0;
++      interface->exit_to_start_menu();
++    }
++    return false;
++  }
+   if (steps % kTurnSteps != 0) {
+     return true;
+   }
+@@ -265,4 +307,18 @@ LanGame::draw(Frame *frame) {
+   frame->draw_string(2, 14, text,
+                      out_of_step ? Color(0xff, 0x40, 0x40) : Color::green,
+                      Color::transparent);
++
++  if (!notice.empty() &&
++      static_cast<int>(EventLoop::get_instance().get_ticks() - notice_until)
++      < 0) {
++    unsigned int sw = 0, sh = 0;
++    Graphics::get_instance().get_resolution(&sw, &sh);
++    int nw = frame->get_string_width(notice) + 16;
++    int x = (static_cast<int>(sw) - nw) / 2;
++    int y = static_cast<int>(sh) / 2 - 40;
++    frame->fill_rect(x, y, nw, 20, Color::black);
++    frame->draw_rect(x, y, nw, 20, Color(0xdd, 0xdd, 0x00));
++    frame->draw_string(x + 8, y + 6, notice, Color(0xdd, 0xdd, 0x00),
++                       Color::transparent);
++  }
+ }
+diff --git a/src/lan-game.h b/src/lan-game.h
+index df61534..0e1cffc 100644
+--- a/src/lan-game.h
++++ b/src/lan-game.h
+@@ -52,7 +52,8 @@ class LanGame {
+   typedef enum Message {
+     MessageSetup = 0,  /* START GAME: the settings of the game */
+     MessageSum = 1,    /* step and checksum */
+-    MessageTurn = 2    /* turn, more frames follow, commands */
++    MessageTurn = 2,   /* turn, more frames follow, commands */
++    MessageQuit = 3    /* the player left the game (exit, quit) */
+   } Message;
+ 
+   static const unsigned int kSumSteps = 250;  /* 5 s */
+@@ -81,6 +82,16 @@ class LanGame {
+   bool out_of_step;
+   unsigned int out_of_step_at;
+   bool gone;
++  /* The other side said it left the game (else the link broke). */
++  bool other_quit;
++  /* gone or other_quit seen: the notice is up. */
++  bool end_seen;
++  std::string peer_name;
++  /* A notice in the middle of the screen until notice_until, then back
++     to the start menu at leave_at (0: not). */
++  std::string notice;
++  unsigned int notice_until;
++  unsigned int leave_at;
+   /* The mode before a LAN game made it 640x480; 0: not changed. */
+   unsigned int old_width, old_height;
+ 
+@@ -109,6 +120,9 @@ class LanGame {
+   void receive();
+   void send_turn(unsigned int turn, const std::vector<LanCommand> &cmds);
+   void compare();
++  /* The other side left or the link broke: a notice, then the start
++     menu (on both sides). */
++  void other_side_ended();
+ };
+ 
+ #endif  // SRC_LAN_GAME_H_
+-- 
+2.45.2.windows.1
+

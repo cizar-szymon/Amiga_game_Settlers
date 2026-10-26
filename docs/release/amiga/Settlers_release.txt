@@ -6,6 +6,32 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.72 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Options -> Advanced: "Sand on new maps" - ilosc piasku (pustyn) na
+  nowych mapach od 0% (bez pustyn) do 100% (jak w oryginale), co 10%.
+  Misje bez zmian; w grze LAN obowiazuje ustawienie serwera.
+- Tempo gry x0.5: klawisz - schodzi ponizej normalnego tempa.
+
+
+0.71 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN: gdy jeden z graczy konczy gre (lub polaczenie sie zerwie),
+  drugi widzi komunikat i po 4 s wraca do menu startowego.
+
+
+0.69 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN, krok 4: gra przez siec. Wszystko, co gracz robi (budowa,
+  drogi, burzenie, ustawienia, atak, pauza, tempo), wykonuje sie na obu
+  Amigach w tym samym momencie (po ok. 0,16 s). Gdy brakuje polecen
+  drugiej strony, gra czeka (napis WAITING). Laczenie nowej drogi z
+  istniejaca droga specjalnym kliknieciem w grze LAN nie dziala.
+
+
 0.68 (26.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 

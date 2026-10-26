@@ -57,7 +57,8 @@ if(AMIGA_CPU)
   # The network calls of a LAN game from the Shell.
   add_executable(lantest lantest.c amiga_net.c amiga_time.c)
   # The start of a LAN game without the network: the same game twice?
-  add_executable(lansim lansim.cc ${FS}/lan-sync.cc ${PLATFORM_SRC})
+  add_executable(lansim lansim.cc ${FS}/lan-sync.cc ${FS}/lan-command.cc
+                ${FS}/pathfinder.cc ${PLATFORM_SRC})
   target_link_libraries(lansim fs_game fs_tools)
 endif()
 
@@ -66,7 +67,7 @@ if(AMIGA_CPU)
   add_library(fs_gui STATIC
     settings-amiga.cc video-amiga.cc event_loop-amiga.cc
     amiga_screen.c amiga_time.c amiga_sysinfo.c amiga-box.cc lan-amiga.cc amiga_net.c
-    ${FS}/pathfinder.cc ${FS}/advanced-box.cc ${FS}/keys-box.cc ${FS}/lan-box.cc ${FS}/lan-game.cc ${FS}/lan-sync.cc ${FS}/box-frame.cc
+    ${FS}/pathfinder.cc ${FS}/advanced-box.cc ${FS}/keys-box.cc ${FS}/lan-box.cc ${FS}/lan-game.cc ${FS}/lan-sync.cc ${FS}/lan-command.cc ${FS}/box-frame.cc
     ${FS}/gfx.cc ${FS}/viewport.cc ${FS}/minimap.cc ${FS}/interface.cc
     ${FS}/gui.cc ${FS}/popup.cc ${FS}/game-init.cc ${FS}/notification.cc
     ${FS}/panel.cc ${FS}/version.cc ${FS}/text-input.cc ${FS}/list.cc

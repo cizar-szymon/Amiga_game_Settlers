@@ -705,7 +705,7 @@ i WinUAE; punkt 1 to same okna, bez sieci.
 | 1. Okna | ✅ (0.62–0.66, ocenione przez użytkownika) | typ gry LAN w oknie startu, okno START SERVER / JOIN SERVER |
 | 2. Połączenie | ✅ (0.67; z PC jako SLAVE sprawdzone w grze 26.10.2026) | `port/lan-amiga.cc` (bsdsocket): START SERVER nasłuchuje TCP 6810 i rozgłasza się UDP; dołączający znajduje go (SEARCH) albo wpisuje adres; powitanie z wersją; dołączający pojawia się w oknie serwera, serwer naciska START GAME |
 | 3. Start wspólnej gry | ✅ (0.68; Amiga 2 + WinUAE sprawdzone w grze 26.10.2026) | SETUP (~100 B) z ziarnem liczb losowych (Freeserf brał je z zegara), obie strony budują grę same; dołączający gra graczem 2; 640×480; suma kontrolna co 5 s |
-| 4. Lockstep | ⏳ | polecenia graczy jako komunikaty w tym samym ticku, tempo z sieci, suma kontrolna co N ticków, rozłączenie |
+| 4. Lockstep | ✅ (0.69; Amiga 2 + WinUAE w grze, 26.10.2026) | polecenia graczy jako komunikaty w tym samym ticku, tempo z sieci, suma kontrolna co N ticków, rozłączenie |
 | 5. Wydanie | ⏳ | 040 i 060, opisy, scalenie do `amiga-port` |
 
 **Punkt 1 (0.62, łatka `0023`).**
@@ -815,7 +815,7 @@ Testy (26.10.2026, Amiga 2 + PC, `port/lantest.c` z tym samym procesem co gra,
   zbuduje – AI gra tak samo po obu stronach. Pierwsze kliknięcie (np. zamek) je rozjedzie.
 - **`lansim`** (port, bez sieci): gra z SETUP (2 ludzi + 2 AI, mapa 4), 3000 kroków. Na Amidze 2
   dwa uruchomienia: identyczne sumy LAN i CRC32 całego zapisu w krokach 1, 501 … 3000.
-  Na Amidze 1 do sprawdzenia (VPN był rozłączony).
+  Amiga 1 (Warp1260, 0.69): te same sumy co Amiga 2 i WinUAE – trzy maszyny zgodne.
 - `lansim` w WinUAE (68060 bez JIT, `C:\amiga-dev\winuae\Settlers_A1200_OS32_net.uae`, wolumin
   `SETTLERS:` = `build/amiga` z kopią `data/`): te same sumy co Amiga 2 we wszystkich punktach.
 - **Test w grze (26.10.2026):** MASTER na Amidze 2, SLAVE w WinUAE na PC (zapora Windows: reguły
@@ -825,6 +825,50 @@ Testy (26.10.2026, Amiga 2 + PC, `port/lantest.c` z tym samym procesem co gra,
   zgodnie z oczekiwaniem (polecenia graczy to punkt 4).
 - `tools/lan_peer.py connect … --echo-sums` odsyła sumy serwera: test napisu w grze bez drugiej
   Amigi.
+
+**Punkt 4 (0.69): lockstep** (łatka `0025`).
+- `src/lan-command.cc`: `LanCommand` – wszystko, co gracz zmienia w grze: flaga, droga (z flagą na
+  końcu albo bez), budynek, zamiana budynku, zamek, burzenie flagi i budynku, łączenie dróg przez
+  flagę, geolog, tryby magazynu, szkolenie rycerzy, atak (rycerze liczeni od nowa przy wykonaniu,
+  na obu Amigach), pauza, tempo i ustawienia graczy (suwaki towarów i narzędzi, obsada budynków
+  wojskowych, rycerze w zamku, najsilniejsi/najsłabsi, resety, kolejność transportu flag
+  i magazynów). Zapis: typ, gracz, pozycja, 3 liczby (18 B); droga + kierunki po 2 w bajcie.
+- `Interface::command`: w grze na jednej Amidze wykonuje od razu (te same funkcje gry co dotąd),
+  w grze LAN dodaje do kolejki `LanGame`. Wywołania w `interface.cc`, `popup.cc`, `viewport.cc`
+  idą przez nie; w LAN interfejs sprawdza przed wysłaniem `can_build_*` (dźwięk „nie” od razu).
+- `LanGame`: tury po 4 kroki (80 ms). Polecenia z tury t idą jako ramka TURN (numer tury, „więcej”,
+  polecenia; dzielona, gdy nie mieści się w 250 B) i wykonują się na obu Amigach na początku tury
+  t + opóźnienie: najpierw serwera (gracz 1), potem dołączającego. Opóźnienie wybiera serwer przy
+  START GAME z czasu odpowiedzi: 1 + (ping + 40) / 80 tur, od 2 do 8 (21 ms → 2 tury = 160 ms);
+  jest w SETUP (wersja 2). Bez TURN drugiej strony krok czeka (`Interface::update` wraca), po
+  300 ms w linii LAN „WAITING”. Po rozłączeniu gra idzie dalej sama.
+- Celowo inaczej w LAN: łączenie nowej drogi z istniejącą drogą specjalnym kliknięciem wyłączone
+  (flaga powstałaby turę później); koniec gry bez automatycznej pauzy (zależałaby od okien
+  otwartych u jednego gracza). Lokalne zostają: wiadomości i timery (tylko komunikaty dla
+  gracza), podgląd ataku (pola liczone przy wykonaniu od nowa).
+- `lansim -l`: dwie gry w lockstepie (serwer i dołączający), każdy gracz stawia zamek, tartak,
+  drogę i zmienia ustawienia; polecenia kodowane i dekodowane jak w sieci. WinUAE: 10/10 poleceń
+  wykonanych w obu grach, sumy LAN i CRC32 całego zapisu identyczne w 13 punktach (3000 kroków).
+  Amiga 1: te same wartości co WinUAE (krok 3000: LAN a5b07adf, zapis bfd8db93).
+- **Test w grze (26.10.2026): Amiga 2 (MASTER) + WinUAE (SLAVE) – działa** (zamki i budowa po obu
+  stronach, gry zgodne); Amiga 1 (MASTER, przez VPN) + WinUAE – działa, pauza po obu stronach.
+- 0.70 (uwaga użytkownika: klient nie wiedział, że MASTER zamknął grę): wychodzący z gry (Exit,
+  Quit, Ctrl-C) wysyła ramkę QUIT przed BYE. Dołączający po wyjściu serwera albo zerwaniu
+  połączenia widzi na środku ekranu „MASTER ended the game.” / „The connection to … is lost.”,
+  gra stoi 4 s i wraca do menu startowego. 0.71 (uwaga użytkownika: zapis gry jednej strony
+  rozjechałby wspólną grę): tak samo u serwera – „SLAVE left the game.”, 4 s, menu startowe.
+  Gra LAN kończy się zawsze po obu stronach.
+
+**0.72: piasek na nowych mapach, tempo ×0,5** (prośby użytkownika; łatka `0027`; gra LAN działała
+u użytkownika długo bez rozjazdu – „same” przy bardzo dużym numerze kroku).
+- Options → Advanced: „Sand on new maps” 0–100% (kliknięcie: −10%, po 0% znowu 100%; `[advanced]
+  sand` w `freeserf.ini`). `ClassicMapGenerator::set_desert_percent`: pustynia rysowana tylko
+  z wewnętrznej części spirali (256 × % pól zamiast 256); liczby losowe brane jak bez zmiany, więc
+  reszta mapy zostaje ta sama, a przy 100% mapa jest identyczna z oryginałem (`lansim -l`: te same
+  sumy co w 0.69). Działa dla New game i LAN game (też podgląd mapy, odświeżany po zmianie), misje
+  i tutoriale bez zmian. W grze LAN wartość serwera idzie w SETUP (wersja 3).
+- `lansim -s PCT` liczy trójkąty pustyni; mapa 6: 100% 6808, 50% 3153, 25% 1106, 0% 0 z 65536.
+- Tempo: klawisz − schodzi do ×0,5 (`game_speed` 1), + wraca; napis X0.5 w prawym górnym rogu.
 
 **Raspberry Pi 400 z Amiberry** (prośba użytkownika, 26.10.2026): ten sam program Amigi w emulatorze –
 gra LAN Amiga ↔ Pi bez rozjazdów, jak z WinUAE. Pliki w `tools/pi/`: konfiguracja Amiberry
