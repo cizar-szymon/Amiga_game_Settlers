@@ -1,0 +1,96 @@
+# The Settlers for the Amiga with a graphics card
+
+The Settlers (Die Siedler, Blue Byte 1993) on an Amiga with a Picasso96 graphics
+card and a 68040/68060, at up to 800×600. It is a port of
+[Freeserf](https://github.com/freeserf/freeserf), the open source version of the
+game (GPL-3.0), with a native Amiga backend (no SDL): an 8-bit Picasso96 screen,
+Paula sound, the game's own music module and the original Amiga graphics.
+
+**Current version: 0.56 (beta, release candidate)** – the archive is
+[`releases/amiga/Settlers-0.56.lha`](releases/amiga/Settlers-0.56.lha).
+
+![The game at 640×480 on a 68060](docs/shots/v1.png)
+
+## Requirements
+
+- AmigaOS 3.x (3.2 for the mouse wheel), a Picasso96 card with 8-bit modes (e.g. Warp)
+- 68040 or 68060 (tested on Warp1260 and Warp7060), about 32 MB Fast RAM
+- **the original The Settlers Amiga disks** – the game data is not part of this
+  repository or of the archive
+
+## Getting started
+
+1. Unpack `Settlers-0.56.lha` to your hard disk.
+2. Copy from the original disks to `Settlers/data/amiga`:
+   from disk 3 `gfxheader`, `gfxfast`, `gfxchip`, `sounds`, `extro`;
+   from disk 2 `gfxpics`, `music`.
+3. Double-click the Settlers icon.
+
+The full description for players, the keys and the icon settings (Tool Types):
+[`docs/release/amiga/Settlers_en.txt`](docs/release/amiga/Settlers_en.txt);
+the changes of each version:
+[`Settlers_release_en.txt`](docs/release/amiga/Settlers_release_en.txt).
+
+## Keys
+
+| Key | |
+|---|---|
+| mouse | everything in the game, as in the original; right button + move scrolls |
+| cursor keys | scroll the map |
+| `+` / `-` / `0` | game speed x1.5 … x3, slower, normal (shown top right) |
+| `Z`, mouse wheel | the map magnified x2 (x3 at 800×600) around the middle of the screen |
+| `P` | pause (PAUSE on the screen) |
+| `M` / `S` | music / sound effects on and off |
+| `I` | the keys of the game (also the I button of the settings box) |
+| `Ctrl`+`Z` | quick save |
+| `F9` / `F10` | screenshot / game state for a bug report (in `RAM:`) |
+| `Shift`+`Esc`, `Ctrl`+`Q` | quit |
+
+## Speed (68060, Warp1260 / Warp7060)
+
+| Scene | 640×480 | 800×600 |
+|---|---|---|
+| a game with many roads and serfs | ~45 fps (640×400) | ~32 fps, x2 zoom 41, x3 50 |
+| the test scene | 50 fps (the limit) | 38 fps |
+
+How it got there – terrain tiles in the card's memory copied by its blitter,
+sprites as runs, paths and borders drawn into the terrain tiles, only changed
+parts of a magnified view sent to the card – is described with every measurement
+in [`docs/PORTING.md`](docs/PORTING.md) (Polish) and
+[`docs/Settlers-raport.pdf`](docs/Settlers-raport.pdf).
+
+## Building
+
+The Amiga build uses bebbo's m68k-amigaos-gcc 6.5 in Docker
+(`sacredbanana/amiga-compiler:m68k-amigaos`) and CMake:
+
+```
+powershell -File docker\build.ps1      ->  build/amiga/Settlers
+```
+
+Freeserf is not part of this repository: the build expects a copy in `freeserf/`
+(github.com/freeserf/freeserf, commit 9b9270e) with the patches of
+[`port/freeserf-patches/`](port/freeserf-patches) applied (`git am`). The Amiga
+backend and the tools are in [`port/`](port), the test and measuring scripts
+(AmiAgent, a remote control for the Amiga) in [`tools/`](tools). The notes for
+developers: [`docs/release/amiga/Settlers_dev_en.txt`](docs/release/amiga/Settlers_dev_en.txt).
+
+## Licence and credits
+
+- Freeserf and this port: **GPL-3.0** (`COPYING` in the archive).
+- Music player [micromod](https://github.com/martincameron/micromod) by Martin
+  Cameron: BSD 3-Clause.
+- The Settlers © Blue Byte. The game data (graphics, sounds, music) comes from
+  your own original disks and is not distributed here.
+
+---
+
+## Po polsku
+
+Port The Settlers (Freeserf) na Amigę z kartą graficzną Picasso96 i procesorem
+68040/68060, rozdzielczości do 800×600, dźwięk przez Paulę, muzyka z oryginalnych
+dyskietek. Dane gry trzeba skopiować z własnych dyskietek do `Settlers/data/amiga`
+(lista plików wyżej). Opis dla graczy po polsku:
+[`docs/release/amiga/Settlers.txt`](docs/release/amiga/Settlers.txt), historia wersji:
+[`Settlers_release.txt`](docs/release/amiga/Settlers_release.txt), pełny opis portu
+i pomiarów: [`docs/PORTING.md`](docs/PORTING.md).
