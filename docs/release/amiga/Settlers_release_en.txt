@@ -6,6 +6,74 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.91 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Fix: the Quit button of the start box answered only in its upper
+  half - now on all of it.
+
+
+0.90 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- The wild boar's voice lower still.
+
+
+0.89 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Fix: the wild boar could not be heard (other sounds held the channels).
+
+
+0.88 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- The wild boar grunts in a lower, deeper voice than a pig.
+
+
+0.87 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- More wild boars in the woods (they were too rare).
+
+
+0.86 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Wild boars: now and then, where trees stand around, a dark brown boar
+  walks and grunts (Options -> Advanced -> VIDEO "Wild boars").
+- Smaller letters on the VIDEO and AUDIO buttons.
+
+
+0.85 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- The Advanced box: VIDEO and AUDIO next to EXIT. VIDEO opens a "Video"
+  box with the sand, rocks and kinds of trees (moved from Advanced);
+  AUDIO an "Audio" box, empty for now.
+
+
+0.84 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Birch: the trunk no longer shows through the swaying crown (flicker).
+
+
+0.83 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- A new birch: a white trunk with black marks and an oval crown (own
+  drawing in the style of the game's trees) instead of a recoloured tree.
+
+
+0.82 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- More kinds of trees: mirrored trees and birches (Options -> Advanced
+  "More kinds of trees", on at first). Only the look - the woodcutter
+  fells them as other trees; no cost in speed.
+
+
 0.81 (26.10.2026, LAN branch - test build)
 -------------------------------------------
 

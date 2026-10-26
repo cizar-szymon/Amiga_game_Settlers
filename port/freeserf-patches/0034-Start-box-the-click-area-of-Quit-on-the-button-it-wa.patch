@@ -1,0 +1,64 @@
+From cd417bf54a70785265ca295c594759c32777687d Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Tue, 27 Oct 2026 00:15:04 +0100
+Subject: [PATCH 34/34] Start box: the click area of Quit on the button (it was
+ 8 pixels higher)
+
+---
+ src/game-init.cc | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/src/game-init.cc b/src/game-init.cc
+index dd5df78..aaf6c80 100644
+--- a/src/game-init.cc
++++ b/src/game-init.cc
+@@ -360,7 +360,9 @@ GameInitBox::internal_draw() {
+   /* Display program name and version in caption */
+   draw_box_string(0, 212, FREESERF_VERSION);
+ 
+-  draw_box_icon(36, 208, 286); /* quit, as wide as the Quit of the game */
++  /* Quit, as wide as the Quit of the game; at 308,224 of the box (its
++     click area too - it was at 216, only the upper half answered). */
++  draw_box_icon(36, 208, 286);
+ }
+ 
+ void
+@@ -605,7 +607,7 @@ GameInitBox::handle_click_left(int cx, int cy) {
+     ActionShowOptions,     308,  16, 32, 32,
+     ActionIncrement,       284,  16, 16, 16,
+     ActionDecrement,       284,  32, 16, 16,
+-    ActionClose,           308, 216, 32, 16,
++    ActionClose,           308, 224, 32, 16,
+     -1
+   };
+ 
+@@ -617,7 +619,7 @@ GameInitBox::handle_click_left(int cx, int cy) {
+     ActionDecrement,       220,  16,  8,  8,
+     ActionGenRandom,       244,  16, 16,  8,
+     ActionApplyRandom ,    244,  24, 16, 24,
+-    ActionClose,           308, 216, 32, 16,
++    ActionClose,           308, 224, 32, 16,
+     -1
+   };
+ 
+@@ -625,7 +627,7 @@ GameInitBox::handle_click_left(int cx, int cy) {
+     ActionStartGame,        20,  16, 32, 32,
+     ActionToggleGameType,   60,  16, 32, 32,
+     ActionShowOptions,     308,  16, 32, 32,
+-    ActionClose,           308, 216, 32, 16,
++    ActionClose,           308, 224, 32, 16,
+     -1
+   };
+   const int clickmap_load_delete[] = {
+@@ -633,7 +635,7 @@ GameInitBox::handle_click_left(int cx, int cy) {
+     ActionToggleGameType,   60,  16, 32, 32,
+     ActionShowOptions,     308,  16, 32, 32,
+     ActionDeleteSave, kDeleteX, kDeleteY, kDeleteWidth, 16,
+-    ActionClose,           308, 216, 32, 16,
++    ActionClose,           308, 224, 32, 16,
+     -1
+   };
+   const int clickmap_load_question[] = {
+-- 
+2.45.2.windows.1
+

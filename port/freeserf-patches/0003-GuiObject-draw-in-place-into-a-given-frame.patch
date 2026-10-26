@@ -1,7 +1,7 @@
 From 0aef36e7047355e4189e99d0b99e49d29a77617a Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Sun, 25 Oct 2026 16:44:51 +0100
-Subject: [PATCH 03/30] GuiObject: draw in place into a given frame
+Subject: [PATCH 03/34] GuiObject: draw in place into a given frame
 
 use_frame() makes an object draw straight into a target frame instead of
 a frame of its own that is then copied there (the interface on the

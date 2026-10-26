@@ -1,0 +1,238 @@
+From 95df07d53f3f34a4f0115b9239accc5d45a2ac7c Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Mon, 26 Oct 2026 23:13:23 +0100
+Subject: [PATCH 31/34] More kinds of trees (Advanced): mirrored trees and
+ birches (own pictures), by the place, only the picture
+
+---
+ src/advanced-box.cc |  3 +++
+ src/advanced-box.h  |  4 ++--
+ src/gfx.cc          | 56 ++++++++++++++++++++++++++++++++++++++++++++-
+ src/gfx.h           | 11 +++++++++
+ src/interface.cc    |  3 +++
+ src/interface.h     |  4 ++++
+ src/viewport.cc     | 17 ++++++++++++++
+ 7 files changed, 95 insertions(+), 3 deletions(-)
+
+diff --git a/src/advanced-box.cc b/src/advanced-box.cc
+index a967370..030e89f 100644
+--- a/src/advanced-box.cc
++++ b/src/advanced-box.cc
+@@ -126,6 +126,9 @@ static const Option options[] = {
+   /* Fewer brown boulders on new maps. */
+   { N_("Rocks on new maps"), nullptr, rocks_text, &Interface::more_rocks,
+     &Interface::less_rocks },
++  /* Mirrored trees and birches, only the picture. */
++  { N_("More kinds of trees"), &Interface::get_tree_variety, nullptr,
++    &Interface::switch_tree_variety },
+ #else
+   /* With the data of several versions installed. */
+   { N_("Graphics"), nullptr, graphics_text,
+diff --git a/src/advanced-box.h b/src/advanced-box.h
+index 6f8d790..f7a6206 100644
+--- a/src/advanced-box.h
++++ b/src/advanced-box.h
+@@ -31,9 +31,9 @@ class Interface;
+ class AdvancedBox : public GuiObject {
+  public:
+ #ifdef __AMIGA__
+-  /* Amiga port: seven options; small enough for a 320x200 screen. */
++  /* Amiga port: eight options; fits the smallest mode, 400x300. */
+   static const int kWidth = 312;
+-  static const int kHeight = 192;
++  static const int kHeight = 212;
+ #else
+   static const int kWidth = 360;
+   static const int kHeight = 256;
+diff --git a/src/gfx.cc b/src/gfx.cc
+index cd6cfae..813c71e 100644
+--- a/src/gfx.cc
++++ b/src/gfx.cc
+@@ -21,6 +21,8 @@
+ 
+ #include "src/gfx.h"
+ 
++#include <algorithm>
++#include <cstring>
+ #include <functional>
+ #include <memory>
+ #include <string>
+@@ -28,10 +30,10 @@
+ #include <unordered_map>
+ #include <utility>
+ #include <vector>
+-#include <algorithm>
+ 
+ #include "src/log.h"
+ #include "src/data.h"
++#include "src/data-source.h"
+ #include "src/font.h"
+ #include "src/sprite-file.h"
+ #include "src/video.h"
+@@ -221,6 +223,58 @@ Frame::draw_sprite(int x, int y, Data::Resource res, unsigned int index,
+ }
+ 
+ 
++void
++Frame::draw_sprite_variant(int x, int y, Data::Resource res,
++                           unsigned int index, int variant) {
++  if (variant == VariantNormal) {
++    draw_sprite(x, y, res, index, true);
++    return;
++  }
++  Data::Sprite::Color none = {0, 0, 0, 0};
++  /* The mask fields of the id are free for the sprites of the map. */
++  uint64_t id = Data::Sprite::create_id(res, index, 0xf0 + variant, 0, none);
++  Image *image = Image::get_cached_image(id);
++  if (image == nullptr) {
++    Data::PSprite base = data_source->get_sprite(res, index, none);
++    if (!base) return;
++    /* A birch: its own picture of the frame of the wind (resources,
++       tools/make_birch.py), of the size of the game's tree and put where
++       that tree is. */
++    Data::PSprite pixels = base;
++    if (variant & VariantBirch) {
++      PSpriteFile birch = std::make_shared<SpriteFile>();
++      if (!birch->load_resource("birch" + std::to_string(index & 7) +
++                                ".png") ||
++          birch->get_width() != base->get_width() ||
++          birch->get_height() != base->get_height()) {
++        draw_sprite(x, y, res, index, true);
++        return;
++      }
++      pixels = birch;
++    }
++    /* A copy (the constructor takes the size and offsets, not the
++       pixels). */
++    std::shared_ptr<SpriteBase> s = std::make_shared<SpriteBase>(base);
++    size_t w = s->get_width(), h = s->get_height();
++    std::memcpy(s->get_data(), pixels->get_data(),
++                w * h * sizeof(Data::Sprite::Color));
++    Data::Sprite::Color *px =
++      reinterpret_cast<Data::Sprite::Color *>(s->get_data());
++    if (variant & VariantMirrored) {
++      for (size_t row = 0; row < h; row++) {
++        std::reverse(px + row * w, px + row * w + w);
++      }
++      /* Around the place it stands on: the trunk stays where it was. */
++      s->set_offset(-s->get_offset_x() - static_cast<int>(w),
++                    s->get_offset_y());
++    }
++    image = new Image(video, s);
++    Image::cache_image(id, image);
++  }
++  video->draw_image(image->get_video_image(), x + image->get_offset_x(),
++                    y + image->get_offset_y(), 0, video_frame);
++}
++
+ void
+ Frame::draw_sprite(int x, int y, Data::Resource res, unsigned int index,
+                    bool use_off) {
+diff --git a/src/gfx.h b/src/gfx.h
+index de087b3..e112a2c 100644
+--- a/src/gfx.h
++++ b/src/gfx.h
+@@ -151,6 +151,17 @@ class Frame {
+                               unsigned int index,
+                               Data::Resource relative_to_res,
+                               unsigned int relative_to_index);
++  /* Variants of the trees, made once and kept like the data's sprites:
++     mirrored (the other way round), birch (a picture of the program,
++     tools/make_birch.py, instead of a deciduous tree). */
++  typedef enum SpriteVariant {
++    VariantNormal = 0,
++    VariantMirrored = 1,
++    VariantBirch = 2,
++    VariantBirchMirrored = 3
++  } SpriteVariant;
++  void draw_sprite_variant(int x, int y, Data::Resource res,
++                           unsigned int index, int variant);
+   void draw_masked_sprite(int x, int y, Data::Resource mask_res,
+                           unsigned int mask_index, Data::Resource res,
+                           unsigned int index);
+diff --git a/src/interface.cc b/src/interface.cc
+index 13f0120..454aacb 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -75,6 +75,7 @@ Interface::Interface()
+   stock_box_occupied = false;
+   autosave_minutes = 0;
+   sand_percent = 100;
++  tree_variety = true;
+   rock_percent = 100;
+   autosave_last_ticks = 0;
+   autosave_last_game_tick = 0;
+@@ -226,6 +227,7 @@ Interface::apply_settings() {
+   invert_scrolling = settings.get("advanced", "invert_scrolling", false);
+   large_numbers = settings.get("advanced", "large_numbers", false);
+   stock_box_occupied = settings.get("advanced", "stock_box_occupied", false);
++  tree_variety = settings.get("advanced", "tree_variety", true);
+   if (settings.get("advanced", "show_fps", show_fps) != show_fps) {
+     switch_show_fps();
+   }
+@@ -270,6 +272,7 @@ Interface::store_settings() {
+   settings.set("advanced", "invert_scrolling", invert_scrolling);
+   settings.set("advanced", "large_numbers", large_numbers);
+   settings.set("advanced", "stock_box_occupied", stock_box_occupied);
++  settings.set("advanced", "tree_variety", tree_variety);
+   settings.set("advanced", "show_fps", show_fps);
+   settings.set("advanced", "autosave", autosave_minutes);
+   settings.set("advanced", "sand", sand_percent);
+diff --git a/src/interface.h b/src/interface.h
+index 987096f..8b6ebc1 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -130,6 +130,8 @@ class Interface : public GuiObject, public GameManager::Handler {
+   bool invert_scrolling;
+   bool large_numbers;
+   bool stock_box_occupied;
++  /* Mirrored trees and birches (only the picture). */
++  bool tree_variety;
+   unsigned int autosave_minutes;  // 0: off
+   /* The size of the deserts of new maps (not missions), % of the
+      original's. */
+@@ -191,6 +193,8 @@ class Interface : public GuiObject, public GameManager::Handler {
+   /* A new stock opens its building box until its serf has arrived, not
+      the inventory box. */
+   bool get_stock_box_occupied() const { return stock_box_occupied; }
++  bool get_tree_variety() const { return tree_variety; }
++  void switch_tree_variety() { tree_variety = !tree_variety; }
+   void switch_stock_box_occupied() {
+     stock_box_occupied = !stock_box_occupied; }
+   /* Data source of the graphics, the sounds and the music (when the data
+diff --git a/src/viewport.cc b/src/viewport.cc
+index cd99011..57901af 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -1383,11 +1383,28 @@ Viewport::draw_map_objects_row(MapPos pos, int y_base, int cols, int x_base) {
+            that the tree animation won't be synchronized
+            for all trees on the map. */
+         int tree_anim = (interface->get_game()->get_tick() + sprite) >> 4;
++        int kind = sprite;
+         if (sprite < 16) {
+           sprite = (sprite & ~7) + (tree_anim & 7);
+         } else {
+           sprite = (sprite & ~3) + (tree_anim & 3);
+         }
++        /* More kinds of trees (Advanced): mirrored ones, and birches among
++           the deciduous ones, by the place - always the same tree, on both
++           computers of a LAN game. Only the picture. */
++        if (interface->get_tree_variety() && kind < 16) {
++          uint32_t h = static_cast<uint32_t>(pos) * 2654435761u;
++          int pick = static_cast<int>((h >> 24) % 10);
++          int variant = (pick >= 6) ? Frame::VariantMirrored
++                                    : Frame::VariantNormal;
++          if (kind < 8 && pick < 3) {
++            variant = Frame::VariantBirch | (pick & 1);
++          }
++          frame->draw_sprite(x_base, ly, Data::AssetMapShadow, sprite, true);
++          frame->draw_sprite_variant(x_base, ly, Data::AssetMapObject, sprite,
++                                     variant);
++          continue;
++        }
+       }
+       draw_shadow_and_building_sprite(x_base, ly, sprite);
+     }
+-- 
+2.45.2.windows.1
+

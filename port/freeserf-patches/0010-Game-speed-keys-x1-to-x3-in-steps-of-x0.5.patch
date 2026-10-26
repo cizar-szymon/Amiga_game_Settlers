@@ -1,7 +1,7 @@
 From beb22f5d91c9ea59f14be1aeab6e2a36510b12f8 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Sun, 25 Oct 2026 21:17:25 +0100
-Subject: [PATCH 10/30] Game speed keys: x1 to x3 in steps of x0.5
+Subject: [PATCH 10/34] Game speed keys: x1 to x3 in steps of x0.5
 
 + added one tick per update up to 40 (x20) and - went down to 0, which
 stopped the game. Now + goes from the normal speed to x3 in steps of

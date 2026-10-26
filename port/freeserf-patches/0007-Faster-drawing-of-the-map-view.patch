@@ -1,7 +1,7 @@
 From af184f97e8d4541c91bf8ce59462f9562f097576 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Sun, 25 Oct 2026 18:34:24 +0100
-Subject: [PATCH 07/30] Faster drawing of the map view
+Subject: [PATCH 07/34] Faster drawing of the map view
 
 - draw_sprite_relatively keeps the deltas of the sprites it draws
   relative to: getting them decoded the serf's torso again for every

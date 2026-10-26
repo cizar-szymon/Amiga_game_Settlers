@@ -921,6 +921,57 @@ u użytkownika długo bez rozjazdu – „same” przy bardzo dużym numerze kro
 - `lantest send <adres> <plik>` + odbiornik na PC: WinUAE → PC (127.0.0.1) 130 927 B w 0,3 s,
   suma zgodna. (Z WinUAE na 192.168.8.126 połączenie nie wyszło – zapora/trasa, 127.0.0.1 tak.)
 
+**Pogoda – odrzucona.** Chmury i deszcz (gałąź `weather`, 0.81w1) użytkownik ocenił jako nietrafione;
+gałąź zostaje lokalnie z jednym commitem, bez dalszej pracy.
+
+**Więcej rodzajów drzew (0.82, łatka `0031`, prośba użytkownika: urozmaicenie bez kosztu
+rysowania).** Options → Advanced „More kinds of trees” (`[advanced] tree_variety`, domyślnie
+włączone). Z obrazów drzew z danych gry program raz robi warianty i trzyma je w pamięci obrazów
+jak inne sprite'y (`Frame::draw_sprite_variant`, id z polem maski 0xf0+wariant), port rysuje je
+tą samą szybką ścieżką z maską:
+- odbite w poziomie (liściaste i iglaste; przesunięcie odbite wokół miejsca drzewa – pień na
+  swoim miejscu; cień bez zmian);
+- brzozy (tylko liściaste; także odbite). 0.82 przebarwiała drzewo gry – użytkownik: „nie
+  wyglądają dobrze”. 0.83: własny pixel art `tools/make_birch.py` (wzór: zdjęcie brzozy od
+  użytkownika `data/brzoza.bmp`, nie w repo; pomniejszone zdjęcie dawało chude, płaskie drzewo
+  i nie jest nasze do rozpowszechniania): 32×30 jak drzewo gry, pień 2 px biały z cieniem i
+  czarnymi plamami, owalna korona z kęp i prześwitów w zieleniach drzew gry, światło z lewej
+  góry, 8 klatek wiatru (korona przechyla się o piksel). Pliki `port/resources/birch0–7.png`,
+  wbudowane `tools/embed_images.py` (resource_images.h); rysowane z przesunięciem drzewa gry.
+  0.84 (uwaga użytkownika: miganie): pień sięgał w głąb korony, a korona przesuwa się z wiatrem –
+  przez jej prześwity raz było go widać, raz nie. Pień kończy się teraz pod koroną, bez gałązek.
+Wariant wynika z pozycji na mapie (hash): liściaste 30% brzozy, 40% odbite; iglaste 40% odbite.
+To tylko obraz – drzewo dla drwala to dalej to samo drzewo, w LAN obie strony widzą to samo.
+
+**Okna Video i Audio (0.85, łatka `0032`, prośba użytkownika).** W oknie Advanced obok Exit (prawy
+dolny róg) przyciski VIDEO i AUDIO. Otwierają w tym samym miejscu okna z tytułem u góry („Video”,
+„Audio”; strony `AdvancedBox`, rozmiar wg strony, `Interface` centruje według `get_size`); ich Exit
+wraca do Advanced. Video: Sand on new maps, Rocks on new maps, More kinds of trees (przeniesione
+z Advanced, które ma znowu 5 wierszy, 312×152). Audio: na razie puste („Nothing here yet.”).
+
+**Dziki i mniejsze napisy (0.86, łatka `0033`, prośby użytkownika).**
+- VIDEO i AUDIO małymi literami 3×5 (jak napis EXIT), przyciski 40 px.
+- Video → „Wild boars” (`[advanced] wild_boars`, domyślnie włączone): na wolnym polu, które
+  wybiera hash pozycji (1/128 pól) i ma co najmniej 4 z 6 sąsiadów drzewami, stoi dzik – świnia
+  z chlewni (`AssetGameObject` 0xa2–0xa8: chodzi trochę, je, odpoczywa), przebarwiona na ciemny
+  brąz (`Frame::VariantDarkBrown`, raz, w pamięci obrazów). Co jakiś czas chrząka (dźwięk świni,
+  tylko w strefie słyszenia). Tylko obraz i dźwięk – stan gry bez zmian, w LAN to samo u obu.
+  0.87 (użytkownik: nie widać ich): co 24. wolne pole i co najmniej 3 drzewa wokół.
+  0.88: głos dzika – nowy efekt `TypeSfxBoarGrunt` (92, wolne miejsce tabeli 96 efektów): próbka
+  chrząknięcia świni z danych grana z okresem 580 zamiast 362 (ok. 0,62 wysokości – niżej,
+  dłużej), głośniej. Nagranie z YouTube od użytkownika odrzucone: cudze, gra idzie na GitHub.
+  0.89 (użytkownik: na Amidze nie słychać): efekt dostaje kanał tylko od dźwięku o tym samym lub
+  wyższym numerze; odgłosy otoczenia (ptaki 70–82, fale 86, wiatr 88) grają długo i przy numerze
+  92 zajmowały wszystkie 4 kanały. Teraz numer 61 (wolny, obok świni 60) i chrząkanie częściej
+  (8/1024 na klatkę widocznego dzika w strefie słyszenia). Użytkownik: słychać.
+  0.90 (prośba: jeszcze niżej): okres 760 (2,1× świni, ok. 0,48 wysokości), czas 101.
+
+**Quit w oknie startu (0.91, łatka `0034`, zgłoszenie użytkownika: „często nie da się wybrać za
+pierwszym razem”).** Przycisk rysowany w (308, 224) okna (`draw_box_icon(36, 208)` dodaje 16), a pole
+kliknięcia `ActionClose` było w (308, 216) – reagowała tylko górna połowa przycisku i 8 px nad nim.
+Teraz pole 308,224 32×16 we wszystkich czterech mapach kliknięć; zrzut WinUAE: przycisk w tym
+miejscu.
+
 **Raspberry Pi 400 z Amiberry** (prośba użytkownika, 26.10.2026): ten sam program Amigi w emulatorze –
 gra LAN Amiga ↔ Pi bez rozjazdów, jak z WinUAE. Pliki w `tools/pi/`: konfiguracja Amiberry
 (68040 JIT, RTG, bsdsocket, wolumin WOW:), `install-amiberry.sh` (paczka `debian-<wersja>-arm64.zip`

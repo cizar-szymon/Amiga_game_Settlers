@@ -6,6 +6,74 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.91 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Poprawka: przycisk Quit w oknie startu reagowal tylko w gornej
+  polowie - teraz na calej powierzchni.
+
+
+0.90 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Glos dzika jeszcze nizszy.
+
+
+0.89 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Poprawka: glosu dzika nie bylo slychac (inne odglosy zajmowaly kanaly).
+
+
+0.88 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Dzik chrzaka nizszym, glebszym glosem niz swinia.
+
+
+0.87 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Wiecej dzikow w lasach (byly za rzadko).
+
+
+0.86 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Dziki: rzadko, w miejscach otoczonych drzewami, chodzi ciemnobrazowy
+  dzik i chrzaka (Options -> Advanced -> VIDEO "Wild boars").
+- Mniejsze napisy na przyciskach VIDEO i AUDIO.
+
+
+0.85 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Okno Advanced: obok EXIT przyciski VIDEO i AUDIO. VIDEO otwiera okno
+  "Video" z ustawieniami piasku, skal i rodzajow drzew (przeniesione z
+  Advanced); AUDIO - okno "Audio", na razie puste.
+
+
+0.84 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Brzoza: pien nie przeswituje juz przez kolyszaca sie korone (miganie).
+
+
+0.83 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Nowa brzoza: bialy pien w czarne plamy i owalna korona (wlasny
+  rysunek w stylu drzew gry) zamiast przebarwionego drzewa.
+
+
+0.82 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Wiecej rodzajow drzew: odbite drzewa i brzozy (Options -> Advanced
+  "More kinds of trees", domyslnie wlaczone). Tylko wyglad - drwal
+  scina je jak inne drzewa; bez wplywu na szybkosc gry.
+
+
 0.81 (26.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 

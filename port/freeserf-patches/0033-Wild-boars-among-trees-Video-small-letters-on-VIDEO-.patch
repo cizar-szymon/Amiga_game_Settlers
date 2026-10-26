@@ -1,0 +1,310 @@
+From 991d79d92e1fe989cc64d28e6b658f113054b8e2 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Mon, 26 Oct 2026 23:48:41 +0100
+Subject: [PATCH 33/34] Wild boars among trees (Video), small letters on VIDEO
+ and AUDIO
+
+---
+ src/advanced-box.cc | 51 +++++++++++++++++++++++++++++++++++++++------
+ src/audio.cc        | 13 +++++++++---
+ src/audio.h         |  3 +++
+ src/gfx.cc          | 13 ++++++++++++
+ src/gfx.h           |  3 ++-
+ src/interface.cc    |  3 +++
+ src/interface.h     |  4 ++++
+ src/viewport.cc     | 44 +++++++++++++++++++++++++++++++++++++-
+ src/viewport.h      |  3 +++
+ 9 files changed, 126 insertions(+), 11 deletions(-)
+
+diff --git a/src/advanced-box.cc b/src/advanced-box.cc
+index 0268228..d98d066 100644
+--- a/src/advanced-box.cc
++++ b/src/advanced-box.cc
+@@ -43,8 +43,44 @@ static const int kFirstRowY = 19;
+ /* The boxes with a title (Video, Audio): rows below it. */
+ static const int kTitleY = 11;
+ static const int kTitledFirstRowY = 30;
+-/* VIDEO and AUDIO left of the Exit button. */
+-static const int kPageButtonWidth = 48;
++/* VIDEO and AUDIO left of the Exit button, in the small letters of the
++   original's buttons (3x5, as the EXIT label). */
++static const int kPageButtonWidth = 40;
++
++static const char *
++small_glyph(char c, int row) {
++  static const char *const kGlyphs[][6] = {
++    { "V", "# #", "# #", "# #", "# #", " # " },
++    { "I", "###", " # ", " # ", " # ", "###" },
++    { "D", "## ", "# #", "# #", "# #", "## " },
++    { "E", "###", "#  ", "## ", "#  ", "###" },
++    { "O", "###", "# #", "# #", "# #", "###" },
++    { "A", "###", "# #", "###", "# #", "# #" },
++    { "U", "# #", "# #", "# #", "# #", "###" },
++  };
++  for (const auto &g : kGlyphs) {
++    if (g[0][0] == c) return g[1 + row];
++  }
++  return "   ";
++}
++
++/* A wooden plate with a word in the small letters. */
++static void
++draw_small_button(Frame *frame, int x, int y, int w, const char *word) {
++  frame->fill_rect(x, y, w, 16, Color(0x55, 0x22, 0x00));
++  frame->fill_rect(x + 1, y + 1, w - 2, 14, Color(0x99, 0x55, 0x22));
++  std::string rows[5];
++  for (const char *c = word; *c != 0; c++) {
++    for (int r = 0; r < 5; r++) {
++      if (c != word) rows[r] += " ";
++      rows[r] += small_glyph(*c, r);
++    }
++  }
++  const char *lines[5];
++  for (int r = 0; r < 5; r++) lines[r] = rows[r].c_str();
++  int lw = static_cast<int>(rows[0].size());
++  draw_small_letters(frame, x + (w - lw) / 2, y + 5, lines);
++}
+ 
+ /* An option is a check box (get) or a value shown as text (text); a click
+    on either calls change. */
+@@ -147,6 +183,9 @@ static const Option video_options[] = {
+   /* Mirrored trees and birches, only the picture. */
+   { N_("More kinds of trees"), &Interface::get_tree_variety, nullptr,
+     &Interface::switch_tree_variety },
++  /* A few dark brown pigs among trees, with their sounds. */
++  { N_("Wild boars"), &Interface::get_wild_boars, nullptr,
++    &Interface::switch_wild_boars },
+ };
+ 
+ /* Width of the value texts, right aligned to the check boxes. */
+@@ -166,7 +205,7 @@ static const PageInfo pages[] = {
+   { nullptr, options, sizeof(options) / sizeof(options[0]), 256 },
+ #endif
+   { N_("Video"), video_options,
+-    sizeof(video_options) / sizeof(video_options[0]), 124 },
++    sizeof(video_options) / sizeof(video_options[0]), 144 },
+   { N_("Audio"), nullptr, 0, 84 },
+ };
+ 
+@@ -247,9 +286,9 @@ AdvancedBox::internal_draw() {
+   int exit_y = height - 7 - kExitHeight;
+   if (page == PageAdvanced) {
+     int audio_x = exit_x - 6 - kPageButtonWidth;
+-    draw_text_button(frame, audio_x - 4 - kPageButtonWidth, exit_y,
+-                     kPageButtonWidth, "VIDEO");
+-    draw_text_button(frame, audio_x, exit_y, kPageButtonWidth, "AUDIO");
++    draw_small_button(frame, audio_x - 4 - kPageButtonWidth, exit_y,
++                      kPageButtonWidth, "VIDEO");
++    draw_small_button(frame, audio_x, exit_y, kPageButtonWidth, "AUDIO");
+   }
+   frame->draw_sprite(exit_x, exit_y, Data::AssetIcon, 60);  // Exit
+ }
+diff --git a/src/audio.cc b/src/audio.cc
+index a637985..5593216 100644
+--- a/src/audio.cc
++++ b/src/audio.cc
+@@ -73,7 +73,11 @@ static const SfxParams sfx_params[Audio::kSfxCount] = {
+   {0, 0, 0, 0, 0}, {492, 31, 17, 7, 49}, {0, 0, 0, 0, 0},  /* 51 */
+   {248, 0, 32, 0, 6}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},  /* 54 */
+   {0, 0, 0, 0, 0}, {412, 31, 25, 15, 24}, {0, 0, 0, 0, 0},  /* 57 */
+-  {362, 255, 12, 7, 48}, {0, 0, 0, 0, 0}, {1156, 63, 7, 3, 228},  /* 60 */
++  /* 61: the wild boar (TypeSfxBoarGrunt) - the pig's sample, played at a
++     period 2.1 times the pig's: deeper, and longer. A free place next
++     to the pig: a sound takes a channel from those of a higher number
++     only (the ambient ones play long), at 92 it hardly ever got one. */
++  {362, 255, 12, 7, 48}, {760, 63, 16, 7, 101}, {1156, 63, 7, 3, 228},  /* 60 */
+   {0, 0, 0, 0, 0}, {825, 63, 9, 7, 243}, {0, 0, 0, 0, 0},  /* 63 */
+   {887, 15, 7, 3, 200}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},  /* 66 */
+   {465, 63, 13, 7, 139}, {205, 31, 5, 15, 17}, {0, 0, 0, 0, 0},  /* 69 */
+@@ -155,8 +159,11 @@ Audio::update_sfx() {
+ 
+     sfx_channel[channel] = sfx;
+     sfx_timer[channel] = params.duration;
+-    player->play_track_on_channel(sfx, channel, vol / 64.f,
+-                                  static_cast<float>(params.period) / period);
++    /* The boar is the pig's sample at a longer period (lower). */
++    int track = (sfx == TypeSfxBoarGrunt) ? TypeSfxPigOink : sfx;
++    player->play_track_on_channel(
++      track, channel, vol / 64.f,
++      static_cast<float>(sfx_params[track].period) / period);
+   }
+ 
+   for (int &sfx : sfx_queue) sfx = 0xff;
+diff --git a/src/audio.h b/src/audio.h
+index 1225431..858cac2 100644
+--- a/src/audio.h
++++ b/src/audio.h
+@@ -70,6 +70,9 @@ class Audio {
+     TypeSfxFishingRodReel = 54,
+     TypeSfxUnknown21 = 58,
+     TypeSfxPigOink = 60,
++    /* Not of the original: the pig's grunt, lower (wild boars); next to
++       the pig, the same rank among the 4 channels. */
++    TypeSfxBoarGrunt = 61,
+     TypeSfxGoldBoils = 62,
+     TypeSfxRowing = 64,
+     TypeSfxUnknown25 = 66,
+diff --git a/src/gfx.cc b/src/gfx.cc
+index 813c71e..759f4f0 100644
+--- a/src/gfx.cc
++++ b/src/gfx.cc
+@@ -260,6 +260,19 @@ Frame::draw_sprite_variant(int x, int y, Data::Resource res,
+                 w * h * sizeof(Data::Sprite::Color));
+     Data::Sprite::Color *px =
+       reinterpret_cast<Data::Sprite::Color *>(s->get_data());
++    if (variant & VariantDarkBrown) {
++      /* Pink and light parts to dark brown of the same lightness. */
++      for (size_t i = 0; i < w * h; i++) {
++        Data::Sprite::Color &c = px[i];
++        if (c.alpha == 0) continue;
++        int lum = (c.red * 3 + c.green * 5 + c.blue * 2) / 10;
++        if (c.red > c.green + 20 || lum > 120) {
++          c.red = static_cast<unsigned char>(std::min(255, lum * 60 / 100));
++          c.green = static_cast<unsigned char>(lum * 38 / 100);
++          c.blue = static_cast<unsigned char>(lum * 22 / 100);
++        }
++      }
++    }
+     if (variant & VariantMirrored) {
+       for (size_t row = 0; row < h; row++) {
+         std::reverse(px + row * w, px + row * w + w);
+diff --git a/src/gfx.h b/src/gfx.h
+index e112a2c..0c523f1 100644
+--- a/src/gfx.h
++++ b/src/gfx.h
+@@ -158,7 +158,8 @@ class Frame {
+     VariantNormal = 0,
+     VariantMirrored = 1,
+     VariantBirch = 2,
+-    VariantBirchMirrored = 3
++    VariantBirchMirrored = 3,
++    VariantDarkBrown = 4      /* a pig as a wild boar */
+   } SpriteVariant;
+   void draw_sprite_variant(int x, int y, Data::Resource res,
+                            unsigned int index, int variant);
+diff --git a/src/interface.cc b/src/interface.cc
+index fac45dc..ca5b608 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -76,6 +76,7 @@ Interface::Interface()
+   autosave_minutes = 0;
+   sand_percent = 100;
+   tree_variety = true;
++  wild_boars = true;
+   rock_percent = 100;
+   autosave_last_ticks = 0;
+   autosave_last_game_tick = 0;
+@@ -228,6 +229,7 @@ Interface::apply_settings() {
+   large_numbers = settings.get("advanced", "large_numbers", false);
+   stock_box_occupied = settings.get("advanced", "stock_box_occupied", false);
+   tree_variety = settings.get("advanced", "tree_variety", true);
++  wild_boars = settings.get("advanced", "wild_boars", true);
+   if (settings.get("advanced", "show_fps", show_fps) != show_fps) {
+     switch_show_fps();
+   }
+@@ -273,6 +275,7 @@ Interface::store_settings() {
+   settings.set("advanced", "large_numbers", large_numbers);
+   settings.set("advanced", "stock_box_occupied", stock_box_occupied);
+   settings.set("advanced", "tree_variety", tree_variety);
++  settings.set("advanced", "wild_boars", wild_boars);
+   settings.set("advanced", "show_fps", show_fps);
+   settings.set("advanced", "autosave", autosave_minutes);
+   settings.set("advanced", "sand", sand_percent);
+diff --git a/src/interface.h b/src/interface.h
+index 8b6ebc1..19b291e 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -132,6 +132,8 @@ class Interface : public GuiObject, public GameManager::Handler {
+   bool stock_box_occupied;
+   /* Mirrored trees and birches (only the picture). */
+   bool tree_variety;
++  /* Wild boars among trees (only the picture and sounds). */
++  bool wild_boars;
+   unsigned int autosave_minutes;  // 0: off
+   /* The size of the deserts of new maps (not missions), % of the
+      original's. */
+@@ -195,6 +197,8 @@ class Interface : public GuiObject, public GameManager::Handler {
+   bool get_stock_box_occupied() const { return stock_box_occupied; }
+   bool get_tree_variety() const { return tree_variety; }
+   void switch_tree_variety() { tree_variety = !tree_variety; }
++  bool get_wild_boars() const { return wild_boars; }
++  void switch_wild_boars() { wild_boars = !wild_boars; }
+   void switch_stock_box_occupied() {
+     stock_box_occupied = !stock_box_occupied; }
+   /* Data source of the graphics, the sounds and the music (when the data
+diff --git a/src/viewport.cc b/src/viewport.cc
+index 57901af..b5b4113 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -1360,11 +1360,53 @@ Viewport::draw_flag_and_res(MapPos pos, int lx, int ly) {
+   }
+ }
+ 
++/* A wild boar stands here: few places (one free place in 24, by the
++   place - the same on both computers of a LAN game), among trees - at
++   least three of the six neighbours. Only a picture. */
++bool
++Viewport::boar_at(MapPos pos) const {
++  uint32_t h = static_cast<uint32_t>(pos) * 2246822519u;
++  if (((h >> 16) % 24) != 0) return false;
++  int trees = 0;
++  for (int d = 0; d < 6; d++) {
++    Map::Object o = map->get_obj(map->move(pos, static_cast<Direction>(d)));
++    if (o >= Map::ObjectTree0 && o <= Map::ObjectPine7) trees++;
++  }
++  return trees >= 3;
++}
++
++void
++Viewport::draw_boar(MapPos pos, int lx, int ly) {
++  /* The pigs of the pig farm, walking a little and grazing, dark brown. */
++  static const int anim[] = {
++    0xa2, 0, 0xa3, 0, 0xa2, 1, 0xa3, 1, 0xa2, 2, 0xa3, 2, 0xa2, 3, 0xa3, 3,
++    0xa6, 3, 0xa6, 3, 0xa7, 3, 0xa8, 3, 0xa7, 3, 0xa8, 3, 0xa4, 3, 0xa5, 3,
++    0xa4, 2, 0xa5, 2, 0xa4, 1, 0xa5, 1, 0xa4, 0, 0xa5, 0, 0xa6, 0, 0xa6, 0
++  };
++  const int frames = sizeof(anim) / sizeof(anim[0]) / 2;
++  int i = static_cast<int>(((interface->get_game()->get_tick() >> 3) +
++                            pos * 7) % frames) * 2;
++  frame->draw_sprite_variant(lx + anim[i + 1], ly, Data::AssetGameObject,
++                             anim[i] - 1, Frame::VariantDarkBrown);
++  /* Its grunt now and then. */
++  if ((interface->get_random()->random() & 0x3ff) < 8) {
++    play_map_sound(Audio::TypeSfxBoarGrunt);
++  }
++}
++
+ void
+ Viewport::draw_map_objects_row(MapPos pos, int y_base, int cols, int x_base) {
+   for (int i = 0; i < cols;
+        i++, x_base += MAP_TILE_WIDTH, pos = map->move_right(pos)) {
+-    if (map->get_obj(pos) == Map::ObjectNone) continue;
++    if (map->get_obj(pos) == Map::ObjectNone) {
++      if (interface->get_wild_boars() && boar_at(pos)) {
++        int ly = y_base - 4 * map->get_height(pos);
++        sfx_heard = hears(x_base, ly);
++        sfx_source = (1u << 22) | (static_cast<uint32_t>(pos) & 0x3fffff);
++        draw_boar(pos, x_base, ly);
++      }
++      continue;
++    }
+ 
+     int ly = y_base - 4 * map->get_height(pos);
+     if (map->get_obj(pos) < Map::ObjectTree0) {
+diff --git a/src/viewport.h b/src/viewport.h
+index b968d2e..8c16e67 100644
+--- a/src/viewport.h
++++ b/src/viewport.h
+@@ -117,6 +117,9 @@ class Viewport : public GuiObject, public Map::Handler {
+ 
+  protected:
+   bool hears(int lx, int ly) const;
++  /* Wild boars among trees (Video: Wild boars). */
++  bool boar_at(MapPos pos) const;
++  void draw_boar(MapPos pos, int lx, int ly);
+   void play_map_sound(int sound);
+ 
+  public:
+-- 
+2.45.2.windows.1
+

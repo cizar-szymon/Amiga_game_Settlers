@@ -1,7 +1,7 @@
 From 889ff71e16020fca8049998aac335e0e1cd6e11b Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Sun, 25 Oct 2026 20:23:50 +0100
-Subject: [PATCH 09/30] Map sounds once per animation phase
+Subject: [PATCH 09/34] Map sounds once per animation phase
 
 The sounds of serfs and buildings are started by the drawing, many of
 them in every frame of an animation phase ("phase 4 always, phase 5 if

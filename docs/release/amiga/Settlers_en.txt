@@ -1,7 +1,7 @@
 THE SETTLERS - Freeserf for the Amiga with a graphics card
 ==========================================================
 
-Version 0.81 (beta), 26.10.2026
+Version 0.91 (beta), 26.10.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) on an Amiga with a graphics
 card (Picasso96) and a 68040/68060, at up to 800x600. It is based on
@@ -75,9 +75,12 @@ Options -> Amiga:
   the system), MC68040 20-50 MHz in steps of 1
 Options -> Advanced:
   Invert scrolling, Large numbers, Autosave, Stock box until occupied,
-  Show FPS (frame counter in the corner),
+  Show FPS (frame counter in the corner)
+Options -> Advanced -> VIDEO:
   Sand on new maps (the deserts of new maps: None, 10% of normal ... Normal, - + buttons),
-  Rocks on new maps (the brown boulders of new maps, the same way)
+  Rocks on new maps (the brown boulders of new maps, the same way),
+  More kinds of trees (mirrored trees and birches, only the look),
+  Wild boars (boars among the trees)
 
 Settings are kept in Settlers.ini next to the game, saved games in the
 freeserf drawer.

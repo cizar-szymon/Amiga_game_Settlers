@@ -1,0 +1,251 @@
+From cf6791cc5b0b735bd968ab039dda025e47c9d28d Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Mon, 26 Oct 2026 23:42:27 +0100
+Subject: [PATCH 32/34] Advanced: VIDEO and AUDIO boxes next to Exit (sand,
+ rocks, kinds of trees in Video)
+
+---
+ src/advanced-box.cc | 118 ++++++++++++++++++++++++++++++++++++--------
+ src/advanced-box.h  |  16 ++++--
+ src/interface.cc    |   5 +-
+ 3 files changed, 113 insertions(+), 26 deletions(-)
+
+diff --git a/src/advanced-box.cc b/src/advanced-box.cc
+index 030e89f..0268228 100644
+--- a/src/advanced-box.cc
++++ b/src/advanced-box.cc
+@@ -40,6 +40,11 @@ static const int kLabelX = 16;
+ static const int kCheckSize = 16;
+ static const int kRowHeight = 20;
+ static const int kFirstRowY = 19;
++/* The boxes with a title (Video, Audio): rows below it. */
++static const int kTitleY = 11;
++static const int kTitledFirstRowY = 30;
++/* VIDEO and AUDIO left of the Exit button. */
++static const int kPageButtonWidth = 48;
+ 
+ /* An option is a check box (get) or a value shown as text (text); a click
+    on either calls change. */
+@@ -120,15 +125,6 @@ static const Option options[] = {
+      of the data and the language is left out. */
+   { N_("Show FPS"), &Interface::get_show_fps, nullptr,
+     &Interface::switch_show_fps },
+-  /* Less desert on new maps (not missions). */
+-  { N_("Sand on new maps"), nullptr, sand_text, &Interface::more_sand,
+-    &Interface::less_sand },
+-  /* Fewer brown boulders on new maps. */
+-  { N_("Rocks on new maps"), nullptr, rocks_text, &Interface::more_rocks,
+-    &Interface::less_rocks },
+-  /* Mirrored trees and birches, only the picture. */
+-  { N_("More kinds of trees"), &Interface::get_tree_variety, nullptr,
+-    &Interface::switch_tree_variety },
+ #else
+   /* With the data of several versions installed. */
+   { N_("Graphics"), nullptr, graphics_text,
+@@ -140,13 +136,52 @@ static const Option options[] = {
+ #endif
+ };
+ 
++/* The Video box: what the map looks like. */
++static const Option video_options[] = {
++  /* Less desert on new maps (not missions). */
++  { N_("Sand on new maps"), nullptr, sand_text, &Interface::more_sand,
++    &Interface::less_sand },
++  /* Fewer brown boulders on new maps. */
++  { N_("Rocks on new maps"), nullptr, rocks_text, &Interface::more_rocks,
++    &Interface::less_rocks },
++  /* Mirrored trees and birches, only the picture. */
++  { N_("More kinds of trees"), &Interface::get_tree_variety, nullptr,
++    &Interface::switch_tree_variety },
++};
++
+ /* Width of the value texts, right aligned to the check boxes. */
+ static const int kValueWidth = 48;
+-static const int kOptionCount = sizeof(options) / sizeof(options[0]);
++
++typedef struct PageInfo {
++  const char *title;      /* nullptr: none */
++  const Option *options;
++  int count;
++  int height;
++} PageInfo;
++
++static const PageInfo pages[] = {
++#ifdef __AMIGA__
++  { nullptr, options, sizeof(options) / sizeof(options[0]), 152 },
++#else
++  { nullptr, options, sizeof(options) / sizeof(options[0]), 256 },
++#endif
++  { N_("Video"), video_options,
++    sizeof(video_options) / sizeof(video_options[0]), 124 },
++  { N_("Audio"), nullptr, 0, 84 },
++};
+ 
+ AdvancedBox::AdvancedBox(Interface *_interface)
+-  : interface(_interface) {
+-  set_size(kWidth, kHeight);
++  : interface(_interface)
++  , page(PageAdvanced) {
++  set_size(kWidth, pages[PageAdvanced].height);
++}
++
++void
++AdvancedBox::set_page(Page _page) {
++  page = _page;
++  set_size(kWidth, pages[page].height);
++  set_redraw();
++  interface->open_advanced();  /* laid out again for the new size */
+ }
+ 
+ void
+@@ -160,9 +195,24 @@ AdvancedBox::internal_draw() {
+   }
+   draw_box_frame(frame, width, height);
+ 
++  const PageInfo &info = pages[page];
++  const Option *options = info.options;
++  int first_y = kFirstRowY;
++  if (info.title != nullptr) {
++    std::string title = _(info.title);
++    frame->draw_string((width - frame->get_string_width(title)) / 2, kTitleY,
++                       title, Color::green, Color::black);
++    first_y = kTitledFirstRowY;
++  }
++  if (info.count == 0) {
++    std::string none = "Nothing here yet.";
++    frame->draw_string((width - frame->get_string_width(none)) / 2,
++                       first_y + 8, none, Color::green, Color::black);
++  }
++
+   int check_x = width - 24 - kCheckSize;
+-  for (int i = 0; i < kOptionCount; i++) {
+-    int y = kFirstRowY + i * kRowHeight;
++  for (int i = 0; i < info.count; i++) {
++    int y = first_y + i * kRowHeight;
+     frame->draw_string(kLabelX, y + 4, _(options[i].label), Color::green,
+                        Color::black);
+     if (options[i].get != nullptr) {
+@@ -193,15 +243,25 @@ AdvancedBox::internal_draw() {
+     }
+   }
+ 
+-  frame->draw_sprite(width - 8 - kExitWidth, height - 7 - kExitHeight,
+-                     Data::AssetIcon, 60);  // Exit
++  int exit_x = width - 8 - kExitWidth;
++  int exit_y = height - 7 - kExitHeight;
++  if (page == PageAdvanced) {
++    int audio_x = exit_x - 6 - kPageButtonWidth;
++    draw_text_button(frame, audio_x - 4 - kPageButtonWidth, exit_y,
++                     kPageButtonWidth, "VIDEO");
++    draw_text_button(frame, audio_x, exit_y, kPageButtonWidth, "AUDIO");
++  }
++  frame->draw_sprite(exit_x, exit_y, Data::AssetIcon, 60);  // Exit
+ }
+ 
+ bool
+ AdvancedBox::handle_click_left(int x, int y) {
++  const PageInfo &info = pages[page];
++  const Option *options = info.options;
++  int first_y = (info.title != nullptr) ? kTitledFirstRowY : kFirstRowY;
+   int check_x = width - 24 - kCheckSize;
+-  for (int i = 0; i < kOptionCount; i++) {
+-    int row_y = kFirstRowY + i * kRowHeight;
++  for (int i = 0; i < info.count; i++) {
++    int row_y = first_y + i * kRowHeight;
+     if (options[i].decrease != nullptr) {
+       int minus_x = check_x - kCheckSize - 4;
+       if (y < row_y || y >= row_y + kCheckSize) continue;
+@@ -232,11 +292,29 @@ AdvancedBox::handle_click_left(int x, int y) {
+ 
+   int exit_x = width - 8 - kExitWidth;
+   int exit_y = height - 7 - kExitHeight;
++  if (page == PageAdvanced && y >= exit_y && y < exit_y + kExitHeight) {
++    int audio_x = exit_x - 6 - kPageButtonWidth;
++    int video_x = audio_x - 4 - kPageButtonWidth;
++    if (x >= video_x && x < video_x + kPageButtonWidth) {
++      play_sound(Audio::TypeSfxClick);
++      set_page(PageVideo);
++      return true;
++    }
++    if (x >= audio_x && x < audio_x + kPageButtonWidth) {
++      play_sound(Audio::TypeSfxClick);
++      set_page(PageAudio);
++      return true;
++    }
++  }
+   if (x >= exit_x && x < exit_x + kExitWidth &&
+       y >= exit_y && y < exit_y + kExitHeight) {
+     play_sound(Audio::TypeSfxClick);
+-    /* Leave the options as well. */
+-    interface->close_advanced();
++    if (page != PageAdvanced) {
++      set_page(PageAdvanced);  /* back to Advanced */
++    } else {
++      /* Leave the options as well. */
++      interface->close_advanced();
++    }
+   }
+   return true;
+ }
+diff --git a/src/advanced-box.h b/src/advanced-box.h
+index f7a6206..953a077 100644
+--- a/src/advanced-box.h
++++ b/src/advanced-box.h
+@@ -27,26 +27,34 @@
+ class Interface;
+ 
+ /* Large box of the settings that the original game does not have, opened
+-   from the options box. */
++   from the options box. VIDEO and AUDIO next to its Exit button open
++   boxes of their own (in the same place: pages of this box) with a title,
++   whose Exit leads back. */
+ class AdvancedBox : public GuiObject {
+  public:
+ #ifdef __AMIGA__
+-  /* Amiga port: eight options; fits the smallest mode, 400x300. */
++  /* Amiga port: fits the smallest mode, 400x300. */
+   static const int kWidth = 312;
+-  static const int kHeight = 212;
+ #else
+   static const int kWidth = 360;
+-  static const int kHeight = 256;
+ #endif
+ 
++  typedef enum Page {
++    PageAdvanced,
++    PageVideo,     /* sand, rocks, kinds of trees */
++    PageAudio      /* nothing yet */
++  } Page;
++
+  protected:
+   Interface *interface;
++  Page page;
+ 
+  public:
+   explicit AdvancedBox(Interface *interface);
+   virtual ~AdvancedBox() {}
+ 
+  protected:
++  void set_page(Page page);
+   virtual void internal_draw();
+   virtual bool handle_click_left(int x, int y);
+ };
+diff --git a/src/interface.cc b/src/interface.cc
+index 454aacb..fac45dc 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -1178,8 +1178,9 @@ Interface::layout() {
+   }
+ 
+   if (advanced_box != nullptr) {
+-    advanced_box->move_to((width - AdvancedBox::kWidth) / 2,
+-                          (height - AdvancedBox::kHeight) / 2);
++    int bw = 0, bh = 0;
++    advanced_box->get_size(&bw, &bh);
++    advanced_box->move_to((width - bw) / 2, (height - bh) / 2);
+   }
+ 
+   if (notification_box != nullptr) {
+-- 
+2.45.2.windows.1
+

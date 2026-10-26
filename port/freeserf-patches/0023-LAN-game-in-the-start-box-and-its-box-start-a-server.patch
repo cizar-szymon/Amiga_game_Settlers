@@ -1,7 +1,7 @@
 From 595bb3e9c9aa7fdbc67321bc296463386e2b9fd1 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Mon, 26 Oct 2026 11:09:22 +0100
-Subject: [PATCH 23/30] LAN game in the start box and its box: start a server
+Subject: [PATCH 23/34] LAN game in the start box and its box: start a server
  or join one (windows only)
 
 ---
