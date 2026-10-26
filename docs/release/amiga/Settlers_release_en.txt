@@ -6,6 +6,28 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.75 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Sand / Rocks on new maps: "Normal" (as the original), "None" or e.g.
+  "50% of normal"; a wider Advanced box.
+
+
+0.74 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Options -> Advanced: "Rocks on new maps" - the brown boulders of new
+  maps from 0% to 100% (- + buttons), like the sand. The grey stones of
+  the stonecutter stay as they are.
+
+
+0.73 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Sand on new maps: the value in % with - + buttons next to it; the map
+  preview of the start box is made again when Options is closed.
+
+
 0.72 (26.10.2026, LAN branch - test build)
 -------------------------------------------
 

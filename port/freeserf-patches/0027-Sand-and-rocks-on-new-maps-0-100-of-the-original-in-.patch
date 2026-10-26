@@ -1,53 +1,128 @@
-From 79a258e16513e3f4fc3fa26d5c49f4d39ba239e3 Mon Sep 17 00:00:00 2001
+From 4bd133c6bb89aaa9c497c8b7ac16de8966fd9314 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Mon, 26 Oct 2026 19:04:31 +0100
-Subject: [PATCH 27/27] Sand on new maps (0-100% of the original deserts) in
+Subject: [PATCH 27/27] Sand and rocks on new maps (0-100% of the original) in
  the Advanced box; game speed x0.5
 
 ---
- src/advanced-box.cc  |  8 ++++++++
- src/advanced-box.h   |  4 ++--
- src/game-init.cc     | 11 +++++++++++
- src/game-init.h      |  2 ++
- src/game.cc          | 12 ++++++------
- src/game.h           |  4 +++-
- src/interface.cc     | 10 +++++++++-
- src/interface.h      |  6 ++++++
- src/lan-sync.cc      | 17 +++++++++--------
- src/map-generator.cc | 10 +++++++---
- src/map-generator.h  |  3 +++
- src/mission.cc       |  4 +++-
- src/mission.h        |  4 ++++
- 13 files changed, 73 insertions(+), 22 deletions(-)
+ src/advanced-box.cc  | 62 ++++++++++++++++++++++++++++++++++++++++++++
+ src/advanced-box.h   |  6 ++---
+ src/game-init.cc     | 18 +++++++++++++
+ src/game-init.h      |  3 +++
+ src/game.cc          | 14 +++++-----
+ src/game.h           |  5 +++-
+ src/interface.cc     | 28 +++++++++++++++++++-
+ src/interface.h      | 12 +++++++++
+ src/lan-sync.cc      | 20 ++++++++------
+ src/map-generator.cc | 27 ++++++++++++++-----
+ src/map-generator.h  |  9 ++++++-
+ src/mission.cc       |  6 ++++-
+ src/mission.h        |  7 +++++
+ 13 files changed, 189 insertions(+), 28 deletions(-)
 
 diff --git a/src/advanced-box.cc b/src/advanced-box.cc
-index de576c9..8721edd 100644
+index de576c9..a967370 100644
 --- a/src/advanced-box.cc
 +++ b/src/advanced-box.cc
-@@ -63,6 +63,11 @@ autosave_text(const Interface *interface) {
+@@ -48,6 +48,8 @@ typedef struct Option {
+   bool (Interface::*get)() const;
+   std::string (*text)(const Interface *interface);
+   void (Interface::*change)();
++  /* A value with - and + buttons: change is +, this is -. */
++  void (Interface::*decrease)();
+ } Option;
+ 
+ static std::string
+@@ -63,6 +65,25 @@ autosave_text(const Interface *interface) {
    return text;
  }
  
++/* An amount of the original's: "Normal" (as the original), "None", else
++   "50% of normal" - a plain "100%" read like all sand. */
++static std::string
++amount_text(unsigned int percent) {
++  if (percent >= 100) return "Normal";
++  if (percent == 0) return "None";
++  return std::to_string(percent) + "% of normal";
++}
++
 +static std::string
 +sand_text(const Interface *interface) {
-+  return std::to_string(interface->get_sand_percent()) + "%";
++  return amount_text(interface->get_sand_percent());
++}
++
++static std::string
++rocks_text(const Interface *interface) {
++  return amount_text(interface->get_rock_percent());
 +}
 +
  static std::string
  language_text(const Interface *interface) {
    Translation &translation = Translation::get_instance();
-@@ -99,6 +104,9 @@ static const Option options[] = {
+@@ -99,6 +120,12 @@ static const Option options[] = {
       of the data and the language is left out. */
    { N_("Show FPS"), &Interface::get_show_fps, nullptr,
      &Interface::switch_show_fps },
 +  /* Less desert on new maps (not missions). */
-+  { N_("Sand on new maps"), nullptr, sand_text,
-+    &Interface::next_sand_percent },
++  { N_("Sand on new maps"), nullptr, sand_text, &Interface::more_sand,
++    &Interface::less_sand },
++  /* Fewer brown boulders on new maps. */
++  { N_("Rocks on new maps"), nullptr, rocks_text, &Interface::more_rocks,
++    &Interface::less_rocks },
  #else
    /* With the data of several versions installed. */
    { N_("Graphics"), nullptr, graphics_text,
+@@ -138,6 +165,24 @@ AdvancedBox::internal_draw() {
+     if (options[i].get != nullptr) {
+       bool on = (interface->*options[i].get)();
+       frame->draw_sprite(check_x, y, Data::AssetIcon, on ? 288 : 220);
++    } else if (options[i].decrease != nullptr) {
++      /* value - + */
++      int minus_x = check_x - kCheckSize - 4;
++      std::string value = options[i].text(interface);
++      /* Shorter when it does not fit between the label and the buttons. */
++      int room = minus_x - 6 - kLabelX - 8 -
++                 frame->get_string_width(_(options[i].label));
++      size_t of = value.find(" of normal");
++      if (frame->get_string_width(value) > room && of != std::string::npos) {
++        value = value.substr(0, of) + " of norm.";
++      }
++      if (frame->get_string_width(value) > room && of != std::string::npos) {
++        value = value.substr(0, of);
++      }
++      frame->draw_string(minus_x - 6 - frame->get_string_width(value), y + 4,
++                         value, Color::green, Color::black);
++      frame->draw_sprite(minus_x, y, Data::AssetIcon, 220);  // -
++      frame->draw_sprite(check_x, y, Data::AssetIcon, 221);  // +
+     } else {
+       std::string value = options[i].text(interface);
+       int value_x = check_x + kCheckSize - frame->get_string_width(value);
+@@ -154,6 +199,23 @@ AdvancedBox::handle_click_left(int x, int y) {
+   int check_x = width - 24 - kCheckSize;
+   for (int i = 0; i < kOptionCount; i++) {
+     int row_y = kFirstRowY + i * kRowHeight;
++    if (options[i].decrease != nullptr) {
++      int minus_x = check_x - kCheckSize - 4;
++      if (y < row_y || y >= row_y + kCheckSize) continue;
++      if (x >= minus_x && x < minus_x + kCheckSize) {
++        play_sound(Audio::TypeSfxClick);
++        (interface->*options[i].decrease)();
++        set_redraw();
++        return true;
++      }
++      if (x >= check_x && x < check_x + kCheckSize) {
++        play_sound(Audio::TypeSfxClick);
++        (interface->*options[i].change)();
++        set_redraw();
++        return true;
++      }
++      continue;
++    }
+     int left = (options[i].get != nullptr) ? check_x :
+                                              check_x + kCheckSize - kValueWidth;
+     if (x >= left && x < check_x + kCheckSize &&
 diff --git a/src/advanced-box.h b/src/advanced-box.h
-index 90cd12c..2a55ac4 100644
+index 90cd12c..6f8d790 100644
 --- a/src/advanced-box.h
 +++ b/src/advanced-box.h
 @@ -31,9 +31,9 @@ class Interface;
@@ -55,71 +130,80 @@ index 90cd12c..2a55ac4 100644
   public:
  #ifdef __AMIGA__
 -  /* Amiga port: five options; small enough for a 320x200 screen. */
-+  /* Amiga port: six options; small enough for a 320x200 screen. */
-   static const int kWidth = 288;
+-  static const int kWidth = 288;
 -  static const int kHeight = 152;
-+  static const int kHeight = 172;
++  /* Amiga port: seven options; small enough for a 320x200 screen. */
++  static const int kWidth = 312;
++  static const int kHeight = 192;
  #else
    static const int kWidth = 360;
    static const int kHeight = 256;
 diff --git a/src/game-init.cc b/src/game-init.cc
-index d01416b..e51deab 100644
+index d01416b..2fa1f58 100644
 --- a/src/game-init.cc
 +++ b/src/game-init.cc
-@@ -121,6 +121,7 @@ GameInitBox::GameInitBox(Interface *interface)
+@@ -121,6 +121,8 @@ GameInitBox::GameInitBox(Interface *interface)
    game_tutorial = 0;
    preview_pending = false;
    preview_due = 0;
 +  preview_sand = 100;
++  preview_rocks = 100;
  
    set_size(360, 254);
  
-@@ -395,6 +396,9 @@ void
+@@ -395,6 +397,10 @@ void
  GameInitBox::handle_action(int action) {
    switch (action) {
      case ActionStartGame: {
 +      if (is_custom()) {
 +        mission->set_sand_percent(interface->get_sand_percent());
++        mission->set_rock_percent(interface->get_rock_percent());
 +      }
        if (game_type == GameLan) {
          interface->open_lan_box(lan_mission);
          return;
-@@ -702,6 +706,11 @@ GameInitBox::handle_player_click(unsigned int player_index, int cx, int cy) {
+@@ -702,6 +708,14 @@ GameInitBox::handle_player_click(unsigned int player_index, int cx, int cy) {
  
  void
  GameInitBox::update_preview() {
-+  /* The Sand of the Advanced box changed: the preview again. */
++  /* The Sand of the Advanced box changed: the preview again, once the
++     options (and Advanced) are closed. */
 +  if (is_custom() && !preview_pending &&
-+      interface->get_sand_percent() != preview_sand) {
++      interface->get_popup_box() == nullptr &&
++      (interface->get_sand_percent() != preview_sand ||
++       interface->get_rock_percent() != preview_rocks)) {
 +    request_map_preview();
 +  }
    if (preview_pending && game_type != GameLoad &&
        static_cast<int>(EventLoop::get_instance().get_ticks() -
                         preview_due) >= 0) {
-@@ -730,6 +739,8 @@ GameInitBox::generate_map_preview() {
+@@ -730,6 +744,10 @@ GameInitBox::generate_map_preview() {
    } else {
      ClassicMapGenerator generator(*map, mission->get_random_base());
      generator.init(MapGenerator::HeightGeneratorMidpoints, true);
 +    preview_sand = interface->get_sand_percent();
++    preview_rocks = interface->get_rock_percent();
 +    generator.set_desert_percent(preview_sand);
++    generator.set_rock_percent(preview_rocks);
      generator.generate();
      map->init_tiles(generator);
    }
 diff --git a/src/game-init.h b/src/game-init.h
-index acc0f58..e130692 100644
+index acc0f58..135f918 100644
 --- a/src/game-init.h
 +++ b/src/game-init.h
-@@ -70,6 +70,8 @@ class GameInitBox : public GuiObject {
+@@ -70,6 +70,9 @@ class GameInitBox : public GuiObject {
       then the preview area says so. */
    bool preview_pending;
    unsigned int preview_due;
 +  /* The Sand (%) of the shown preview of a new map. */
 +  unsigned int preview_sand;
++  unsigned int preview_rocks;
  
    PGameInfo custom_mission;
    PGameInfo lan_mission;
 diff --git a/src/game.cc b/src/game.cc
-index 8ac0a80..06800a8 100644
+index 8ac0a80..72345dd 100644
 --- a/src/game.cc
 +++ b/src/game.cc
 @@ -858,13 +858,12 @@ Game::pause() {
@@ -148,77 +232,98 @@ index 8ac0a80..06800a8 100644
      speed -= DEFAULT_GAME_SPEED / 2;
      Log::Info["game"] << "Game speed: " << speed;
    }
-@@ -2419,12 +2418,13 @@ Game::build_occupied_military(MapPos pos, Building::Type type,
+@@ -2419,12 +2418,15 @@ Game::build_occupied_military(MapPos pos, Building::Type type,
  }
  
  bool
 -Game::init(unsigned int map_size, const Random &random) {
-+Game::init(unsigned int map_size, const Random &random, unsigned int sand) {
++Game::init(unsigned int map_size, const Random &random, unsigned int sand,
++           unsigned int rocks) {
    init_map_rnd = random;
  
    map.reset(new Map(MapGeometry(map_size)));
    ClassicMissionMapGenerator generator(*map, init_map_rnd);
    generator.init();
 +  generator.set_desert_percent(sand);
++  generator.set_rock_percent(rocks);
    generator.generate();
    map->init_tiles(generator);
    gold_total = map->get_gold_deposit();
 diff --git a/src/game.h b/src/game.h
-index 42cc51b..4c57ad3 100644
+index 42cc51b..c790858 100644
 --- a/src/game.h
 +++ b/src/game.h
-@@ -158,7 +158,9 @@ class Game {
+@@ -158,7 +158,10 @@ class Game {
    /* External interface */
    unsigned int add_player(unsigned int intelligence, unsigned int supplies,
                            unsigned int reproduction);
 -  bool init(unsigned int map_size, const Random &random);
-+  /* sand: the size of the deserts in percent of the original's. */
++  /* sand: the size of the deserts, rocks: the brown boulders, in percent
++     of the original's. */
 +  bool init(unsigned int map_size, const Random &random,
-+            unsigned int sand = 100);
++            unsigned int sand = 100, unsigned int rocks = 100);
    void init_tutorial_enemy(const Player::Color &color);
  
    void update();
 diff --git a/src/interface.cc b/src/interface.cc
-index 031698e..a532671 100644
+index 031698e..016b88b 100644
 --- a/src/interface.cc
 +++ b/src/interface.cc
-@@ -74,6 +74,7 @@ Interface::Interface()
+@@ -74,6 +74,8 @@ Interface::Interface()
    large_numbers = false;
    stock_box_occupied = false;
    autosave_minutes = 0;
 +  sand_percent = 100;
++  rock_percent = 100;
    autosave_last_ticks = 0;
    autosave_last_game_tick = 0;
    return_timeout = 0;
-@@ -228,6 +229,7 @@ Interface::apply_settings() {
+@@ -228,6 +230,8 @@ Interface::apply_settings() {
      switch_show_fps();
    }
    autosave_minutes = settings.get("advanced", "autosave", 0u);
 +  sand_percent = std::min(100u, settings.get("advanced", "sand", 100u));
++  rock_percent = std::min(100u, settings.get("advanced", "rocks", 100u));
    Translation::get_instance().set_language(
      settings.get("advanced", "language", std::string()));
  
-@@ -268,6 +270,7 @@ Interface::store_settings() {
+@@ -268,6 +272,8 @@ Interface::store_settings() {
    settings.set("advanced", "stock_box_occupied", stock_box_occupied);
    settings.set("advanced", "show_fps", show_fps);
    settings.set("advanced", "autosave", autosave_minutes);
 +  settings.set("advanced", "sand", sand_percent);
++  settings.set("advanced", "rocks", rock_percent);
    settings.set("advanced", "language",
                 Translation::get_instance().get_language());
    if (Data::get_instance().get_mixed_source()) {
-@@ -1290,6 +1293,11 @@ Interface::next_language() {
+@@ -1290,6 +1296,26 @@ Interface::next_language() {
    invalidate();
  }
  
 +void
-+Interface::next_sand_percent() {
-+  sand_percent = (sand_percent == 0) ? 100 : sand_percent - 10;
++Interface::more_sand() {
++  sand_percent = std::min(100u, sand_percent + 10);
++}
++
++void
++Interface::less_sand() {
++  sand_percent = (sand_percent >= 10) ? sand_percent - 10 : 0;
++}
++
++void
++Interface::more_rocks() {
++  rock_percent = std::min(100u, rock_percent + 10);
++}
++
++void
++Interface::less_rocks() {
++  rock_percent = (rock_percent >= 10) ? rock_percent - 10 : 0;
 +}
 +
  void
  Interface::next_autosave_interval() {
    static const unsigned int intervals[] = { 0, 10, 20, 30, 60 };
-@@ -1364,7 +1372,7 @@ void
+@@ -1364,7 +1390,7 @@ void
  Interface::draw_game_speed(Frame *frame) {
    if (!game) return;
    unsigned int speed = game->get_speed();
@@ -228,31 +333,37 @@ index 031698e..a532671 100644
    unsigned int tenths = speed * 10 / DEFAULT_GAME_SPEED;
    std::string text = "X" + std::to_string(tenths / 10);
 diff --git a/src/interface.h b/src/interface.h
-index 8da7134..5594a03 100644
+index 8da7134..4bb8931 100644
 --- a/src/interface.h
 +++ b/src/interface.h
-@@ -131,6 +131,9 @@ class Interface : public GuiObject, public GameManager::Handler {
+@@ -131,6 +131,11 @@ class Interface : public GuiObject, public GameManager::Handler {
    bool large_numbers;
    bool stock_box_occupied;
    unsigned int autosave_minutes;  // 0: off
 +  /* The size of the deserts of new maps (not missions), % of the
 +     original's. */
 +  unsigned int sand_percent;
++  /* The brown boulders of new maps, the same way. */
++  unsigned int rock_percent;
    unsigned int autosave_last_ticks;
    unsigned int autosave_last_game_tick;
  
-@@ -200,6 +203,9 @@ class Interface : public GuiObject, public GameManager::Handler {
+@@ -200,6 +205,13 @@ class Interface : public GuiObject, public GameManager::Handler {
    /* Save the game every few minutes into one file (0: off). */
    unsigned int get_autosave_minutes() const { return autosave_minutes; }
    void next_autosave_interval();
 +  unsigned int get_sand_percent() const { return sand_percent; }
-+  /* 100, 90 .. 0, then 100 again. */
-+  void next_sand_percent();
++  /* In steps of 10, 0 to 100. */
++  void more_sand();
++  void less_sand();
++  unsigned int get_rock_percent() const { return rock_percent; }
++  void more_rocks();
++  void less_rocks();
    /* The next language with a translation, then the original English. */
    void next_language();
  
 diff --git a/src/lan-sync.cc b/src/lan-sync.cc
-index 8c45da9..ead68ff 100644
+index 8c45da9..ae26a93 100644
 --- a/src/lan-sync.cc
 +++ b/src/lan-sync.cc
 @@ -29,10 +29,10 @@
@@ -260,60 +371,64 @@ index 8c45da9..ead68ff 100644
  
  /* The version of SETUP. */
 -static const int kSetupVersion = 2;
-+static const int kSetupVersion = 3;
++static const int kSetupVersion = 4;
  
 -/* "2 <map size> <random base> <seed> <delay turns> <players>" and for
 -   each player "<face> <r> <g> <b> <intelligence> <supplies> <reproduction>". */
-+/* "3 <map size> <random base> <seed> <delay turns> <sand %> <players>"
-+   and for each player "<face> <r> <g> <b> <intelligence> <supplies> <reproduction>". */
++/* "4 <map size> <random base> <seed> <delay turns> <sand %> <rocks %>
++   <players>" and for each player "<face> <r> <g> <b> <intelligence> <supplies> <reproduction>". */
  std::string
  lan_encode_setup(PGameInfo mission, const Random &seed,
                   unsigned int delay) {
-@@ -40,7 +40,7 @@ lan_encode_setup(PGameInfo mission, const Random &seed,
+@@ -40,7 +40,8 @@ lan_encode_setup(PGameInfo mission, const Random &seed,
    s << kSetupVersion << ' ' << mission->get_map_size() << ' '
      << std::string(mission->get_random_base()) << ' '
      << std::string(seed) << ' ' << delay << ' '
 -    << mission->get_player_count();
-+    << mission->get_sand_percent() << ' ' << mission->get_player_count();
++    << mission->get_sand_percent() << ' ' << mission->get_rock_percent()
++    << ' ' << mission->get_player_count();
    for (size_t i = 0; i < mission->get_player_count(); i++) {
      PPlayerInfo p = mission->get_player(i);
      Player::Color c = p->get_color();
-@@ -60,15 +60,16 @@ lan_decode_setup(const std::string &data, Random *seed,
+@@ -60,15 +61,18 @@ lan_decode_setup(const std::string &data, Random *seed,
    unsigned int map_size = 0;
    size_t count = 0;
    std::string base, seed_text;
 -  unsigned int turns = 0;
 -  s >> version >> map_size >> base >> seed_text >> turns >> count;
-+  unsigned int turns = 0, sand = 100;
-+  s >> version >> map_size >> base >> seed_text >> turns >> sand >> count;
++  unsigned int turns = 0, sand = 100, rocks = 100;
++  s >> version >> map_size >> base >> seed_text >> turns >> sand >> rocks
++    >> count;
    if (!s || version != kSetupVersion || base.size() != 16 ||
 -      seed_text.size() != 16 || turns < 1 || turns > 16 || count < 2 ||
 -      count > 4) {
 +      seed_text.size() != 16 || turns < 1 || turns > 16 || sand > 100 ||
-+      count < 2 || count > 4) {
++      rocks > 100 || count < 2 || count > 4) {
      return nullptr;
    }
    PGameInfo mission = std::make_shared<GameInfo>(Random(base));
    mission->set_map_size(map_size);
 +  mission->set_sand_percent(sand);
++  mission->set_rock_percent(rocks);
    mission->remove_all_players();
    for (size_t i = 0; i < count; i++) {
      unsigned int face, r, g, b, intelligence, supplies, reproduction;
 diff --git a/src/map-generator.cc b/src/map-generator.cc
-index 20fad41..b9543b7 100644
+index 20fad41..f7601d9 100644
 --- a/src/map-generator.cc
 +++ b/src/map-generator.cc
-@@ -37,7 +37,8 @@ ClassicMapGenerator::ClassicMapGenerator(const Map& map, const Random& random)
+@@ -37,7 +37,9 @@ ClassicMapGenerator::ClassicMapGenerator(const Map& map, const Random& random)
    , preserve_bugs(false)
    , water_level(default_water_level)
    , max_lake_area(default_max_lake_area)
 -  , terrain_spikyness(default_terrain_spikyness) {
 +  , terrain_spikyness(default_terrain_spikyness)
-+  , desert_percent(100) {
++  , desert_percent(100)
++  , rock_percent(100) {
    tiles.resize(map.geom().tile_count());
    tags.resize(map.geom().tile_count());
  }
-@@ -752,14 +753,17 @@ ClassicMapGenerator::check_desert_up_triangle(MapPos pos_) {
+@@ -752,14 +754,17 @@ ClassicMapGenerator::check_desert_up_triangle(MapPos pos_) {
  void
  ClassicMapGenerator::create_deserts() {
    // Initialize random areas of desert based on spiral pattern.
@@ -333,75 +448,138 @@ index 20fad41..b9543b7 100644
            MapPos pos = map.pos_add_spirally(rnd_pos, index);
  
            if (check_desert_down_triangle(pos)) {
+@@ -885,7 +890,10 @@ ClassicMapGenerator::pos_add_spirally_random(MapPos pos, int mask) {
+ void
+ ClassicMapGenerator::create_random_object_clusters(
+     int num_clusters, int objs_in_cluster, int pos_mask, Map::Terrain type_min,
+-    Map::Terrain type_max, int obj_base, int obj_mask) {
++    Map::Terrain type_max, int obj_base, int obj_mask, unsigned int percent) {
++  /* Fewer objects: percent of those the original places are kept, spread
++     evenly; the random numbers are taken as without it. */
++  unsigned int kept = 0;
+   for (int i = 0; i < num_clusters; i++) {
+     for (int try_ = 0; try_ < 100; try_++) {
+       MapPos rnd_pos = map.get_rnd_coord(NULL, NULL, &rnd);
+@@ -894,8 +902,13 @@ ClassicMapGenerator::create_random_object_clusters(
+           MapPos pos_ = pos_add_spirally_random(rnd_pos, pos_mask);
+           if (hexagon_types_in_range(pos_, type_min, type_max) &&
+               tiles[pos_].obj == Map::ObjectNone) {
+-            tiles[pos_].obj = static_cast<Map::Object>(
++            Map::Object obj = static_cast<Map::Object>(
+               (random_int() & obj_mask) + obj_base);
++            kept += percent;
++            if (kept >= 100) {
++              kept -= 100;
++              tiles[pos_].obj = obj;
++            }
+           }
+         }
+         break;
+@@ -948,7 +961,7 @@ ClassicMapGenerator::create_objects() {
+   // Create sandstone boulders.
+   create_random_object_clusters(
+     regions, 6, 0xff, Map::TerrainGrass1, Map::TerrainGrass2,
+-    Map::ObjectSandstone0, 0x1);
++    Map::ObjectSandstone0, 0x1, rock_percent);
+ 
+   // Create trees submerged in water.
+   create_random_object_clusters(
+@@ -963,7 +976,7 @@ ClassicMapGenerator::create_objects() {
+   // Create small boulders.
+   create_random_object_clusters(
+     regions, 10, 0xff, Map::TerrainGrass1, Map::TerrainGrass2,
+-    Map::ObjectStone, 0x1);
++    Map::ObjectStone, 0x1, rock_percent);
+ 
+   // Create animal cadavers in desert.
+   create_random_object_clusters(
 diff --git a/src/map-generator.h b/src/map-generator.h
-index 266ff67..746fa60 100644
+index 266ff67..4c4b14d 100644
 --- a/src/map-generator.h
 +++ b/src/map-generator.h
-@@ -62,6 +62,8 @@ class ClassicMapGenerator : public MapGenerator {
+@@ -62,6 +62,11 @@ class ClassicMapGenerator : public MapGenerator {
              int water_level = default_water_level,
              int terrain_spikyness = default_terrain_spikyness);
    void generate();
 +  /* The size of the deserts, 0 (none) to 100 (as the original). */
 +  void set_desert_percent(unsigned int percent) { desert_percent = percent; }
++  /* The brown boulders (sandstone), 0 (none) to 100 (as the original);
++     not the stones of the stonecutter. */
++  void set_rock_percent(unsigned int percent) { rock_percent = percent; }
  
    int get_height(MapPos pos) const { return tiles[pos].height; }
    Map::Terrain get_type_up(MapPos pos) const {
-@@ -88,6 +90,7 @@ class ClassicMapGenerator : public MapGenerator {
+@@ -88,6 +93,8 @@ class ClassicMapGenerator : public MapGenerator {
    unsigned int water_level;
    unsigned int max_lake_area;
    int terrain_spikyness;
 +  unsigned int desert_percent;
++  unsigned int rock_percent;
  
    uint16_t random_int();
    MapPos pos_add_spirally_random(MapPos pos, int mask);
+@@ -128,7 +135,7 @@ class ClassicMapGenerator : public MapGenerator {
+   void create_random_object_clusters(int num_clusters, int objs_in_cluster,
+                                      int pos_mask, Map::Terrain type_min,
+                                      Map::Terrain type_max, int obj_base,
+-                                     int obj_mask);
++                                     int obj_mask, unsigned int percent = 100);
+ 
+   void expand_mineral_cluster(int iters, MapPos pos, int *index,
+                               int amount, Map::Minerals type);
 diff --git a/src/mission.cc b/src/mission.cc
-index b773f0a..6e876f4 100644
+index b773f0a..0a5c09f 100644
 --- a/src/mission.cc
 +++ b/src/mission.cc
-@@ -384,6 +384,7 @@ GameInfo::Mission missions[] = {
+@@ -384,6 +384,8 @@ GameInfo::Mission missions[] = {
  GameInfo::GameInfo(const Random &_random_base)
    : map_size(3)
    , has_game_random(false)
 +  , sand_percent(100)
++  , rock_percent(100)
    , name(_random_base)
    , game_type(Game::GameTypeOnePlayer)
    , level(0) {
-@@ -392,6 +393,7 @@ GameInfo::GameInfo(const Random &_random_base)
+@@ -392,6 +394,8 @@ GameInfo::GameInfo(const Random &_random_base)
  
  GameInfo::GameInfo(const GameInfo::Mission *mission_preset)
    : has_game_random(false)
 +  , sand_percent(100)
++  , rock_percent(100)
    , game_type(Game::GameTypeMission)
    , level(0) {
    map_size = 3;
-@@ -531,7 +533,7 @@ GameInfo::instantiate() {
+@@ -531,7 +535,7 @@ GameInfo::instantiate() {
      game->set_random(game_random);
    }
  
 -  if (!game->init(map_size, random_base)) {
-+  if (!game->init(map_size, random_base, sand_percent)) {
++  if (!game->init(map_size, random_base, sand_percent, rock_percent)) {
      return nullptr;
    }
    game->set_game_type(game_type, level);
 diff --git a/src/mission.h b/src/mission.h
-index 47577fc..1659575 100644
+index 47577fc..d32e24e 100644
 --- a/src/mission.h
 +++ b/src/mission.h
-@@ -107,6 +107,8 @@ class GameInfo {
+@@ -107,6 +107,9 @@ class GameInfo {
       clock. */
    bool has_game_random;
    Random game_random;
 +  /* The size of the deserts, % of the original's (Advanced box). */
 +  unsigned int sand_percent;
++  unsigned int rock_percent;
    PlayerInfos players;
    std::string name;
    int game_type;  /* Game::GameType */
-@@ -123,6 +125,8 @@ class GameInfo {
+@@ -123,6 +126,10 @@ class GameInfo {
    void set_map_size(unsigned int size) { map_size = size; }
    Random get_random_base() const { return random_base; }
    void set_random_base(const Random &base);
 +  unsigned int get_sand_percent() const { return sand_percent; }
 +  void set_sand_percent(unsigned int percent) { sand_percent = percent; }
++  unsigned int get_rock_percent() const { return rock_percent; }
++  void set_rock_percent(unsigned int percent) { rock_percent = percent; }
    void set_game_random(const Random &random) {
      game_random = random;
      has_game_random = true;

@@ -211,7 +211,7 @@ static int lockstep(const std::string &setup, unsigned int steps,
 int main(int argc, char *argv[]) {
   unsigned int map_size = 4, steps = 3000, every = 250, ai = 1;
   bool lock = false;
-  unsigned int sand = 100;
+  unsigned int sand = 100, rocks = 100;
   for (int i = 1; i < argc; i++) {
     const char *a = argv[i], *v = i + 1 < argc ? argv[i + 1] : nullptr;
     if (!strcmp(a, "-z") && v) { map_size = atoi(v); i++; }
@@ -220,9 +220,10 @@ int main(int argc, char *argv[]) {
     else if (!strcmp(a, "-a") && v) { ai = atoi(v); i++; }
     else if (!strcmp(a, "-l")) { lock = true; }
     else if (!strcmp(a, "-s") && v) { sand = atoi(v); i++; }
+    else if (!strcmp(a, "-r") && v) { rocks = atoi(v); i++; }
     else {
       printf("usage: lansim [-z MAPSIZE] [-n STEPS] [-k EVERY] [-a AI] "
-             "[-l] [-s SAND%%]\n");
+             "[-l] [-s SAND%%] [-r ROCKS%%]\n");
       return 5;
     }
   }
@@ -239,6 +240,7 @@ int main(int argc, char *argv[]) {
   }
   mission->set_default_colors();
   mission->set_sand_percent(sand);
+  mission->set_rock_percent(rocks);
 
   std::string setup = lan_encode_setup(mission, Random("5612341278563412"),
                                        kDelay);
@@ -256,10 +258,15 @@ int main(int argc, char *argv[]) {
   printf("start %lu ms\n", static_cast<unsigned long>(amiga_now_ms() - t0));
   {
     PMap map = game->get_map();
-    unsigned int desert = 0, all = 0;
+    unsigned int desert = 0, all = 0, boulders = 0;
     for (unsigned int r = 0; r < map->get_rows(); r++) {
       for (unsigned int c = 0; c < map->get_cols(); c++) {
         MapPos pos = map->pos(c, r);
+        Map::Object o = map->get_obj(pos);
+        if (o == Map::ObjectSandstone0 || o == Map::ObjectSandstone1 ||
+            o == Map::ObjectStone || o == Map::ObjectSandstone3) {
+          boulders++;
+        }
         Map::Terrain t[2] = { map->type_up(pos), map->type_down(pos) };
         for (Map::Terrain x : t) {
           all++;
@@ -267,7 +274,8 @@ int main(int argc, char *argv[]) {
         }
       }
     }
-    printf("sand %u%%: %u of %u triangles desert\n", sand, desert, all);
+    printf("sand %u%%: %u of %u triangles desert; rocks %u%%: %u boulders\n",
+           sand, desert, all, rocks, boulders);
   }
 
   for (unsigned int s = 1; s <= steps; s++) {

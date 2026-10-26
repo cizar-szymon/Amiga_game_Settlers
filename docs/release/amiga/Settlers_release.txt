@@ -6,6 +6,28 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.75 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Sand / Rocks on new maps: wartosci "Normal" (jak w oryginale), "None"
+  albo np. "50% of normal"; okno Advanced szersze.
+
+
+0.74 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Options -> Advanced: "Rocks on new maps" - ilosc brazowych skal na
+  nowych mapach od 0% do 100% (przyciski - +), jak piasek. Szare
+  kamienie dla kamieniarza bez zmian.
+
+
+0.73 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Sand on new maps: wartosc w % i przyciski - + obok; podglad mapy w
+  oknie startu odswieza sie po zamknieciu okna Options.
+
+
 0.72 (26.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 

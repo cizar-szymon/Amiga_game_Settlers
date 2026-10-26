@@ -869,6 +869,18 @@ u użytkownika długo bez rozjazdu – „same” przy bardzo dużym numerze kro
   i tutoriale bez zmian. W grze LAN wartość serwera idzie w SETUP (wersja 3).
 - `lansim -s PCT` liczy trójkąty pustyni; mapa 6: 100% 6808, 50% 3153, 25% 1106, 0% 0 z 65536.
 - Tempo: klawisz − schodzi do ×0,5 (`game_speed` 1), + wraca; napis X0.5 w prawym górnym rogu.
+- 0.73 (uwagi użytkownika): wiersz Sand z wartością i przyciskami − + (ikony głośności z okna
+  Options, po 10%); podgląd mapy w oknie startu rysuje się od nowa dopiero po zamknięciu Options.
+- 0.74 (prośba użytkownika: brązowe kamienie tak samo jak piasek): „Rocks on new maps” 0–100%
+  (`[advanced] rocks`). Dotyczy skał z piaskowca (`ObjectSandstone0/1`) i małych głazów
+  (`ObjectStone`/`ObjectSandstone3`), nie kamieni dla kamieniarza (`ObjectStone0–7`).
+  `create_random_object_clusters(..., percent)`: z obiektów, które stawia oryginał, zostaje
+  równomiernie percent% (licznik), liczby losowe brane jak bez zmiany; przy 100% mapa identyczna
+  (`lansim -l`: te same sumy). SETUP wersja 4 (rocks). `lansim -r PCT`, mapa 6: 100% 245 głazów,
+  50% 124, 0% 0. Okno Advanced na Amidze ma 7 wierszy (288×192).
+- 0.75 (uwaga użytkownika: „100%” wyglądało jak „sam piasek”): wartości jako „Normal” (jak
+  oryginał), „None”, „50% of normal”; gdy tekst nie mieści się między opisem a − +, „50% of
+  norm.”, a w ostateczności „50%”. Okno Advanced na Amidze 312×192 (nadal mieści się w 320).
 
 **Raspberry Pi 400 z Amiberry** (prośba użytkownika, 26.10.2026): ten sam program Amigi w emulatorze –
 gra LAN Amiga ↔ Pi bez rozjazdów, jak z WinUAE. Pliki w `tools/pi/`: konfiguracja Amiberry
