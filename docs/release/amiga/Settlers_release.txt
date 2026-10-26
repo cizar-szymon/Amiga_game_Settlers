@@ -6,6 +6,53 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.67 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN, krok 2: polaczenie. RUN SERVER oglasza serwer w sieci,
+  SEARCH znajduje serwery (nazwa i adres), CONNECT laczy. Serwer
+  pokazuje nazwe, adres i czas odpowiedzi gracza 2, START GAME staje sie
+  aktywny. Sama gra przez siec - w nastepnym kroku.
+
+
+0.66 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Okno LAN szersze: opisy i adresy IP wyraznie rozdzielone.
+
+
+0.65 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Okno serwera: nazwa domyslnie MASTER (dolaczajacy: SLAVE), adres IP
+  tej Amigi odczytany z sieci, bez liczby losowej. Przycisk RUN SERVER
+  (po kliknieciu STOP SERVER) - dopiero wtedy serwer oglasza sie w sieci.
+
+
+0.64 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Napis LAN na ikonie troche mniejszy. Okno LAN: nazwa tej Amigi (pod
+  ta nazwa serwer bedzie widoczny w sieci, zapamietywana), adres
+  serwera, a dla gracza 2 nazwa i adres w osobnych wierszach.
+
+
+0.63 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- LAN game wybierane jako trzecie (po Start mission), na ikonie duzy
+  napis LAN u gory; w oknie serwera wiersz "Player 2" na gracza, ktory
+  dolaczy.
+
+
+0.62 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN, krok 1: w oknie startu nowy typ gry "LAN game" (ikona ze
+  zmiana typu gry). Start otwiera okno START SERVER / JOIN SERVER z
+  wpisaniem adresu. Siec jeszcze nie dziala - to tylko okna.
+
+
 0.61 (26.10.2026)
 -----------------
 

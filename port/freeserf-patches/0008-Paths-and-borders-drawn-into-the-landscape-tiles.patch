@@ -1,7 +1,7 @@
 From bf4598c08819cc19456ac614e079b3f29ab9af00 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Sun, 25 Oct 2026 20:06:06 +0100
-Subject: [PATCH 08/22] Paths and borders drawn into the landscape tiles
+Subject: [PATCH 08/23] Paths and borders drawn into the landscape tiles
 
 They change seldom but were drawn into every frame: on a 68060 a third
 of the time of a view with many roads. The landscape tiles get them

@@ -690,6 +690,119 @@ odcinkami (widok powiększony składa się w Fast RAM). 800×600 scene2: ×2 30,
 **49,5**, ×1 32,5 bez zmian. `VERIFY` 0 przy ×2 i ×3, z przewijaniem, z okienkiem nad mapą i po
 powrocie do ×1. Przy zmianie stopnia kafelki terenu są rysowane od nowa (6 kafelków, ~0,3 s).
 
+## Gra LAN (gałąź `lan-game`, od 0.62)
+
+Prośba użytkownika (26.10.2026): gra dwóch ludzi na dwóch Amigach w sieci lokalnej. Duży projekt,
+więc prowadzimy go na gałęzi `lan-game` (Settlers i kopia Freeserf), a kandydat 0.61 (`main`,
+`v0.61-rc`) zostaje bez zmian. Kompilacje z gałęzi idą na Amigę 2 jako `WorkSD:Settlers/Settlers-LAN`
+(te same dane i zapisy, ikona skopiowana z `Settlers.info`).
+
+Decyzje użytkownika: 2 ludzi + do 2 AI; mapę i AI ustawia serwer jak w New game; testy na Amidze 2
+i WinUAE; punkt 1 to same okna, bez sieci.
+
+| Punkt | Stan | Opis |
+|---|---|---|
+| 1. Okna | ✅ (0.62–0.66, ocenione przez użytkownika) | typ gry LAN w oknie startu, okno START SERVER / JOIN SERVER |
+| 2. Połączenie | ✅ zbudowane (0.67), ⏳ test użytkownika w grze | `port/lan-amiga.cc` (bsdsocket): START SERVER nasłuchuje TCP 6810 i rozgłasza się UDP; dołączający znajduje go (SEARCH) albo wpisuje adres; powitanie z wersją; dołączający pojawia się w oknie serwera, serwer naciska START GAME |
+| 3. Start wspólnej gry | ⏳ | serwer wysyła cały stan (`GameStore::write` do strumienia), bo `Game::rnd` Freeserf losuje z zegara; dołączający gra graczem 2 (`set_player(1)`) |
+| 4. Lockstep | ⏳ | polecenia graczy jako komunikaty w tym samym ticku, tempo z sieci, suma kontrolna co N ticków, rozłączenie |
+| 5. Wydanie | ⏳ | 040 i 060, opisy, scalenie do `amiga-port` |
+
+**Punkt 1 (0.62, łatka `0023`).**
+- `GameInitBox`: nowy typ `GameLan`, wybierany jako trzeci: New game → Start mission → LAN game →
+  Start tutorial → Load game (0.63, prośba użytkownika). Ikona New game (263) z napisem LAN u góry:
+  0.63 kropki 2×2 (10 px), od 0.64 „minimalnie mniejszy” – litery 8 px z kreską 2 px, 22 px
+  szerokości (`draw_small_letters` z dowolną liczbą wierszy i skalą, przeniesione z
+  `PopupBox::draw_small_label` do `box-frame`, żeby nie dołączać grafiki z danych gry).
+- Ustawienia jak New game na osobnej kopii `lan_mission`: gracze 1 i 2 to ludzie (twarze 12 i 13;
+  w Freeserf twarz ≥ 12 to człowiek). Nie da się ich zmienić ani usunąć – tylko suwaki. Gracz 2 ma
+  napis LAN. Gracze 3–4 dostają tylko twarze AI (1–11).
+- Start otwiera `LanBox` (288×216, od 0.66 352×216 – opisy i adresy były za blisko; wartości od
+  x 168, pola 132 px, lista 320 px; `Interface::open_lan_box`, Esc zamyka). Widoki:
+  - wybór START SERVER / JOIN SERVER;
+  - serwer (0.64–0.65, prośby użytkownika): nazwa serwera (pole; tę nazwę rozgłasza serwer
+    i widzą ją szukający), adres serwera odczytany z Amigi, rozmiar mapy i liczba AI (liczba
+    losowa usunięta – za długa), potem gracz 2 – nazwa i w osobnym wierszu adres (pojawią się po
+    połączeniu; wtedy serwer startuje grę). Przyciski: **RUN SERVER** (po kliknięciu **STOP
+    SERVER**; tylko uruchomiony serwer się rozgłasza), nieaktywny START GAME, CANCEL;
+  - nazwy w `freeserf.ini` (`[lan] server_name`, domyślnie MASTER; `player_name` – „Your name”
+    dołączającego, domyślnie SLAVE), zapisywane przy zamknięciu okna; litery, cyfry, spacja,
+    `- _ .`, do 15 znaków;
+  - dołączanie: lista serwerów, SEARCH, pole adresu z fokusem (cyfry i kropki, 15 znaków),
+    CONNECT, BACK.
+- Sieć jest za interfejsem `LanLink` (`src/lan-link.h`, Freeserf nie zna Amigi;
+  `Interface::lan_link` ustawia `main`). Amiga: `port/lan-amiga.cc` + wywołania gniazd w C
+  `port/amiga_net.c` (funkcje bsdsocket to makra – `connect`, `send` – kolidujące z C++).
+  Już działa (0.65): adres tej Amigi (gniazdo UDP „połączone” z 192.0.2.1 i `getsockname`, bez
+  wysyłania; zapasowo `gethostbyname(gethostname())`), RUN SERVER = nasłuch TCP 6810 + co sekundę
+  rozgłoszenie UDP na 255.255.255.255:6810 `SETTLERS-LAN 1 <wersja> <nazwa>`. SEARCH i CONNECT
+  dalej piszą „Network: the next step of the plan.”.
+- Test z Shella: `lantest [n]` (adres, n rozgłoszeń, próba nasłuchu TCP 6810). Amiga 2: adres
+  192.168.9.187, rozgłoszenia wysłane, nasłuch TCP działa. PC (192.168.8.126, ta sama podsieć /22,
+  WiFi) nic nie odebrał (`tools/lan_listen.py`): profil sieci „Public” i reguły zapory blokujące
+  Python – do testów z PC/WinUAE potrzebna reguła zapory na porty 6810 (decyzja użytkownika).
+
+**Punkt 2 (0.67): protokół, proces sieciowy, połączenie.**
+
+Decyzje użytkownika: sieć ma nie obciążać grafiki; gra LAN najwyżej 640×480 (przy 800×600
+przełączenie na czas gry – punkt 3).
+
+Protokół – lockstep z poleceniami, nie przesyłanie stanu:
+- szukanie: UDP broadcast 255.255.255.255:6810 co 1 s, tylko przy RUN SERVER i dopóki nikt nie
+  dołączył: `SETTLERS-LAN <protokół> <wersja> <nazwa>`;
+- gra: TCP 6810 z `TCP_NODELAY`; ramka `długość (1 B: typ + dane) | typ | dane`. Proces obsługuje
+  sam HELLO (protokół, wersja, nazwa; inna wersja → BYE i komunikat), BYE, PING/PONG co 1 s;
+  ramki gry (typ ≥ 16) idą do gry;
+- dane w grze (punkt 4): TURN co 4 kroki (80 ms) + polecenia 3–30 B, SUM co 50 kroków →
+  ~100 B/s danych w każdą stronę, z nagłówkami TCP/IP ~0,7 KB/s;
+- start gry bez przesyłania zapisu: SETUP (~60 B: mapa, gracze, ziarno `Game::rnd`), mapa
+  generowana na obu Amigach, zgodność sprawdza SUM w kroku 0.
+
+Proces sieciowy (`port/amiga_net.c`): „Settlers LAN”, priorytet 1, startuje przy pierwszym
+użyciu, kończy się z grą (`LanLinkAmiga` w `main` przed `Interface`).
+- Całe `bsdsocket.library` należy do procesu (gniazda są przypisane do zadania).
+- Czeka w `WaitSelect` na gniazda, sygnał gry i Ctrl-C. Bez serwera, szukania i połączenia czeka
+  bez limitu czasu (0% CPU), inaczej budzi się co 200 ms (rozgłoszenie, limity, PING).
+- Gra ↔ proces: dwa pierścienie po 8 KB (jeden pisze, jeden czyta, bez blokad), gra budzi proces
+  `Signal`. Gra nie wywołuje żadnej funkcji sieci (`LanLinkAmiga::poll` czyta tylko pierścień).
+- Jeden gracz na serwer: następny dostaje BYE „busy”. Po zniknięciu gracza serwer czeka dalej
+  i znowu się rozgłasza.
+
+Okno LAN (0.67):
+- MASTER: po dołączeniu wiersze Player 2 / Address / Response (czas PING) i aktywny START GAME
+  (wysyła SETUP, u SLAVE „The server starts the game...”; sama gra to punkt 3);
+- SLAVE: SEARCH (3 s nasłuchu; lista nazwa + adres, inna wersja szara z numerem; kliknięcie
+  wpisuje adres), CONNECT (limit 5 s), widok „Connected” z Response i DISCONNECT;
+- adres serwera i nazwy zapamiętywane w `freeserf.ini` (`[lan]`).
+
+Testy (26.10.2026, Amiga 2 + PC, `port/lantest.c` z tym samym procesem co gra,
+`tools/lan_peer.py` udający drugą stronę):
+- serwer na Amidze, PC dołącza: HELLO w obie strony, PING/PONG, rozłączenie wykryte. Koszt
+  procesu sieciowego: **34 ms w 25 s** (65 ramek w każdą stronę) – ~0,14% CPU 060;
+- PC rozgłasza serwer, `lantest search` na Amidze go znajduje (na 255.255.255.255 i na
+  192.168.11.255);
+- w drugą stronę PC nic nie odbiera (zapora Windows, sieć „Public”) – do testów z WinUAE
+  potrzebna reguła na port 6810;
+- czas odpowiedzi do Amigi 2: PING z gry mediana ~100 ms, do 1 s; **zwykły `ping` z PC: średnio
+  144 ms, do 696 ms** (bramka 1 ms). Opóźnienie robi łącze Amigi 2, nie protokół. Dla lockstepu
+  (punkt 4): opóźnienie poleceń trzeba dobierać do zmierzonego czasu odpowiedzi, nie stałe 160 ms.
+- `ping` z samej Amigi 2 (Roadshow `C:ping`, bez gry): do routera min 5 / średnio 157 / max 780 ms,
+  do PC 6 / 29 / 126 ms (WiFi Amigi 2 słabe i zmienne); PC do routera 1 ms.
+- Amiga 1 (A1200, Warp1260, `warpNET` kablem, przez VPN): do swojego routera 2,7 / 4,6 / 10 ms;
+  PC → Amiga 1 (`ping`) 18 / 38 / 147 ms. **Protokół gry przez VPN** (`lantest serve` na Amidze 1,
+  PC dołącza, 200 PING): **średnio 23,5 ms, mediana 22,6 ms, najgorszy 47,7 ms**; proces
+  sieciowy 96 ms w 30 s przy 221 ramkach w każdą stronę (~0,4 ms na parę ramek, 0,3% CPU).
+  Amiga 1 nie ma trasy do sieci PC i Amigi 2 (ping 100% strat) – VPN łączy tylko PC z siecią
+  Amigi 1, więc gra Amiga 1 ↔ Amiga 2 przez VPN nie jest możliwa bez trasy w VPN.
+
+
+- logika bez liczb zmiennoprzecinkowych, bez wątków, kolekcje po indeksach, AI w
+  `Game::update()`, test zgodności zapisów w `tests/test_save_game.cc` – podstawa lockstepu;
+- zmiany stanu z GUI: `Game::build_*` / `demolish_*` / `send_geologist` / `set_inventory_*_mode` /
+  `pull_roads_through_flag`, settery `Player` z okien ustawień, zapis wprost do
+  `get_flag_prio()`/`get_inventory_prio()`, pola ataku + `start_attack`, `add_timer`, pauza i tempo;
+- rysowanie płonącego budynku zapisuje stan budynku (`viewport.cc:1213`) – do sprawdzenia.
+
 ## Okno Amiga w Options (0.57–0.58)
 
 Prośba użytkownika: przycisk „Amiga” obok Advanced z danymi komputera i zegarem Warpa. Łatka `0021`:

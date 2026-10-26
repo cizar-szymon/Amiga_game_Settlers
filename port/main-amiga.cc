@@ -31,6 +31,7 @@
 #include "port/amiga_wb.h"
 #include "src/viewport.h"
 #include "port/amiga-box.h"
+#include "port/lan-amiga.h"
 
 extern "C" const char ver[];
 const char ver[] = "$VER: Settlers " SETTLERS_VERSION " (" SETTLERS_DATE ")";
@@ -210,6 +211,11 @@ main(int argc, char *argv[]) {
     };
     Interface::platform_box_width = AmigaBox::kWidth;
     Interface::platform_box_height = AmigaBox::kHeight;
+
+    /* The network of a LAN game (bsdsocket.library, opened when used).
+       Made before the interface, so that it goes after it. */
+    LanLinkAmiga lan_link;
+    Interface::lan_link = &lan_link;
 
     Interface interface;
     unsigned int sw = 0, sh = 0;

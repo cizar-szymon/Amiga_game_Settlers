@@ -6,6 +6,53 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.67 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- LAN game, step 2: the connection. RUN SERVER announces the server in
+  the network, SEARCH finds servers (name and address), CONNECT joins.
+  The server shows the name, address and response time of player 2,
+  START GAME becomes active. The game over the network - the next step.
+
+
+0.66 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- A wider LAN box: the labels and the IP addresses well apart.
+
+
+0.65 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- The server box: the name MASTER at first (the one who joins: SLAVE),
+  the IP address of this Amiga read from the network, no random number.
+  A RUN SERVER button (STOP SERVER once clicked) - only then the server
+  announces itself in the network.
+
+
+0.64 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- A little smaller LAN on the icon. The LAN box: the name of this Amiga
+  (the server is seen in the network by it, remembered), the server
+  address, and for player 2 a name and an address on separate rows.
+
+
+0.63 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- LAN game chosen third (after Start mission), a large LAN on the top of
+  its icon; the server box has a "Player 2" row for the one who joins.
+
+
+0.62 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- LAN game, step 1: a new game type "LAN game" in the start box (the
+  game type icon). Start opens a START SERVER / JOIN SERVER box with an
+  address to type. No network yet - only the windows.
+
+
 0.61 (26.10.2026)
 -----------------
 

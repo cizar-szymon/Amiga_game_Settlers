@@ -1,0 +1,1138 @@
+From 595bb3e9c9aa7fdbc67321bc296463386e2b9fd1 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Mon, 26 Oct 2026 11:09:22 +0100
+Subject: [PATCH 23/23] LAN game in the start box and its box: start a server
+ or join one (windows only)
+
+---
+ src/box-frame.cc |  19 ++
+ src/box-frame.h  |   6 +
+ src/game-init.cc | 100 +++++++++--
+ src/game-init.h  |  10 +-
+ src/interface.cc |  38 +++-
+ src/interface.h  |   9 +
+ src/lan-box.cc   | 449 +++++++++++++++++++++++++++++++++++++++++++++++
+ src/lan-box.h    |  95 ++++++++++
+ src/lan-link.h   |  86 +++++++++
+ src/popup.cc     |  16 +-
+ 10 files changed, 798 insertions(+), 30 deletions(-)
+ create mode 100644 src/lan-box.cc
+ create mode 100644 src/lan-box.h
+ create mode 100644 src/lan-link.h
+
+diff --git a/src/box-frame.cc b/src/box-frame.cc
+index 5300c58..f3318f1 100644
+--- a/src/box-frame.cc
++++ b/src/box-frame.cc
+@@ -26,6 +26,25 @@
+ #include "src/gfx.h"
+ #include "src/data.h"
+ 
++void
++draw_small_letters(Frame *frame, int x, int y, const char *const *rows,
++                   int scale, int row_count) {
++  for (int pass = 0; pass < 2; pass++) {
++    for (int r = 0; r < row_count; r++) {
++      for (int col = 0; rows[r][col] != 0; col++) {
++        if (rows[r][col] != '#') continue;
++        int dx = x + col * scale, dy = y + r * scale;
++        if (pass == 0) {
++          frame->fill_rect(dx - 1, dy - 1, scale + 2, scale + 2,
++                           Color(0x55, 0x22, 0x00));
++        } else {
++          frame->fill_rect(dx, dy, scale, scale, Color(0xdd, 0xdd, 0x00));
++        }
++      }
++    }
++  }
++}
++
+ /* Frame of the small popup boxes (144x160) stretched to the size of the
+    box: the corners and the ornament of the top edge are kept, the plain
+    wood between them is repeated. */
+diff --git a/src/box-frame.h b/src/box-frame.h
+index 8b0a9c1..d734dca 100644
+--- a/src/box-frame.h
++++ b/src/box-frame.h
+@@ -28,4 +28,10 @@ class Frame;
+    (at least the 144x160 of a popup). */
+ void draw_box_frame(Frame *frame, int width, int height);
+ 
++/* Letters 5 pixels high (rows of '#', or as many rows as given) at x, y,
++   yellow with a dark outline like the lettering of the original's
++   buttons; scale 2: each dot 2x2. */
++void draw_small_letters(Frame *frame, int x, int y, const char *const *rows,
++                        int scale = 1, int row_count = 5);
++
+ #endif  // SRC_BOX_FRAME_H_
+diff --git a/src/game-init.cc b/src/game-init.cc
+index c1428d9..d01416b 100644
+--- a/src/game-init.cc
++++ b/src/game-init.cc
+@@ -39,6 +39,7 @@
+ #include "src/list.h"
+ #include "src/game-manager.h"
+ #include "src/event_loop.h"
++#include "src/lan-box.h"
+ #include "src/popup.h"
+ #include "src/translation.h"
+ 
+@@ -129,6 +130,13 @@ GameInitBox::GameInitBox(Interface *interface)
+   custom_mission->add_player(1, {0xcf, 0x63, 0x63}, 20, 30, 40);
+   mission = custom_mission;
+ 
++  /* Both of the first two players are people: this computer and the one
++     that joins. */
++  lan_mission = std::make_shared<GameInfo>(Random());
++  lan_mission->remove_all_players();
++  lan_mission->add_player(12, {0x00, 0xe3, 0xe3}, 40, 40, 40);
++  lan_mission->add_player(13, {0xcf, 0x63, 0x63}, 40, 40, 40);
++
+   minimap->set_displayed(true);
+   minimap->set_size(150, 160);
+   add_float(minimap.get(), 190, 55);
+@@ -188,6 +196,27 @@ GameInitBox::get_player_face_sprite(size_t face) {
+   return 0x119; /* sprite_face_none */
+ }
+ 
++/* "LAN" in the 5 pixel letters of the small labels. */
++static const char *const kLan[5] = {
++  "#   ### #  #",
++  "#   # # ## #",
++  "#   ### # ##",
++  "#   # # #  #",
++  "### # # #  #"
++};
++/* "LAN" for the top of the game type icon: 8 pixels high, strokes 2
++   pixels wide, 22 pixels wide. */
++static const char *const kLanLarge[8] = {
++  "##      #####  ##   ##",
++  "##     ##   ## ###  ##",
++  "##     ##   ## #### ##",
++  "##     ####### ## ####",
++  "##     ####### ##  ###",
++  "##     ##   ## ##   ##",
++  "###### ##   ## ##   ##",
++  "###### ##   ## ##   ##"
++};
++
+ void
+ GameInitBox::internal_draw() {
+   if (preview_pending && game_type != GameLoad &&
+@@ -263,6 +292,21 @@ GameInitBox::internal_draw() {
+ 
+       break;
+     }
++    case GameLan: {
++      draw_box_icon(5, 0, 263);  // Game type: New game, LAN on its top
++      draw_small_letters(frame, 8 * 5 + 20 + 5, 16 + 3, kLanLarge, 1, 8);
++
++      std::stringstream str_map_size;
++      str_map_size << mission->get_map_size();
++
++      draw_box_string(10, 2, "LAN game");
++      draw_box_string(10, 18, _("Mapsize:"));
++      draw_box_string(18, 18, str_map_size.str());
++
++      draw_box_icon(25, 0, 265);
++
++      break;
++    }
+     case GameLoad: {
+       draw_box_icon(5, 0, 316);  // Game type
+ 
+@@ -319,10 +363,15 @@ GameInitBox::draw_player_box(unsigned int player, int bx, int by) {
+ 
+   draw_box_icon(bx, by, get_player_face_sprite(face));
+   draw_box_icon(bx+5, by, 282);
+-  if (game_type == GameCustom) {
++  /* In a LAN game the two people stay. */
++  bool fixed = (game_type == GameLan && player < 2);
++  if (is_custom() && !fixed) {
+     draw_box_icon(bx+4, by, 308);
+     draw_box_icon(bx+5, by, (face == 0) ? 287 : 259);
+   }
++  if (game_type == GameLan && player == 1) {
++    draw_small_letters(frame, 8 * bx + 20 + 10, by + 16 + 62, kLan);
++  }
+ 
+   if (player < mission->get_player_count()) {
+     bx *= 8;
+@@ -346,6 +395,10 @@ void
+ GameInitBox::handle_action(int action) {
+   switch (action) {
+     case ActionStartGame: {
++      if (game_type == GameLan) {
++        interface->open_lan_box(lan_mission);
++        return;
++      }
+       if (game_type == GameLoad) {
+         std::string path = file_list->get_selected();
+         if (!GameManager::get_instance().load_game(path)) {
+@@ -367,9 +420,13 @@ GameInitBox::handle_action(int action) {
+       return;
+     }
+     case ActionToggleGameType:
+-      game_type++;
+-      if (game_type > GameLoad) {
+-        game_type = GameCustom;
++      /* New game, Start mission, LAN game, Start tutorial, Load game. */
++      switch (game_type) {
++        case GameCustom: game_type = GameMission; break;
++        case GameMission: game_type = GameLan; break;
++        case GameLan: game_type = GameTutorial; break;
++        case GameTutorial: game_type = GameLoad; break;
++        default: game_type = GameCustom; break;
+       }
+       switch (game_type) {
+         case GameMission: {
+@@ -394,6 +451,14 @@ GameInitBox::handle_action(int action) {
+           request_map_preview();
+           break;
+         }
++        case GameLan: {
++          mission = lan_mission;
++          random_input->set_displayed(true);
++          random_input->set_random(lan_mission->get_random_base());
++          file_list->set_displayed(false);
++          request_map_preview();
++          break;
++        }
+         case GameLoad: {
+           random_input->set_displayed(false);
+           file_list->set_displayed(true);
+@@ -423,8 +488,8 @@ GameInitBox::handle_action(int action) {
+           mission = GameInfo::get_tutorial(game_tutorial);
+           break;
+         case GameCustom:
+-          custom_mission->set_map_size(std::min(10u,
+-                                           custom_mission->get_map_size() + 1));
++        case GameLan:
++          mission->set_map_size(std::min(10u, mission->get_map_size() + 1));
+           break;
+       }
+       request_map_preview();
+@@ -440,8 +505,8 @@ GameInitBox::handle_action(int action) {
+           mission = GameInfo::get_tutorial(game_tutorial);
+           break;
+         case GameCustom:
+-          custom_mission->set_map_size(std::max(3u,
+-                                           custom_mission->get_map_size() - 1));
++        case GameLan:
++          mission->set_map_size(std::max(3u, mission->get_map_size() - 1));
+           break;
+       }
+       request_map_preview();
+@@ -459,8 +524,8 @@ GameInitBox::handle_action(int action) {
+     case ActionApplyRandom: {
+       std::string str = random_input->get_text();
+       if (str.length() == 16) {
+-        custom_mission->set_random_base(random_input->get_random());
+-        mission = custom_mission;
++        mission = (game_type == GameLan) ? lan_mission : custom_mission;
++        mission->set_random_base(random_input->get_random());
+         request_map_preview();
+       }
+       break;
+@@ -509,6 +574,7 @@ GameInitBox::handle_click_left(int cx, int cy) {
+       clickmap = clickmap_mission;
+       break;
+     case GameCustom:
++    case GameLan:
+       clickmap = clickmap_custom;
+       break;
+     case GameLoad:
+@@ -554,9 +620,10 @@ GameInitBox::get_next_character(unsigned int player_index) {
+   bool in_use = false;
+   PPlayerInfo player = mission->get_player(player_index);
+   unsigned int next = player->get_face();
++  /* Faces 12 and 13 are people: in a LAN game only the first two. */
++  unsigned int last = (game_type == GameLan) ? 11 : 13;
+   do {
+-    next = (next + 1) % 14;
+-    next = std::max(1u, next);
++    next = (next >= last) ? 1 : next + 1;
+     /* Check that face is not already in use by another player */
+     in_use = 0;
+     for (size_t i = 0; i < mission->get_player_count(); i++) {
+@@ -572,21 +639,26 @@ GameInitBox::get_next_character(unsigned int player_index) {
+ 
+ bool
+ GameInitBox::handle_player_click(unsigned int player_index, int cx, int cy) {
+-  if (game_type != GameCustom) {
++  if (!is_custom()) {
+     return true;
+   }
++  /* The two people of a LAN game: only their supplies and so on. */
++  bool fixed = (game_type == GameLan && player_index < 2);
+ 
+   if (cx < 8 || cx > 8 + 64 || cy < 8 || cy > 76) {
+     return false;
+   }
+ 
+   if ((cx < 8+32) && (cy < 72)) {
+-    if (player_index >= mission->get_player_count()) {
++    if (fixed || player_index >= mission->get_player_count()) {
+       return true;
+     }
+     PPlayerInfo player = mission->get_player(player_index);
+     player->set_character(get_next_character(player_index));
+   } else if ((cx > 16 + 32) && (cy < 24)) {
++    if (fixed) {
++      return true;
++    }
+     if (player_index >= mission->get_player_count()) {
+       mission->add_player(0, {0, 0, 0}, 20, 20, 20);
+       mission->set_default_colors();
+diff --git a/src/game-init.h b/src/game-init.h
+index c292b80..acc0f58 100644
+--- a/src/game-init.h
++++ b/src/game-init.h
+@@ -51,7 +51,11 @@ class GameInitBox : public GuiObject {
+     GameCustom = 0,
+     GameMission = 1,
+     GameTutorial = 2,
+-    GameLoad = 3
++    GameLoad = 3,
++    /* A new game of two players on two computers (and AI players): set
++       up as a new game, player 2 is the one who joins. Chosen after Start
++       mission. */
++    GameLan = 4
+   } GameType;
+ 
+  protected:
+@@ -68,6 +72,7 @@ class GameInitBox : public GuiObject {
+   unsigned int preview_due;
+ 
+   PGameInfo custom_mission;
++  PGameInfo lan_mission;
+   PGameInfo mission;
+ 
+   std::unique_ptr<RandomInput> random_input;
+@@ -85,6 +90,9 @@ class GameInitBox : public GuiObject {
+   virtual ~GameInitBox();
+ 
+  protected:
++  /* A new game set up here: New game or LAN game. */
++  bool is_custom() const {
++    return game_type == GameCustom || game_type == GameLan; }
+   void draw_box_icon(int x, int y, int sprite);
+   void draw_box_string(int x, int y, const std::string &str);
+   void draw_player_box(unsigned int player, int x, int y);
+diff --git a/src/interface.cc b/src/interface.cc
+index b10d9bb..4a83a09 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -39,6 +39,7 @@
+ #include "src/game-init.h"
+ #include "src/advanced-box.h"
+ #include "src/keys-box.h"
++#include "src/lan-box.h"
+ #include "src/settings.h"
+ #include "src/data-source-mixed.h"
+ #include "src/viewport.h"
+@@ -103,6 +104,7 @@ Interface::Interface()
+   advanced_box = nullptr;
+   keys_box = nullptr;
+   platform_box = nullptr;
++  lan_box = nullptr;
+   notification_box = nullptr;
+ 
+   GameManager::get_instance().add_handler(this);
+@@ -120,6 +122,7 @@ Interface::~Interface() {
+   delete advanced_box;
+   delete keys_box;
+   delete platform_box;
++  delete lan_box;
+   delete notification_box;
+ }
+ 
+@@ -305,6 +308,7 @@ Interface::PlatformBoxFactory Interface::platform_box_factory;
+ int Interface::platform_box_width = 0;
+ int Interface::platform_box_height = 0;
+ std::function<void(int)> Interface::zoom_hook;
++LanLink *Interface::lan_link = nullptr;
+ 
+ void
+ Interface::open_platform_box() {
+@@ -329,6 +333,27 @@ Interface::close_platform_box() {
+   layout();
+ }
+ 
++void
++Interface::open_lan_box(PGameInfo mission) {
++  close_lan_box();
++  lan_box = new LanBox(this, mission);
++  add_float(lan_box, 0, 0);
++  lan_box->set_displayed(true);
++  lan_box->set_enabled(true);
++  layout();
++}
++
++void
++Interface::close_lan_box() {
++  if (lan_box != nullptr) {
++    lan_box->set_displayed(false);
++    del_float(lan_box);
++    delete lan_box;
++    lan_box = nullptr;
++  }
++  layout();
++}
++
+ void
+ Interface::close_keys_box() {
+   if (keys_box != nullptr) {
+@@ -1036,6 +1061,11 @@ Interface::layout() {
+                           (height - platform_box_height) / 2);
+   }
+ 
++  if (lan_box != nullptr) {
++    lan_box->move_to((width - LanBox::kWidth) / 2,
++                     (height - LanBox::kHeight) / 2);
++  }
++
+   if (advanced_box != nullptr) {
+     advanced_box->move_to((width - AdvancedBox::kWidth) / 2,
+                           (height - AdvancedBox::kHeight) / 2);
+@@ -1321,6 +1351,9 @@ Interface::update() {
+   if (init_box != nullptr && init_box->is_displayed()) {
+     init_box->update_preview();
+   }
++  if (lan_box != nullptr) {
++    lan_box->update();
++  }
+ 
+   if (exit_to_menu) {
+     exit_to_menu = false;
+@@ -1414,7 +1447,10 @@ Interface::handle_key_pressed(char key, int modifier) {
+       break;
+     }
+     case 27: {
+-      if ((notification_box != nullptr) && notification_box->is_displayed()) {
++      if ((lan_box != nullptr) && lan_box->is_displayed()) {
++        close_lan_box();
++      } else if ((notification_box != nullptr) &&
++                 notification_box->is_displayed()) {
+         close_message();
+       } else if ((popup != nullptr) && popup->is_displayed()) {
+         close_popup();
+diff --git a/src/interface.h b/src/interface.h
+index dd16823..12f42c9 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -46,6 +46,8 @@ class PopupBox;
+ class GameInitBox;
+ class AdvancedBox;
+ class KeysBox;
++class LanBox;
++class LanLink;
+ class NotificationBox;
+ 
+ class Interface : public GuiObject, public GameManager::Handler {
+@@ -102,6 +104,7 @@ class Interface : public GuiObject, public GameManager::Handler {
+   AdvancedBox *advanced_box;
+   KeysBox *keys_box;
+   GuiObject *platform_box;
++  LanBox *lan_box;
+   NotificationBox *notification_box;
+ 
+   MapPos map_cursor_pos;
+@@ -245,6 +248,12 @@ class Interface : public GuiObject, public GameManager::Handler {
+   void close_advanced();
+   void open_keys_box();
+   void close_keys_box();
++  /* The box of a LAN game (the Start button of a LAN game in the start
++     box), with the settings of the start box. */
++  void open_lan_box(PGameInfo mission);
++  /* The network of a LAN game, given by the platform; none: nullptr. */
++  static LanLink *lan_link;
++  void close_lan_box();
+ 
+   /* A box of the platform, opened by a button next to Advanced in the
+      options box (the Amiga port: the Amiga and its accelerator). Without a
+diff --git a/src/lan-box.cc b/src/lan-box.cc
+new file mode 100644
+index 0000000..ee72e69
+--- /dev/null
++++ b/src/lan-box.cc
+@@ -0,0 +1,449 @@
++/*
++ * lan-box.cc - The box of a LAN game: start a server or join one
++ *
++ * Copyright (C) 2026  Wicked_Digger <wicked_digger@mail.ru>
++ *
++ * This file is part of freeserf.
++ *
++ * freeserf is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * freeserf is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "src/lan-box.h"
++
++#include <string>
++
++#include "src/interface.h"
++#include "src/popup.h"
++#include "src/box-frame.h"
++#include "src/text-input.h"
++#include "src/audio.h"
++#include "src/data.h"
++#include "src/gfx.h"
++#include "src/settings.h"
++
++static const int kExitSize = 16;
++static const int kButtonWidth = 112;
++static const int kButtonHeight = 16;
++static const int kButtonX = (LanBox::kWidth - kButtonWidth) / 2;
++static const int kLeftButtonX = 16;
++static const int kRightButtonX = LanBox::kWidth - 16 - kButtonWidth;
++static const int kLabelX = 16;
++static const int kValueX = 168;
++static const int kFieldWidth = 132;
++
++/* Choose */
++static const int kServerButtonY = 56;
++static const int kJoinButtonY = 104;
++/* Server: rows of 10 pixels from kRowsY, then the buttons */
++static const int kRowsY = 40;
++static const int kRunY = 138;
++static const int kCancelY = 158;
++/* Join: the list of servers, the name, the address and the buttons */
++static const int kListX = 16, kListY = 34, kListW = 320, kListH = 50;
++static const int kListRows = 6;
++static const int kSearchX = 16, kSearchY = 88, kSearchW = 80;
++static const int kJoinNameY = 112;
++static const int kAddressY = 126;
++static const int kJoinButtonsY = 144;
++static const int kMessageY = 180;
++
++static const char kNoNetwork[] = "No network in this version.";
++
++/* Letters, digits, spaces and - _ . of a name. */
++static bool
++name_filter(const char key, TextInput *text_input) {
++  return (key >= 'a' && key <= 'z') || (key >= 'A' && key <= 'Z') ||
++         (key >= '0' && key <= '9') || key == ' ' || key == '-' ||
++         key == '_' || key == '.';
++}
++
++/* Digits and dots of an IPv4 address. */
++static bool
++address_filter(const char key, TextInput *text_input) {
++  return (key >= '0' && key <= '9') || key == '.';
++}
++
++/* A field for a name, kept in the settings under key. */
++static TextInput *
++make_name_field(const std::string &key, const char *def) {
++  TextInput *field = new TextInput();
++  field->set_text(Settings::get_instance().get("lan", key, std::string(def)));
++  field->set_size(kFieldWidth, 10);
++  field->set_max_length(15);
++  field->set_filter(name_filter);
++  field->set_displayed(false);
++  return field;
++}
++
++LanBox::LanBox(Interface *_interface, PGameInfo _mission)
++  : interface(_interface)
++  , mission(_mission)
++  , view(ViewChoose)
++  , server_name_field(make_name_field("server_name", "MASTER"))
++  , player_name_field(make_name_field("player_name", "SLAVE"))
++  , address_field(new TextInput())
++  , starting(false) {
++  set_size(kWidth, kHeight);
++  add_float(server_name_field.get(), kValueX - 4, kRowsY - 1);
++  add_float(player_name_field.get(), kValueX - 4, kJoinNameY - 1);
++
++  address_field->set_size(kFieldWidth, 10);
++  address_field->set_max_length(15);
++  address_field->set_filter(address_filter);
++  address_field->set_text(Settings::get_instance().get(
++    "lan", "server_address", std::string()));
++  address_field->set_displayed(false);
++  add_float(address_field.get(), kValueX - 4, kAddressY - 1);
++}
++
++LanBox::~LanBox() {
++  if (link() != nullptr) {
++    link()->close();
++  }
++  Settings &settings = Settings::get_instance();
++  if (!server_name_field->get_text().empty()) {
++    settings.set("lan", "server_name", server_name_field->get_text());
++  }
++  if (!player_name_field->get_text().empty()) {
++    settings.set("lan", "player_name", player_name_field->get_text());
++  }
++  settings.set("lan", "server_address", address_field->get_text());
++  settings.save();
++}
++
++LanLink *
++LanBox::link() {
++  return Interface::lan_link;
++}
++
++LanLink::State
++LanBox::link_state() {
++  return link() != nullptr ? link()->get_state() : LanLink::StateIdle;
++}
++
++void
++LanBox::set_view(View _view) {
++  if (link() != nullptr && _view != ViewJoined) {
++    link()->close();
++  }
++  view = _view;
++  message.clear();
++  starting = false;
++  server_name_field->set_displayed(view == ViewServer);
++  player_name_field->set_displayed(view == ViewJoin);
++  address_field->set_displayed(view == ViewJoin);
++  if (view == ViewServer && link() != nullptr && own_address.empty()) {
++    own_address = link()->get_address();
++    message = link()->take_message();
++  }
++  if (view == ViewJoin) {
++    address_field->set_focused();  /* The address is typed at once. */
++  }
++  set_redraw();
++}
++
++void
++LanBox::update() {
++  LanLink *l = link();
++  if (l == nullptr || view == ViewChoose) {
++    return;
++  }
++  if (!l->poll()) {
++    return;
++  }
++  if (own_address.empty()) {
++    own_address = l->get_address();
++  }
++  std::string m = l->take_message();
++  if (!m.empty()) {
++    message = m;
++    starting = false;
++  }
++  if (view == ViewJoin) {
++    servers = l->get_servers();
++    if (l->get_state() == LanLink::StateConnected) {
++      set_view(ViewJoined);
++    }
++  } else if (view == ViewJoined &&
++             l->get_state() != LanLink::StateConnected) {
++    set_view(ViewJoin);
++    message = m;
++  }
++  int type = 0;
++  std::string data;
++  while (l->receive(&type, &data)) {
++    if (type == MessageSetup) {
++      /* Point 3 of the plan: the game itself. */
++      starting = true;
++      message = "The server starts the game...";
++    }
++  }
++  set_redraw();
++}
++
++std::string
++LanBox::ping_text() {
++  int ms = link() != nullptr ? link()->get_ping_ms() : -1;
++  return ms < 0 ? "-" : std::to_string(ms) + " ms";
++}
++
++bool
++LanBox::inside(int x, int y, int bx, int by, int bw, int bh) {
++  return x >= bx && x < bx + bw && y >= by && y < by + bh;
++}
++
++/* A button of the box: a text on a wooden plate with a dark edge, the
++   colours of the small labels of the settings box. A disabled one is
++   grey. */
++void
++LanBox::draw_text_button(int x, int y, int w, const std::string &text,
++                         bool enabled) {
++  frame->fill_rect(x, y, w, kButtonHeight, Color(0x55, 0x22, 0x00));
++  frame->fill_rect(x + 1, y + 1, w - 2, kButtonHeight - 2,
++                   enabled ? Color(0x99, 0x55, 0x22) : Color(0x55, 0x55, 0x55));
++  int tx = x + (w - frame->get_string_width(text)) / 2;
++  frame->draw_string(tx, y + 4, text,
++                     enabled ? Color(0xdd, 0xdd, 0x00) : Color(0x99, 0x99, 0x99),
++                     Color::black);
++}
++
++void
++LanBox::draw_centered(int y, const std::string &text) {
++  frame->draw_string((width - frame->get_string_width(text)) / 2, y, text,
++                     Color::green, Color::black);
++}
++
++void
++LanBox::draw_rows(int y, const std::string rows[][2], size_t count) {
++  for (size_t i = 0; i < count; i++) {
++    frame->draw_string(kLabelX, y, rows[i][0], Color::green, Color::black);
++    frame->draw_string(kValueX, y, rows[i][1], Color::green, Color::black);
++    y += 10;
++  }
++}
++
++void
++LanBox::internal_draw() {
++  for (int y = 0; y < height; y += 16) {
++    for (int x = 0; x < width; x += 16) {
++      frame->draw_sprite(x, y, Data::AssetIcon,
++                         PopupBox::PatternDiagonalGreen);
++    }
++  }
++  draw_box_frame(frame, width, height);
++  draw_centered(9, "LAN game");
++
++  LanLink::State state = link_state();
++  switch (view) {
++    case ViewChoose:
++      draw_centered(26, "Two players on two Amigas");
++      draw_centered(36, "in one network.");
++      draw_text_button(kButtonX, kServerButtonY, kButtonWidth, "START SERVER");
++      draw_centered(kServerButtonY + 20, "This Amiga sets up the game.");
++      draw_text_button(kButtonX, kJoinButtonY, kButtonWidth, "JOIN SERVER");
++      draw_centered(kJoinButtonY + 20, "Find the server or type");
++      draw_centered(kJoinButtonY + 30, "its address and connect.");
++      break;
++    case ViewServer: {
++      bool running = state == LanLink::StateServing ||
++                     state == LanLink::StateConnected;
++      bool joined = state == LanLink::StateConnected;
++      draw_centered(26, joined ? "A player has joined."
++                    : running ? "Waiting for a player..."
++                              : "RUN SERVER to be found.");
++      int ai = 0;
++      for (size_t i = 0; i < mission->get_player_count(); i++) {
++        if (mission->get_player(i)->get_face() < 12) ai++;
++      }
++      /* The name (a field over the first row) is what the players who
++         look for a server see. The player who joins appears below with
++         their name and address; then the game can start. */
++      const std::string rows[][2] = {
++        { "Server name", "" },
++        { "Server address", own_address.empty() ? "-" : own_address },
++        { "", "" },
++        { "Map size", std::to_string(mission->get_map_size()) },
++        { "AI players", std::to_string(ai) },
++        { "", "" },
++        { "Player 2", joined ? link()->get_peer_name() : "-" },
++        { "Address", joined ? link()->get_peer_address() : "-" },
++        { "Response", joined ? ping_text() : "-" },
++      };
++      draw_rows(kRowsY, rows, sizeof(rows) / sizeof(rows[0]));
++      draw_text_button(kLeftButtonX, kRunY, kButtonWidth,
++                       running ? "STOP SERVER" : "RUN SERVER");
++      draw_text_button(kRightButtonX, kRunY, kButtonWidth, "START GAME",
++                       joined && !starting);
++      draw_text_button(kButtonX, kCancelY, kButtonWidth, "CANCEL");
++      break;
++    }
++    case ViewJoin: {
++      bool searching = state == LanLink::StateSearching;
++      frame->draw_string(kListX, 24, searching ? "Searching the network..."
++                                               : "Servers found",
++                         Color::green, Color::black);
++      frame->fill_rect(kListX, kListY, kListW, kListH, Color::black);
++      if (servers.empty() && !searching) {
++        frame->draw_string(kListX + 4, kListY + 4, "None - SEARCH or type",
++                           Color::green);
++        frame->draw_string(kListX + 4, kListY + 12, "the address below.",
++                           Color::green);
++      }
++      for (size_t i = 0; i < servers.size() && i < kListRows; i++) {
++        const LanLink::Server &s = servers[i];
++        int y = kListY + 2 + 8 * static_cast<int>(i);
++        bool same = s.same_version;
++        Color c = same ? Color::green : Color(0x99, 0x99, 0x99);
++        frame->draw_string(kListX + 4, y, s.name, c);
++        std::string a = s.address + (same ? "" : " (" + s.version + ")");
++        frame->draw_string(kListX + 4 + 136, y, a, c);
++      }
++      draw_text_button(kSearchX, kSearchY, kSearchW, "SEARCH", !searching);
++      frame->draw_string(kLabelX, kJoinNameY, "Your name", Color::green,
++                         Color::black);
++      frame->draw_string(kLabelX, kAddressY, "Server address", Color::green,
++                         Color::black);
++      bool connecting = state == LanLink::StateConnecting;
++      draw_text_button(kLeftButtonX, kJoinButtonsY, kButtonWidth,
++                       connecting ? "CONNECTING" : "CONNECT", !connecting);
++      draw_text_button(kRightButtonX, kJoinButtonsY, kButtonWidth, "BACK");
++      break;
++    }
++    case ViewJoined: {
++      draw_centered(26, "Connected. Waiting for the");
++      draw_centered(36, "server to start the game.");
++      const std::string rows[][2] = {
++        { "Server name", link()->get_peer_name() },
++        { "Server address", link()->get_peer_address() },
++        { "", "" },
++        { "Your name", player_name_field->get_text() },
++        { "Your address", own_address.empty() ? "-" : own_address },
++        { "Response", ping_text() },
++      };
++      draw_rows(kRowsY + 20, rows, sizeof(rows) / sizeof(rows[0]));
++      draw_text_button(kButtonX, kCancelY, kButtonWidth, "DISCONNECT");
++      break;
++    }
++  }
++
++  if (!message.empty()) {
++    draw_centered(kMessageY, message);
++  }
++
++  frame->draw_sprite(width - 8 - kExitSize, height - 7 - kExitSize,
++                     Data::AssetIcon, 60);  // Exit
++}
++
++bool
++LanBox::handle_click_left(int x, int y) {
++  int exit_x = width - 8 - kExitSize;
++  int exit_y = height - 7 - kExitSize;
++  if (inside(x, y, exit_x, exit_y, kExitSize, kExitSize)) {
++    play_sound(Audio::TypeSfxClick);
++    interface->close_lan_box();  /* Deletes this box. */
++    return true;
++  }
++
++  LanLink *l = link();
++  LanLink::State state = link_state();
++  switch (view) {
++    case ViewChoose:
++      if (inside(x, y, kButtonX, kServerButtonY, kButtonWidth,
++                 kButtonHeight)) {
++        play_sound(Audio::TypeSfxClick);
++        set_view(ViewServer);
++      } else if (inside(x, y, kButtonX, kJoinButtonY, kButtonWidth,
++                        kButtonHeight)) {
++        play_sound(Audio::TypeSfxClick);
++        set_view(ViewJoin);
++      }
++      break;
++    case ViewServer:
++      if (inside(x, y, kLeftButtonX, kRunY, kButtonWidth, kButtonHeight)) {
++        play_sound(Audio::TypeSfxClick);
++        message.clear();
++        if (l == nullptr) {
++          message = kNoNetwork;
++        } else if (state == LanLink::StateIdle) {
++          l->start_server(server_name_field->get_text());
++        } else {
++          l->close();
++        }
++        set_redraw();
++      } else if (inside(x, y, kRightButtonX, kRunY, kButtonWidth,
++                        kButtonHeight)) {
++        if (state != LanLink::StateConnected || starting) {
++          play_sound(Audio::TypeSfxNotAccepted);
++        } else {
++          play_sound(Audio::TypeSfxClick);
++          std::string setup = std::to_string(mission->get_map_size()) + " " +
++                              std::string(mission->get_random_base());
++          l->send(MessageSetup, setup);
++          starting = true;
++          message = "Starting the game...";
++          set_redraw();
++        }
++      } else if (inside(x, y, kButtonX, kCancelY, kButtonWidth,
++                        kButtonHeight)) {
++        play_sound(Audio::TypeSfxClick);
++        set_view(ViewChoose);
++      }
++      break;
++    case ViewJoin:
++      if (inside(x, y, kListX, kListY, kListW, kListH)) {
++        size_t row = static_cast<size_t>((y - kListY - 2) / 8);
++        if (y >= kListY + 2 && row < servers.size()) {
++          play_sound(Audio::TypeSfxClick);
++          address_field->set_text(servers[row].address);
++        }
++      } else if (inside(x, y, kSearchX, kSearchY, kSearchW, kButtonHeight)) {
++        if (l == nullptr || state == LanLink::StateSearching) {
++          play_sound(Audio::TypeSfxNotAccepted);
++          message = l == nullptr ? kNoNetwork : "";
++        } else {
++          play_sound(Audio::TypeSfxClick);
++          message.clear();
++          servers.clear();
++          l->search();
++        }
++        set_redraw();
++      } else if (inside(x, y, kLeftButtonX, kJoinButtonsY, kButtonWidth,
++                        kButtonHeight)) {
++        std::string address = address_field->get_text();
++        if (l == nullptr || address.empty() ||
++            state == LanLink::StateConnecting) {
++          play_sound(Audio::TypeSfxNotAccepted);
++          message = l == nullptr ? kNoNetwork
++                    : address.empty() ? "Type the server address." : "";
++        } else {
++          play_sound(Audio::TypeSfxClick);
++          message = "Connecting to " + address + "...";
++          l->connect(address, player_name_field->get_text());
++        }
++        set_redraw();
++      } else if (inside(x, y, kRightButtonX, kJoinButtonsY, kButtonWidth,
++                        kButtonHeight)) {
++        play_sound(Audio::TypeSfxClick);
++        set_view(ViewChoose);
++      }
++      break;
++    case ViewJoined:
++      if (inside(x, y, kButtonX, kCancelY, kButtonWidth, kButtonHeight)) {
++        play_sound(Audio::TypeSfxClick);
++        set_view(ViewJoin);
++      }
++      break;
++  }
++  return true;
++}
+diff --git a/src/lan-box.h b/src/lan-box.h
+new file mode 100644
+index 0000000..34e243f
+--- /dev/null
++++ b/src/lan-box.h
+@@ -0,0 +1,95 @@
++/*
++ * lan-box.h - The box of a LAN game: start a server or join one
++ *
++ * Copyright (C) 2026  Wicked_Digger <wicked_digger@mail.ru>
++ *
++ * This file is part of freeserf.
++ *
++ * freeserf is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * freeserf is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef SRC_LAN_BOX_H_
++#define SRC_LAN_BOX_H_
++
++#include <memory>
++#include <string>
++#include <vector>
++
++#include "src/gui.h"
++#include "src/mission.h"
++#include "src/lan-link.h"
++
++class Interface;
++class TextInput;
++
++/* Opened by the Start button of a LAN game in the start box. One player
++   starts a server with the settings of the start box, the other one
++   joins it: a server found in the network or an address typed in. */
++class LanBox : public GuiObject {
++ public:
++  /* Wide enough for a label, a gap and an address on one row; still
++     fits a 400x300 screen. */
++  static const int kWidth = 352;
++  static const int kHeight = 216;
++
++  /* The frames of the game through the link. */
++  typedef enum Message {
++    MessageSetup = 0   /* START GAME: the settings of the game */
++  } Message;
++
++ protected:
++  typedef enum View {
++    ViewChoose,
++    ViewServer,
++    ViewJoin,
++    ViewJoined   /* connected to a server, waiting for it to start */
++  } View;
++
++  Interface *interface;
++  PGameInfo mission;
++  View view;
++  std::string own_address;
++  /* The names in a LAN game, kept in the settings: of a server (players
++     looking for one see it, MASTER at first) and of a player who joins
++     (the server shows it, SLAVE at first). */
++  std::unique_ptr<TextInput> server_name_field;
++  std::unique_ptr<TextInput> player_name_field;
++  std::unique_ptr<TextInput> address_field;
++  std::vector<LanLink::Server> servers;
++  std::string message;
++  bool starting;
++
++ public:
++  LanBox(Interface *interface, PGameInfo mission);
++  virtual ~LanBox();
++
++  /* With every update of the interface: the network. */
++  void update();
++
++ protected:
++  LanLink *link();
++  LanLink::State link_state();
++  void set_view(View view);
++  void draw_text_button(int x, int y, int w, const std::string &text,
++                        bool enabled = true);
++  void draw_centered(int y, const std::string &text);
++  void draw_rows(int y, const std::string rows[][2], size_t count);
++  std::string ping_text();
++  static bool inside(int x, int y, int bx, int by, int bw, int bh);
++
++  virtual void internal_draw();
++  virtual bool handle_click_left(int x, int y);
++};
++
++#endif  // SRC_LAN_BOX_H_
+diff --git a/src/lan-link.h b/src/lan-link.h
+new file mode 100644
+index 0000000..4496110
+--- /dev/null
++++ b/src/lan-link.h
+@@ -0,0 +1,86 @@
++/*
++ * lan-link.h - The network of a LAN game (two players on two computers)
++ *
++ * Copyright (C) 2026  Wicked_Digger <wicked_digger@mail.ru>
++ *
++ * This file is part of freeserf.
++ *
++ * freeserf is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * freeserf is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef SRC_LAN_LINK_H_
++#define SRC_LAN_LINK_H_
++
++#include <string>
++#include <vector>
++
++/* The connection of a LAN game, given by the platform (the Amiga port:
++   a process of its own with bsdsocket.library); Freeserf only uses it.
++   Nothing waits: the box and the game call poll() with every update. */
++class LanLink {
++ public:
++  typedef enum State {
++    StateIdle,
++    StateServing,     /* a server waiting for a player */
++    StateSearching,   /* looking for servers in the network */
++    StateConnecting,
++    StateConnected    /* the other player is there */
++  } State;
++
++  typedef struct Server {
++    std::string name;
++    std::string address;
++    std::string version;
++    bool same_version;   /* as this program: it can join */
++  } Server;
++
++  /* The frames of the game: their type and up to kMaxData bytes. */
++  static const int kMaxData = 250;
++
++  virtual ~LanLink() {}
++
++  /* What came from the network since the last call; true: something
++     changed (to draw the box again). */
++  virtual bool poll() = 0;
++  virtual State get_state() = 0;
++  /* This side started the server (it stays one when the player goes). */
++  virtual bool is_server() = 0;
++
++  /* The address of this computer ("" until it is known). */
++  virtual std::string get_address() = 0;
++  /* A message for the player (an error, "Disconnected."), once; "" if
++     none. */
++  virtual std::string take_message() = 0;
++
++  /* Listen for a player and announce the server by name. */
++  virtual void start_server(const std::string &name) = 0;
++  /* Look for servers for a few seconds; get_servers() fills meanwhile. */
++  virtual void search() = 0;
++  virtual std::vector<Server> get_servers() = 0;
++  virtual void connect(const std::string &address,
++                       const std::string &name) = 0;
++  /* Back to idle: the server, the search or the connection ends. */
++  virtual void close() = 0;
++
++  virtual std::string get_peer_name() = 0;
++  virtual std::string get_peer_address() = 0;
++  /* The time there and back of the last ping, ms; -1 none yet. */
++  virtual int get_ping_ms() = 0;
++
++  virtual bool send(int type, const std::string &data) = 0;
++  /* The next frame of the game received, false if none. */
++  virtual bool receive(int *type, std::string *data) = 0;
++};
++
++#endif  // SRC_LAN_LINK_H_
+diff --git a/src/popup.cc b/src/popup.cc
+index b3efda1..f981b07 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -33,6 +33,7 @@
+ #include "src/audio.h"
+ #include "src/gfx.h"
+ #include "src/interface.h"
++#include "src/box-frame.h"
+ #include "src/event_loop.h"
+ #include "src/minimap.h"
+ #include "src/mission.h"
+@@ -1951,20 +1952,7 @@ void
+ PopupBox::draw_small_label(int x, int y, int w, const char *const rows[5]) {
+   int lw = static_cast<int>(std::strlen(rows[0]));
+   frame->fill_rect(x + 2, y + 2, w - 4, 12, Color(0x99, 0x55, 0x22));
+-  const int lx = x + (w - lw) / 2, ly = y + 5;
+-  for (int pass = 0; pass < 2; pass++) {
+-    for (int r = 0; r < 5; r++) {
+-      for (int col = 0; rows[r][col] != 0; col++) {
+-        if (rows[r][col] != '#') continue;
+-        if (pass == 0) {
+-          frame->fill_rect(lx + col - 1, ly + r - 1, 3, 3,
+-                           Color(0x55, 0x22, 0x00));
+-        } else {
+-          frame->fill_rect(lx + col, ly + r, 1, 1, Color(0xdd, 0xdd, 0x00));
+-        }
+-      }
+-    }
+-  }
++  draw_small_letters(frame, x + (w - lw) / 2, y + 5, rows);
+ }
+ 
+ void
+-- 
+2.45.2.windows.1
+
