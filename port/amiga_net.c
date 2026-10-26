@@ -66,6 +66,19 @@ static int ring_put(Ring *r, int kind, const void *a, int alen,
   return 1;
 }
 
+/* The kind and the length of the next frame, without taking it. */
+static int ring_peek(const Ring *r, int *kind, int *length)
+{
+  ULONG pos = r->tail;
+  int len;
+  if (pos == r->head) return 0;
+  len = r->buf[pos] << 8;
+  len |= r->buf[(pos + 1) & (RING_SIZE - 1)];
+  *kind = r->buf[(pos + 2) & (RING_SIZE - 1)];
+  *length = len - 1;
+  return 1;
+}
+
 /* data gets at most size bytes; the rest of a longer frame is skipped. */
 static int ring_get(Ring *r, int *kind, UBYTE *data, int size, int *length)
 {
@@ -100,6 +113,8 @@ static volatile int start_failed = 0;
 static char net_version[16];
 
 static volatile ULONG count_eclocks, count_frames_out, count_frames_in;
+/* The process stopped taking frames: the ring to the game is full. */
+static volatile int rx_blocked = 0;
 static volatile ULONG count_bytes_out, count_bytes_in;
 
 static void command(int kind, const void *a, int alen, const void *b,
@@ -164,6 +179,11 @@ int net_event(NetEvent *ev)
   int kind, len;
   const UBYTE *p, *end;
   if (!ring_get(&from_net, &kind, buf, sizeof(buf), &len)) return 0;
+  if (rx_blocked && net_task != NULL &&
+      ring_free(&from_net) >= RING_SIZE / 2) {
+    rx_blocked = 0;
+    Signal((struct Task *)net_task, wake_mask);
+  }
   memset(ev, 0, sizeof(*ev) - sizeof(ev->data));
   ev->kind = kind;
   if (len < 4) return 1;
@@ -239,9 +259,9 @@ static long listen_fd = -1, udp_fd = -1, peer_fd = -1;
 static int searching, connecting, peer_ok, nodelay = 1;
 static ULONG next_announce, search_end, connect_end, next_ping;
 static char my_name[32], peer_ip[16];
-static UBYTE in_buf[1024];
+static UBYTE in_buf[4096];
 static int in_len;
-static UBYTE out_buf[4096];
+static UBYTE out_buf[8192];
 static int out_len;
 
 static void close_fd(long *fd)
@@ -574,10 +594,33 @@ static void frame_in(int type, const UBYTE *d, int len)
   }
 }
 
+/* The whole frames in in_buf to the game. A frame of the game waits there
+   while the ring to the game is full (a saved game comes in hundreds of
+   frames faster than the game takes them); rx_blocked then, and the game
+   wakes the process when it has taken events (net_event). */
+static void take_frames(void)
+{
+  int pos = 0;
+  rx_blocked = 0;
+  while (in_len - pos >= 2 && in_len - pos >= 1 + in_buf[pos]) {
+    int len = in_buf[pos];
+    if (len == 0) { drop_peer("Bad data."); return; }
+    if (in_buf[pos + 1] >= NET_MSG_GAME &&
+        ring_free(&from_net) < (ULONG)(len + 8)) {
+      rx_blocked = 1;
+      break;
+    }
+    frame_in(in_buf[pos + 1], in_buf + pos + 2, len - 1);
+    if (peer_fd < 0) return;
+    pos += 1 + len;
+  }
+  memmove(in_buf, in_buf + pos, in_len - pos);
+  in_len -= pos;
+}
+
 static void read_peer(void)
 {
   long n = recv(peer_fd, in_buf + in_len, sizeof(in_buf) - in_len, 0);
-  int pos = 0;
   if (n <= 0) {
     if (n < 0 && Errno() == EWOULDBLOCK) return;
     drop_peer("Disconnected.");
@@ -585,15 +628,7 @@ static void read_peer(void)
   }
   count_bytes_in += n;
   in_len += (int)n;
-  while (in_len - pos >= 2 && in_len - pos >= 1 + in_buf[pos]) {
-    int len = in_buf[pos];
-    if (len == 0) { drop_peer("Bad data."); return; }
-    frame_in(in_buf[pos + 1], in_buf + pos + 2, len - 1);
-    if (peer_fd < 0) return;
-    pos += 1 + len;
-  }
-  memmove(in_buf, in_buf + pos, in_len - pos);
-  in_len -= pos;
+  take_frames();
 }
 
 static void do_command(int kind, const UBYTE *d, int len)
@@ -659,7 +694,9 @@ static void net_main(void)
     }
     if (peer_fd >= 0) {
       if (connecting || out_len > 0) FD_SET(peer_fd, &wr);
-      if (!connecting) FD_SET(peer_fd, &rd);
+      if (!connecting && !rx_blocked && in_len < (int)sizeof(in_buf)) {
+        FD_SET(peer_fd, &rd);
+      }
       if (peer_fd > top) top = peer_fd;
     }
     tv.tv_secs = 0;
@@ -669,7 +706,14 @@ static void net_main(void)
     start = amiga_eclock();
     if (sigs & SIGBREAKF_CTRL_C) quit = 1;
 
-    while (ring_get(&to_net, &kind, data, sizeof(data), &len)) {
+    for (;;) {
+      /* A frame of the game waits in the ring until it fits into out_buf
+         (sent below and as the socket takes it). */
+      if (ring_peek(&to_net, &kind, &len) && kind == C_SEND && peer_ok &&
+          out_len + 2 + (len - 1) > (int)sizeof(out_buf)) {
+        break;
+      }
+      if (!ring_get(&to_net, &kind, data, sizeof(data), &len)) break;
       do_command(kind, data, len);
     }
 
@@ -691,6 +735,7 @@ static void net_main(void)
         send_hello();
       }
     }
+    if (peer_fd >= 0 && !connecting && in_len > 0) take_frames();
     if (peer_fd >= 0 && !connecting && FD_ISSET(peer_fd, &rd)) read_peer();
 
     {

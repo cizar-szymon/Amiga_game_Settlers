@@ -1,0 +1,291 @@
+From 35d8af3bcbe9a7bd494bffef0534bd08886eec49 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Mon, 26 Oct 2026 22:34:43 +0100
+Subject: [PATCH 29/30] Saves of LAN games marked (.lan.save, LAN in the list),
+ Load LAN game; the saves list sorted, with a scroll bar
+
+---
+ src/game-init.cc |  4 ++-
+ src/interface.cc |  6 ++--
+ src/list.cc      | 76 ++++++++++++++++++++++++++++++++++++++++++++----
+ src/list.h       |  6 ++++
+ src/popup.cc     |  6 ++++
+ src/savegame.cc  | 17 +++++++++--
+ src/savegame.h   |  7 ++++-
+ 7 files changed, 111 insertions(+), 11 deletions(-)
+
+diff --git a/src/game-init.cc b/src/game-init.cc
+index e0339e3..a19a762 100644
+--- a/src/game-init.cc
++++ b/src/game-init.cc
+@@ -157,6 +157,7 @@ GameInitBox::GameInitBox(Interface *interface)
+       this->map = game.get_map();
+       this->minimap->set_map(map);
+     }
++    this->set_redraw();  /* "Load LAN game" or "Load game" */
+   });
+   add_float(file_list.get(), 20, 55);
+ }
+@@ -312,7 +313,8 @@ GameInitBox::internal_draw() {
+     case GameLoad: {
+       draw_box_icon(5, 0, 316);  // Game type
+ 
+-      draw_box_string(10, 2, _("Load game"));
++      draw_box_string(10, 2, file_list->is_selected_lan() ? "Load LAN game"
++                                                           : _("Load game"));
+ 
+       break;
+     }
+diff --git a/src/interface.cc b/src/interface.cc
+index ea4c23e..13f0120 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -1367,7 +1367,8 @@ Interface::autosave() {
+   autosave_last_game_tick = game->get_tick();
+ 
+   GameStore &store = GameStore::get_instance();
+-  std::string path = store.get_folder_path() + "/autosave.save";
++  std::string path = store.get_folder_path() + "/autosave" +
++                     (lan_game ? GameStore::lan_suffix() : "") + ".save";
+   if (store.save(path, game.get())) {
+     Log::Info["interface"] << "Game saved to " << path;
+   }
+@@ -1666,7 +1667,8 @@ Interface::handle_key_pressed(char key, int modifier) {
+     }
+     case 'z':
+       if (modifier & 1) {
+-        GameStore::get_instance().quick_save("quicksave", game.get());
++        GameStore::get_instance().quick_save("quicksave", game.get(),
++                                             lan_game != nullptr);
+       } else if (modifier == 0 && zoom_hook) {
+         zoom_hook(0);
+       }
+diff --git a/src/list.cc b/src/list.cc
+index 59456b6..059dfc4 100644
+--- a/src/list.cc
++++ b/src/list.cc
+@@ -21,6 +21,7 @@
+ 
+ #include "src/list.h"
+ 
++#include <algorithm>
+ #include <string>
+ 
+ ListSavedFiles::ListSavedFiles()
+@@ -35,15 +36,46 @@ ListSavedFiles::ListSavedFiles()
+   selected_item = -1;
+ }
+ 
++static const int kBarWidth = 9;
++
+ std::string
+ ListSavedFiles::get_selected() const {
+-  if (items.size() == 0) {
++  if (selected_item < 0 ||
++      selected_item >= static_cast<int>(items.size())) {
+     return std::string();
+   }
+   std::string file_path = items[selected_item].path;
+   return file_path;
+ }
+ 
++bool
++ListSavedFiles::is_selected_lan() const {
++  return selected_item >= 0 &&
++         selected_item < static_cast<int>(items.size()) &&
++         items[selected_item].lan;
++}
++
++int
++ListSavedFiles::visible_rows() const {
++  return (height - 6 + 8) / 9;
++}
++
++bool
++ListSavedFiles::scrollable() const {
++  return static_cast<int>(items.size()) > visible_rows();
++}
++
++void
++ListSavedFiles::scroll(int rows) {
++  int last = std::max(0, static_cast<int>(items.size()) - visible_rows());
++  int first = static_cast<int>(first_visible_item) + rows;
++  first = std::max(0, std::min(last, first));
++  if (first != static_cast<int>(first_visible_item)) {
++    first_visible_item = first;
++    set_redraw();
++  }
++}
++
+ void
+ ListSavedFiles::internal_draw() {
+   frame->fill_rect(0, 0, width, height, color_background);
+@@ -52,21 +84,55 @@ ListSavedFiles::internal_draw() {
+     frame->draw_rect(0, 0, width, height, color_focus);
+   }
+ 
++  int text_width = scrollable() ? width - kBarWidth : width;
+   unsigned int item = first_visible_item;
+   for (int ly = 0; (ly < (height - 6)) && (item < items.size()); ly += 9) {
+     Color tc = color_text;
+-    if (static_cast<int>(item) == selected_item) {
+-      frame->fill_rect(2, ly + 2, width - 4, 9, Color::green);
++    bool selected = static_cast<int>(item) == selected_item;
++    if (selected) {
++      frame->fill_rect(2, ly + 2, text_width - 4, 9, Color::green);
+       tc = Color::black;
+     }
+-    frame->draw_string(3, 3 + ly, items[item].name, tc);
++    int x = 3;
++    if (items[item].lan) {
++      /* LAN, yellow, before the name of a save of a LAN game. */
++      frame->draw_string(x, 3 + ly, "LAN",
++                         selected ? Color::black : Color(0xdd, 0xdd, 0x00));
++      x += frame->get_string_width("LAN ") + 2;
++    }
++    frame->draw_string(x, 3 + ly, items[item].name, tc);
+     item++;
+   }
++
++  if (scrollable()) {
++    /* The bar: an arrow up at the top, down at the bottom (a click on
++       the upper half goes a page up, on the lower half a page down),
++       between them where the shown rows are among all. */
++    int bx = width - kBarWidth;
++    Color bar(0x00, 0x8b, 0x47);
++    frame->fill_rect(bx, 0, kBarWidth, height, Color(0x00, 0x33, 0x1a));
++    for (int i = 0; i < 4; i++) {
++      frame->fill_rect(bx + 4 - i, 2 + i, 1 + 2 * i, 1, Color::green);
++      frame->fill_rect(bx + 4 - i, height - 3 - i, 1 + 2 * i, 1,
++                       Color::green);
++    }
++    int track = height - 16;
++    int total = static_cast<int>(items.size());
++    int thumb = std::max(4, track * visible_rows() / total);
++    int top = 8 + (track - thumb) * static_cast<int>(first_visible_item) /
++                  std::max(1, total - visible_rows());
++    frame->fill_rect(bx + 2, top, kBarWidth - 4, thumb, bar);
++  }
+ }
+ 
+ bool
+-ListSavedFiles::handle_click_left(int /*cx*/, int cy) {
++ListSavedFiles::handle_click_left(int cx, int cy) {
+   set_focused();
++  if (scrollable() && cx >= width - kBarWidth) {
++    int page = std::max(1, visible_rows() - 1);
++    scroll(cy < height / 2 ? -page : page);
++    return true;
++  }
+   cy -= 3;
+   if (cy >= 0) {
+     cy = first_visible_item + (cy / 9);
+diff --git a/src/list.h b/src/list.h
+index 8dfecbb..321f59e 100644
+--- a/src/list.h
++++ b/src/list.h
+@@ -48,9 +48,15 @@ class ListSavedFiles : public GuiObject {
+     selection_handler = handler;
+   }
+   std::string get_selected() const;
++  /* The selected save is one of a LAN game. */
++  bool is_selected_lan() const;
+   std::string get_folder_path() const { return save_game->get_folder_path(); }
+ 
+  protected:
++  /* The rows that fit, and whether there are more (a scroll bar). */
++  int visible_rows() const;
++  bool scrollable() const;
++  void scroll(int rows);
+   virtual void internal_draw();
+ 
+   virtual bool handle_click_left(int x, int y);
+diff --git a/src/popup.cc b/src/popup.cc
+index 832fd67..c947bc0 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -3855,6 +3855,12 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     if (file_ext.empty()) {
+       file_name += ".save";
+     }
++    /* A save of a LAN game is marked as one in its name. */
++    std::string lan = GameStore::lan_suffix();
++    if (interface->get_lan_game() != nullptr &&
++        file_name.find(lan + ".save") == std::string::npos) {
++      file_name.insert(file_name.size() - 5, lan);
++    }
+     std::string file_path = file_list->get_folder_path() + "/" + file_name;
+     if (GameStore::get_instance().save(file_path,
+                                        interface->get_game().get())) {
+diff --git a/src/savegame.cc b/src/savegame.cc
+index 059c97e..1d2ef9f 100644
+--- a/src/savegame.cc
++++ b/src/savegame.cc
+@@ -597,6 +597,19 @@ const std::vector<GameStore::SaveInfo> &
+ GameStore::get_saved_games() {
+   saved_games.clear();
+   update();
++  /* By name; the LAN saves marked, their name without ".lan". */
++  const std::string lan = lan_suffix();
++  for (SaveInfo &info : saved_games) {
++    if (info.name.size() > lan.size() &&
++        info.name.compare(info.name.size() - lan.size(), lan.size(),
++                          lan) == 0) {
++      info.name.resize(info.name.size() - lan.size());
++      info.lan = true;
++    }
++  }
++  std::sort(saved_games.begin(), saved_games.end(),
++            [](const SaveInfo &a, const SaveInfo &b) {
++              return a.name < b.name; });
+   return saved_games;
+ }
+ 
+@@ -805,7 +818,7 @@ GameStore::load(const std::string &path, Game *game) {
+ }
+ 
+ bool
+-GameStore::quick_save(const std::string &prefix, Game *game) {
++GameStore::quick_save(const std::string &prefix, Game *game, bool lan) {
+   /* Build filename including time stamp. */
+   std::time_t t = time(NULL);
+   struct tm *tm = std::localtime(&t);
+@@ -822,7 +835,7 @@ GameStore::quick_save(const std::string &prefix, Game *game) {
+   GameStore save_game;
+ 
+   std::string path = save_game.get_folder_path();
+-  path += "/" + prefix + "-" + name + ".save";
++  path += "/" + prefix + "-" + name + (lan ? lan_suffix() : "") + ".save";
+ 
+   return save(path, game);
+ }
+diff --git a/src/savegame.h b/src/savegame.h
+index 67b210c..0c92105 100644
+--- a/src/savegame.h
++++ b/src/savegame.h
+@@ -151,8 +151,13 @@ class GameStore {
+     std::string name;
+     std::string path;
+     Type type;
++    /* A save of a LAN game ("<name>.lan.save"; name without .lan). */
++    bool lan = false;
+   };
+ 
++  /* The ending of the saves of LAN games, before ".save". */
++  static const char *lan_suffix() { return ".lan"; }
++
+  protected:
+   GameStore();
+ 
+@@ -173,7 +178,7 @@ class GameStore {
+    format on load and save to the best format on write. */
+   bool save(const std::string &path, Game *game);
+   bool load(const std::string &path, Game *game);
+-  bool quick_save(const std::string &prefix, Game *game);
++  bool quick_save(const std::string &prefix, Game *game, bool lan = false);
+ 
+   bool read(std::istream *is, Game *game);
+   bool write(std::ostream *os, Game *game);
+-- 
+2.45.2.windows.1
+

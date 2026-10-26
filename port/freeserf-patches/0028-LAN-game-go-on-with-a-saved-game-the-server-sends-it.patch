@@ -1,0 +1,621 @@
+From bf3966b16dfbcee331c5b553c950144706e77402 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Mon, 26 Oct 2026 19:44:20 +0100
+Subject: [PATCH 28/30] LAN game: go on with a saved game - the server sends it
+ whole, both load it
+
+---
+ src/game-init.cc    |   6 ++
+ src/game-manager.cc |  16 +++++
+ src/game-manager.h  |   2 +
+ src/interface.cc    |  25 ++++++++
+ src/interface.h     |   7 ++
+ src/lan-box.cc      | 152 ++++++++++++++++++++++++++++++++++++++++++--
+ src/lan-box.h       |  21 +++++-
+ src/lan-game.cc     |  51 ++++++++++++++-
+ src/lan-game.h      |  17 ++++-
+ src/lan-sync.cc     |  10 +++
+ src/lan-sync.h      |   3 +
+ 11 files changed, 298 insertions(+), 12 deletions(-)
+
+diff --git a/src/game-init.cc b/src/game-init.cc
+index 2fa1f58..e0339e3 100644
+--- a/src/game-init.cc
++++ b/src/game-init.cc
+@@ -407,6 +407,12 @@ GameInitBox::handle_action(int action) {
+       }
+       if (game_type == GameLoad) {
+         std::string path = file_list->get_selected();
++        /* A saved LAN game goes on as a LAN game: this Amiga the server,
++           the other one joins and gets the save. */
++        if (LanBox::is_lan_save(path) && Interface::lan_link != nullptr) {
++          interface->open_lan_box_with_save(lan_mission, path);
++          return;
++        }
+         if (!GameManager::get_instance().load_game(path)) {
+           return;
+         }
+diff --git a/src/game-manager.cc b/src/game-manager.cc
+index 025ec7c..7fb1e9e 100644
+--- a/src/game-manager.cc
++++ b/src/game-manager.cc
+@@ -21,6 +21,8 @@
+ 
+ #include "src/game-manager.h"
+ 
++#include <sstream>
++
+ #include <memory>
+ #include <string>
+ #include <utility>
+@@ -86,6 +88,20 @@ GameManager::start_game(PGameInfo game_info) {
+   return true;
+ }
+ 
++bool
++GameManager::load_game_text(const std::string &text) {
++  PGame new_game = std::make_shared<Game>();
++  std::istringstream in(text);
++  if (!GameStore::get_instance().read(&in, new_game.get())) {
++    return false;
++  }
++  /* A game read from a save is paused (its speed is not kept); both sides
++     go on at the normal speed, at the same step. */
++  new_game->speed_reset();
++  set_current_game(new_game);
++  return true;
++}
++
+ bool
+ GameManager::load_game(const std::string &path) {
+   PGame new_game = std::make_shared<Game>();
+diff --git a/src/game-manager.h b/src/game-manager.h
+index 149a9b8..e8e4811 100644
+--- a/src/game-manager.h
++++ b/src/game-manager.h
+@@ -57,6 +57,8 @@ class GameManager {
+   bool start_random_game();
+   bool start_game(PGameInfo game_info);
+   bool load_game(const std::string &path);
++  /* A LAN game: the saved game the server sent, as text. Not paused. */
++  bool load_game_text(const std::string &text);
+ 
+  protected:
+   void set_current_game(PGame new_game);
+diff --git a/src/interface.cc b/src/interface.cc
+index 016b88b..ea4c23e 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -342,6 +342,13 @@ Interface::close_platform_box() {
+   layout();
+ }
+ 
++void
++Interface::open_lan_box_with_save(PGameInfo mission,
++                                  const std::string &path) {
++  open_lan_box(mission);
++  lan_box->go_on_with_save(path);
++}
++
+ void
+ Interface::open_lan_box(PGameInfo mission) {
+   close_lan_box();
+@@ -352,6 +359,24 @@ Interface::open_lan_box(PGameInfo mission) {
+   layout();
+ }
+ 
++bool
++Interface::start_lan_game_from_save(const std::string &save, bool server,
++                                    unsigned int delay) {
++  if (!GameManager::get_instance().load_game_text(save)) {
++    return false;
++  }
++  lan_game.reset(new LanGame(this, lan_link, server, delay));
++  if (server) {
++    lan_game->send_save(save);
++  } else {
++    set_player(1);
++  }
++  close_lan_box();
++  close_game_init();
++  lan_game->started();
++  return true;
++}
++
+ bool
+ Interface::start_lan_game(const std::string &setup, bool server) {
+   Random seed;
+diff --git a/src/interface.h b/src/interface.h
+index 4bb8931..987096f 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -268,12 +268,19 @@ class Interface : public GuiObject, public GameManager::Handler {
+   /* The box of a LAN game (the Start button of a LAN game in the start
+      box), with the settings of the start box. */
+   void open_lan_box(PGameInfo mission);
++  /* The LAN box as a server going on with a saved LAN game (Load game
++     of the start box with a save of two people). */
++  void open_lan_box_with_save(PGameInfo mission, const std::string &path);
+   /* The network of a LAN game, given by the platform; none: nullptr. */
+   static LanLink *lan_link;
+   /* Both computers start the same game from SETUP (the LAN box: the
+      server when START GAME is pressed, the other one when SETUP comes);
+      the one who joined plays player 2. false: a bad SETUP. */
+   bool start_lan_game(const std::string &setup, bool server);
++  /* The same from a saved game (as text): the server sends it, the
++     other side got it. */
++  bool start_lan_game_from_save(const std::string &save, bool server,
++                                unsigned int delay);
+   LanGame *get_lan_game() { return lan_game.get(); }
+   /* A command of this player: done at once, in a LAN game on both
+      computers a little later. The result: done (in a LAN game: sent). */
+diff --git a/src/lan-box.cc b/src/lan-box.cc
+index 3aeaefb..f621df2 100644
+--- a/src/lan-box.cc
++++ b/src/lan-box.cc
+@@ -21,6 +21,8 @@
+ 
+ #include "src/lan-box.h"
+ 
++#include <fstream>
++#include <sstream>
+ #include <string>
+ 
+ #include "src/interface.h"
+@@ -34,6 +36,9 @@
+ #include "src/random.h"
+ #include "src/lan-game.h"
+ #include "src/lan-sync.h"
++#include "src/list.h"
++#include "src/savegame.h"
++#include "src/game.h"
+ 
+ static const int kExitSize = 16;
+ static const int kButtonWidth = 112;
+@@ -95,8 +100,16 @@ LanBox::LanBox(Interface *_interface, PGameInfo _mission)
+   , view(ViewChoose)
+   , server_name_field(make_name_field("server_name", "MASTER"))
+   , player_name_field(make_name_field("player_name", "SLAVE"))
+-  , address_field(new TextInput()) {
++  , address_field(new TextInput())
++  , save_list(new ListSavedFiles())
++  , save_map_size(0)
++  , save_size(0)
++  , save_sum(0)
++  , save_delay(0) {
+   set_size(kWidth, kHeight);
++  save_list->set_size(kListW, 96);
++  save_list->set_displayed(false);
++  add_float(save_list.get(), kListX, 36);
+   add_float(server_name_field.get(), kValueX - 4, kRowsY - 1);
+   add_float(player_name_field.get(), kValueX - 4, kJoinNameY - 1);
+ 
+@@ -137,11 +150,15 @@ LanBox::link_state() {
+ 
+ void
+ LanBox::set_view(View _view) {
+-  if (link() != nullptr && _view != ViewJoined) {
++  /* The server stays while its saved game is chosen; the connection while
++     joined. */
++  if (link() != nullptr &&
++      (_view == ViewChoose || (_view == ViewJoin && view != ViewJoin))) {
+     link()->close();
+   }
+   view = _view;
+   message.clear();
++  save_list->set_displayed(view == ViewLoad);
+   server_name_field->set_displayed(view == ViewServer);
+   player_name_field->set_displayed(view == ViewJoin);
+   address_field->set_displayed(view == ViewJoin);
+@@ -190,11 +207,82 @@ LanBox::update() {
+         return;
+       }
+       message = "Bad settings from the server.";
++    } else if (type >= LanGame::MessageSaveBegin &&
++               type <= LanGame::MessageSaveEnd) {
++      if (type == LanGame::MessageSaveEnd && save_size != 0 &&
++          save_in.size() == save_size &&
++          lan_data_checksum(save_in) == save_sum) {
++        /* The server's saved game, whole: the game goes on here too. */
++        if (interface->start_lan_game_from_save(save_in, false,
++                                                save_delay)) {
++          return;
++        }
++        message = "The saved game could not be read.";
++      } else {
++        receive_save(type, data);
++      }
+     }
+   }
+   set_redraw();
+ }
+ 
++void
++LanBox::receive_save(int type, const std::string &data) {
++  if (type == LanGame::MessageSaveBegin) {
++    std::istringstream s(data);
++    save_in.clear();
++    save_size = 0;
++    s >> save_size >> save_sum >> save_delay;
++    save_in.reserve(save_size);
++  } else if (type == LanGame::MessageSaveData) {
++    save_in += data;
++  } else {
++    message = "The saved game came broken.";
++    save_size = 0;
++    return;
++  }
++  if (save_size != 0) {
++    message = "Receiving the game... " +
++              std::to_string(save_in.size() * 100 / save_size) + "%";
++  }
++}
++
++void
++LanBox::go_on_with_save(const std::string &path) {
++  set_view(ViewServer);
++  use_saved_game(path);
++  set_redraw();
++}
++
++bool
++LanBox::is_lan_save(const std::string &path) {
++  Game game;
++  if (path.empty() || !GameStore::get_instance().load(path, &game)) {
++    return false;
++  }
++  Player *other = game.get_player(1);
++  return other != nullptr && !other->is_ai();
++}
++
++bool
++LanBox::use_saved_game(const std::string &path) {
++  Game game;
++  if (path.empty() || !GameStore::get_instance().load(path, &game)) {
++    message = "Choose a saved game.";
++    return false;
++  }
++  Player *other = game.get_player(1);
++  if (other == nullptr || other->is_ai()) {
++    message = "Player 2 is not a person there.";
++    return false;
++  }
++  save_path = path;
++  size_t slash = path.find_last_of("/\\:");
++  save_name = (slash == std::string::npos) ? path : path.substr(slash + 1);
++  save_map_size = game.get_map()->get_size();
++  return true;
++}
++
+ std::string
+ LanBox::ping_text() {
+   int ms = link() != nullptr ? link()->get_ping_ms() : -1;
+@@ -272,12 +360,15 @@ LanBox::internal_draw() {
+       /* The name (a field over the first row) is what the players who
+          look for a server see. The player who joins appears below with
+          their name and address; then the game can start. */
++      bool saved = !save_path.empty();
+       const std::string rows[][2] = {
+         { "Server name", "" },
+         { "Server address", own_address.empty() ? "-" : own_address },
+         { "", "" },
+-        { "Map size", std::to_string(mission->get_map_size()) },
+-        { "AI players", std::to_string(ai) },
++        { saved ? "Saved game" : "Map size",
++          saved ? save_name : std::to_string(mission->get_map_size()) },
++        { saved ? "Map size" : "AI players",
++          saved ? std::to_string(save_map_size) : std::to_string(ai) },
+         { "", "" },
+         { "Player 2", joined ? link()->get_peer_name() : "-" },
+         { "Address", joined ? link()->get_peer_address() : "-" },
+@@ -288,9 +379,17 @@ LanBox::internal_draw() {
+                        running ? "STOP SERVER" : "RUN SERVER");
+       draw_text_button(kRightButtonX, kRunY, kButtonWidth, "START GAME",
+                        joined);
+-      draw_text_button(kButtonX, kCancelY, kButtonWidth, "CANCEL");
++      draw_text_button(kLeftButtonX, kCancelY, kButtonWidth,
++                       saved ? "NEW MAP" : "SAVED GAME");
++      draw_text_button(kRightButtonX, kCancelY, kButtonWidth, "CANCEL");
+       break;
+     }
++    case ViewLoad:
++      frame->draw_string(kListX, 24, "Go on with a saved game", Color::green,
++                         Color::black);
++      draw_text_button(kLeftButtonX, kJoinButtonsY, kButtonWidth, "USE GAME");
++      draw_text_button(kRightButtonX, kJoinButtonsY, kButtonWidth, "BACK");
++      break;
+     case ViewJoin: {
+       bool searching = state == LanLink::StateSearching;
+       frame->draw_string(kListX, 24, searching ? "Searching the network..."
+@@ -390,10 +489,24 @@ LanBox::handle_click_left(int x, int y) {
+           play_sound(Audio::TypeSfxNotAccepted);
+         } else {
+           play_sound(Audio::TypeSfxClick);
++          unsigned int delay = LanGame::delay_for_ping(l->get_ping_ms());
++          if (!save_path.empty()) {
++            /* The saved game goes to the other side whole. */
++            std::ifstream file(save_path, std::ios::binary);
++            std::stringstream text;
++            text << file.rdbuf();
++            if (file && interface->start_lan_game_from_save(text.str(), true,
++                                                            delay)) {
++              return true;  /* This box is gone. */
++            }
++            message = "The saved game could not be read.";
++            set_redraw();
++            return true;
++          }
+           /* The other side makes the same game from the same SETUP; a new
+              seed for the random numbers of this game. */
+           std::string setup = lan_encode_setup(
+-            mission, Random(), LanGame::delay_for_ping(l->get_ping_ms()));
++            mission, Random(), delay);
+           if (l->send(LanGame::MessageSetup, setup) &&
+               interface->start_lan_game(setup, true)) {
+             return true;  /* This box is gone. */
+@@ -401,7 +514,16 @@ LanBox::handle_click_left(int x, int y) {
+           message = "The game did not start.";
+           set_redraw();
+         }
+-      } else if (inside(x, y, kButtonX, kCancelY, kButtonWidth,
++      } else if (inside(x, y, kLeftButtonX, kCancelY, kButtonWidth,
++                        kButtonHeight)) {
++        play_sound(Audio::TypeSfxClick);
++        if (save_path.empty()) {
++          set_view(ViewLoad);
++        } else {
++          save_path.clear();
++          set_redraw();
++        }
++      } else if (inside(x, y, kRightButtonX, kCancelY, kButtonWidth,
+                         kButtonHeight)) {
+         play_sound(Audio::TypeSfxClick);
+         set_view(ViewChoose);
+@@ -451,6 +573,22 @@ LanBox::handle_click_left(int x, int y) {
+         set_view(ViewJoin);
+       }
+       break;
++    case ViewLoad:
++      if (inside(x, y, kLeftButtonX, kJoinButtonsY, kButtonWidth,
++                 kButtonHeight)) {
++        if (use_saved_game(save_list->get_selected())) {
++          play_sound(Audio::TypeSfxClick);
++          set_view(ViewServer);
++        } else {
++          play_sound(Audio::TypeSfxNotAccepted);
++          set_redraw();
++        }
++      } else if (inside(x, y, kRightButtonX, kJoinButtonsY, kButtonWidth,
++                        kButtonHeight)) {
++        play_sound(Audio::TypeSfxClick);
++        set_view(ViewServer);
++      }
++      break;
+   }
+   return true;
+ }
+diff --git a/src/lan-box.h b/src/lan-box.h
+index 41f9497..d01f2ad 100644
+--- a/src/lan-box.h
++++ b/src/lan-box.h
+@@ -32,6 +32,7 @@
+ 
+ class Interface;
+ class TextInput;
++class ListSavedFiles;
+ 
+ /* Opened by the Start button of a LAN game in the start box. One player
+    starts a server with the settings of the start box, the other one
+@@ -48,7 +49,8 @@ class LanBox : public GuiObject {
+     ViewChoose,
+     ViewServer,
+     ViewJoin,
+-    ViewJoined   /* connected to a server, waiting for it to start */
++    ViewJoined,  /* connected to a server, waiting for it to start */
++    ViewLoad     /* the server chooses a saved game to go on with */
+   } View;
+ 
+   Interface *interface;
+@@ -63,6 +65,16 @@ class LanBox : public GuiObject {
+   std::unique_ptr<TextInput> address_field;
+   std::vector<LanLink::Server> servers;
+   std::string message;
++  /* The saved game the server goes on with ("": a new map), its map. */
++  std::unique_ptr<ListSavedFiles> save_list;
++  std::string save_path;
++  std::string save_name;
++  unsigned int save_map_size;
++  /* The saved game coming from the server. */
++  std::string save_in;
++  size_t save_size;
++  uint32_t save_sum;
++  unsigned int save_delay;
+ 
+  public:
+   LanBox(Interface *interface, PGameInfo mission);
+@@ -70,6 +82,10 @@ class LanBox : public GuiObject {
+ 
+   /* With every update of the interface: the network. */
+   void update();
++  /* The server view with this saved game chosen. */
++  void go_on_with_save(const std::string &path);
++  /* A save of a LAN game: player 2 in it is a person. */
++  static bool is_lan_save(const std::string &path);
+ 
+  protected:
+   LanLink *link();
+@@ -80,6 +96,9 @@ class LanBox : public GuiObject {
+   void draw_centered(int y, const std::string &text);
+   void draw_rows(int y, const std::string rows[][2], size_t count);
+   std::string ping_text();
++  /* The chosen saved game, if player 2 in it is a person. */
++  bool use_saved_game(const std::string &path);
++  void receive_save(int type, const std::string &data);
+   static bool inside(int x, int y, int bx, int by, int bw, int bh);
+ 
+   virtual void internal_draw();
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index 36cfb24..ed3b23d 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -54,6 +54,8 @@ LanGame::LanGame(Interface *_interface, LanLink *_link, bool _server,
+   , other_quit(false)
+   , end_seen(false)
+   , peer_name(_link != nullptr ? _link->get_peer_name() : "")
++  , save_sent(0)
++  , save_begun(false)
+   , notice_until(0)
+   , leave_at(0)
+   , old_width(0)
+@@ -181,6 +183,41 @@ LanGame::other_side_ended() {
+   leave_at = now + 4000;
+ }
+ 
++void
++LanGame::send_save(const std::string &save) {
++  save_out = save;
++  save_sent = 0;
++  save_begun = false;
++}
++
++/* As many pieces as the link takes now; the rest in the next update. */
++bool
++LanGame::pump_save() {
++  if (save_out.empty()) return true;
++  if (link == nullptr || gone) {
++    save_out.clear();
++    return true;
++  }
++  static const size_t kPiece = LanLink::kMaxData - 10;
++  if (!save_begun) {
++    std::string begin = std::to_string(save_out.size()) + " " +
++                        std::to_string(lan_data_checksum(save_out)) + " " +
++                        std::to_string(delay);
++    if (!link->send(MessageSaveBegin, begin)) return false;
++    save_begun = true;
++  }
++  while (save_sent < save_out.size()) {
++    size_t n = std::min(kPiece, save_out.size() - save_sent);
++    if (!link->send(MessageSaveData, save_out.substr(save_sent, n))) {
++      return false;
++    }
++    save_sent += n;
++  }
++  if (!link->send(MessageSaveEnd, std::string())) return false;
++  save_out.clear();
++  return true;
++}
++
+ bool
+ LanGame::before_step() {
+   receive();
+@@ -197,6 +234,11 @@ LanGame::before_step() {
+     }
+     return false;
+   }
++  if (!pump_save()) {
++    waiting_since = waiting_since != 0 ? waiting_since
++                    : (EventLoop::get_instance().get_ticks() | 1);
++    return false;
++  }
+   if (steps % kTurnSteps != 0) {
+     return true;
+   }
+@@ -291,9 +333,12 @@ LanGame::draw(Frame *frame) {
+     text += link->get_peer_name();
+     int ms = link->get_ping_ms();
+     if (ms >= 0) text += " " + std::to_string(ms) + " ms";
+-    if (waiting_since != 0 &&
+-        EventLoop::get_instance().get_ticks() - waiting_since >
+-          kShowWaitingMs) {
++    if (!save_out.empty()) {
++      text += " SENDING THE GAME " +
++              std::to_string(save_sent * 100 / save_out.size()) + "%";
++    } else if (waiting_since != 0 &&
++               EventLoop::get_instance().get_ticks() - waiting_since >
++                 kShowWaitingMs) {
+       text += " WAITING";
+     }
+   }
+diff --git a/src/lan-game.h b/src/lan-game.h
+index 0e1cffc..381d771 100644
+--- a/src/lan-game.h
++++ b/src/lan-game.h
+@@ -53,7 +53,12 @@ class LanGame {
+     MessageSetup = 0,  /* START GAME: the settings of the game */
+     MessageSum = 1,    /* step and checksum */
+     MessageTurn = 2,   /* turn, more frames follow, commands */
+-    MessageQuit = 3    /* the player left the game (exit, quit) */
++    MessageQuit = 3,   /* the player left the game (exit, quit) */
++    /* A saved game, from the server: "<size> <checksum> <delay>",
++       then its bytes in pieces, then the end. */
++    MessageSaveBegin = 4,
++    MessageSaveData = 5,
++    MessageSaveEnd = 6
+   } Message;
+ 
+   static const unsigned int kSumSteps = 250;  /* 5 s */
+@@ -87,6 +92,11 @@ class LanGame {
+   /* gone or other_quit seen: the notice is up. */
+   bool end_seen;
+   std::string peer_name;
++  /* The saved game the server still sends (before the first step), and
++     how much of it went out. */
++  std::string save_out;
++  size_t save_sent;
++  bool save_begun;
+   /* A notice in the middle of the screen until notice_until, then back
+      to the start menu at leave_at (0: not). */
+   std::string notice;
+@@ -104,6 +114,9 @@ class LanGame {
+   void started();
+   /* A command of this side, done on both at the start of a later turn. */
+   void queue(const LanCommand &command);
++  /* The server: send this saved game to the other side; the game steps
++     only once it is all out. */
++  void send_save(const std::string &save);
+   /* Before a step of the game: false while the other side's commands of
+      the turn are not there (the step waits). Does the commands of a turn
+      that starts. */
+@@ -123,6 +136,8 @@ class LanGame {
+   /* The other side left or the link broke: a notice, then the start
+      menu (on both sides). */
+   void other_side_ended();
++  /* false while the saved game is not all sent. */
++  bool pump_save();
+ };
+ 
+ #endif  // SRC_LAN_GAME_H_
+diff --git a/src/lan-sync.cc b/src/lan-sync.cc
+index ae26a93..f9f675a 100644
+--- a/src/lan-sync.cc
++++ b/src/lan-sync.cc
+@@ -116,3 +116,13 @@ lan_checksum(Game *game) {
+   }
+   return h;
+ }
++
++uint32_t
++lan_data_checksum(const std::string &data) {
++  uint32_t h = 2166136261u;
++  for (char c : data) {
++    h ^= static_cast<uint8_t>(c);
++    h *= 16777619u;
++  }
++  return h;
++}
+diff --git a/src/lan-sync.h b/src/lan-sync.h
+index 5a00ff5..f31543b 100644
+--- a/src/lan-sync.h
++++ b/src/lan-sync.h
+@@ -43,4 +43,7 @@ PGameInfo lan_decode_setup(const std::string &data, Random *seed,
+ /* What the two games have to agree on at the same step. */
+ uint32_t lan_checksum(Game *game);
+ 
++/* FNV-1a of bytes: a saved game sent whole. */
++uint32_t lan_data_checksum(const std::string &data);
++
+ #endif  // SRC_LAN_SYNC_H_
+-- 
+2.45.2.windows.1
+

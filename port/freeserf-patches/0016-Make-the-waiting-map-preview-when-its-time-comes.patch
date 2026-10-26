@@ -1,7 +1,7 @@
 From faa430cf0ad055a1090229ef9c095c9b3bfc9148 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Sun, 25 Oct 2026 23:31:37 +0100
-Subject: [PATCH 16/27] Make the waiting map preview when its time comes
+Subject: [PATCH 16/30] Make the waiting map preview when its time comes
 
 The start menu is drawn only when asked, so the preview requested after
 a click was never made and 'Making the map' stayed. Interface::update

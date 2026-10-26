@@ -6,6 +6,52 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.81 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Podwojne klikniecie zapisu na liscie wczytuje go (Load game, a w
+  oknie LAN wybiera zapis do gry).
+
+
+0.80 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Load game: przycisk DELETE usuwa zaznaczony zapis po potwierdzeniu
+  (pytanie "Delete the save?" - YES / NO).
+
+
+0.79 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Zapisy gier LAN oznaczone na liscie zoltym napisem LAN (pliki
+  nazwa.lan.save), w oknie startu "Load LAN game".
+- Lista zapisow alfabetycznie, a gdy zapisow jest wiecej niz miesci
+  okno - pasek ze strzalkami po prawej (klikniecie u gory/u dolu
+  przewija o strone).
+
+
+0.78 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Poprawka: przesylany zapis gry LAN docieral uszkodzony ("The saved
+  game came broken"), gdy przychodzil szybciej, niz gra go odbierala.
+
+
+0.77 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Load game z zapisem gry LAN (gracz 2 to czlowiek) otwiera okno LAN
+  jako serwer z tym zapisem - druga Amiga dolacza i dostaje zapis.
+
+
+0.76 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN z zapisu: serwer (MASTER) wybiera w oknie serwera SAVED GAME
+  zapis gry LAN, a START GAME wysyla go do drugiej Amigi; obie graja
+  dalej od tego miejsca. Zapis robi sie zwyklym oknem Save w grze LAN.
+
+
 0.75 (26.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 

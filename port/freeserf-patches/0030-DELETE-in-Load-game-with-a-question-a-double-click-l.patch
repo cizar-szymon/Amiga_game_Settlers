@@ -1,0 +1,357 @@
+From c9756822d01d7382a229d015e91cb63943d436b1 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Mon, 26 Oct 2026 22:44:21 +0100
+Subject: [PATCH 30/30] DELETE in Load game with a question, a double click
+ loads a save; a text button for the boxes
+
+---
+ src/box-frame.cc | 12 ++++++++
+ src/box-frame.h  |  7 +++++
+ src/game-init.cc | 71 +++++++++++++++++++++++++++++++++++++++++++++++-
+ src/game-init.h  |  9 +++++-
+ src/lan-box.cc   | 15 +++++-----
+ src/list.cc      | 21 ++++++++++++++
+ src/list.h       |  8 ++++++
+ 7 files changed, 134 insertions(+), 9 deletions(-)
+
+diff --git a/src/box-frame.cc b/src/box-frame.cc
+index f3318f1..418efd1 100644
+--- a/src/box-frame.cc
++++ b/src/box-frame.cc
+@@ -26,6 +26,18 @@
+ #include "src/gfx.h"
+ #include "src/data.h"
+ 
++void
++draw_text_button(Frame *frame, int x, int y, int w, const std::string &text,
++                 bool enabled) {
++  frame->fill_rect(x, y, w, 16, Color(0x55, 0x22, 0x00));
++  frame->fill_rect(x + 1, y + 1, w - 2, 14,
++                   enabled ? Color(0x99, 0x55, 0x22) : Color(0x55, 0x55, 0x55));
++  int tx = x + (w - frame->get_string_width(text)) / 2;
++  frame->draw_string(tx, y + 4, text,
++                     enabled ? Color(0xdd, 0xdd, 0x00) : Color(0x99, 0x99, 0x99),
++                     Color::black);
++}
++
+ void
+ draw_small_letters(Frame *frame, int x, int y, const char *const *rows,
+                    int scale, int row_count) {
+diff --git a/src/box-frame.h b/src/box-frame.h
+index d734dca..dec5a2a 100644
+--- a/src/box-frame.h
++++ b/src/box-frame.h
+@@ -22,6 +22,8 @@
+ #ifndef SRC_BOX_FRAME_H_
+ #define SRC_BOX_FRAME_H_
+ 
++#include <string>
++
+ class Frame;
+ 
+ /* Draw the frame of the popup boxes along the edges of a box of any size
+@@ -31,6 +33,11 @@ void draw_box_frame(Frame *frame, int width, int height);
+ /* Letters 5 pixels high (rows of '#', or as many rows as given) at x, y,
+    yellow with a dark outline like the lettering of the original's
+    buttons; scale 2: each dot 2x2. */
++/* A button with a text on a wooden plate with a dark edge, 16 pixels
++   high; a disabled one is grey. */
++void draw_text_button(Frame *frame, int x, int y, int w,
++                      const std::string &text, bool enabled = true);
++
+ void draw_small_letters(Frame *frame, int x, int y, const char *const *rows,
+                         int scale = 1, int row_count = 5);
+ 
+diff --git a/src/game-init.cc b/src/game-init.cc
+index a19a762..dd5df78 100644
+--- a/src/game-init.cc
++++ b/src/game-init.cc
+@@ -21,6 +21,8 @@
+ 
+ #include "src/game-init.h"
+ 
++#include <cstdio>
++
+ #include <algorithm>
+ #include <memory>
+ #include <sstream>
+@@ -40,6 +42,7 @@
+ #include "src/game-manager.h"
+ #include "src/event_loop.h"
+ #include "src/lan-box.h"
++#include "src/audio.h"
+ #include "src/popup.h"
+ #include "src/translation.h"
+ 
+@@ -120,6 +123,8 @@ GameInitBox::GameInitBox(Interface *interface)
+   game_mission = 0;
+   game_tutorial = 0;
+   preview_pending = false;
++  delete_asked = false;
++  start_requested = false;
+   preview_due = 0;
+   preview_sand = 100;
+   preview_rocks = 100;
+@@ -156,9 +161,13 @@ GameInitBox::GameInitBox(Interface *interface)
+     if (GameStore::get_instance().load(item, &game)) {
+       this->map = game.get_map();
+       this->minimap->set_map(map);
++      this->minimap->set_displayed(true);
+     }
+     this->set_redraw();  /* "Load LAN game" or "Load game" */
+   });
++  file_list->set_open_handler([this](const std::string &) {
++    this->start_requested = true;
++  });
+   add_float(file_list.get(), 20, 55);
+ }
+ 
+@@ -220,6 +229,11 @@ static const char *const kLanLarge[8] = {
+   "###### ##   ## ##   ##"
+ };
+ 
++/* DELETE of Load game, and YES / NO of its question, right of the text. */
++static const int kDeleteX = 228, kDeleteY = 32, kDeleteWidth = 64;
++static const int kYesNoWidth = 30;
++static const int kYesX = 228, kNoX = 262;
++
+ void
+ GameInitBox::internal_draw() {
+   if (preview_pending && game_type != GameLoad &&
+@@ -315,6 +329,15 @@ GameInitBox::internal_draw() {
+ 
+       draw_box_string(10, 2, file_list->is_selected_lan() ? "Load LAN game"
+                                                            : _("Load game"));
++      /* DELETE, and after it the question with YES and NO. */
++      if (delete_asked) {
++        draw_box_string(10, 18, "Delete the save?");
++        draw_text_button(frame, kYesX, kDeleteY, kYesNoWidth, "YES");
++        draw_text_button(frame, kNoX, kDeleteY, kYesNoWidth, "NO");
++      } else {
++        draw_text_button(frame, kDeleteX, kDeleteY, kDeleteWidth, "DELETE",
++                         !file_list->get_selected().empty());
++      }
+ 
+       break;
+     }
+@@ -434,6 +457,7 @@ GameInitBox::handle_action(int action) {
+       return;
+     }
+     case ActionToggleGameType:
++      delete_asked = false;
+       /* New game, Start mission, LAN game, Start tutorial, Load game. */
+       switch (game_type) {
+         case GameCustom: game_type = GameMission; break;
+@@ -530,6 +554,30 @@ GameInitBox::handle_action(int action) {
+          Exit button of the game's settings box leads back here). */
+       interface->open_quit_program();
+       break;
++    case ActionDeleteSave:
++      if (file_list->get_selected().empty()) {
++        play_sound(Audio::TypeSfxNotAccepted);
++      } else {
++        play_sound(Audio::TypeSfxClick);
++        delete_asked = true;
++      }
++      break;
++    case ActionDeleteYes: {
++      std::string path = file_list->get_selected();
++      delete_asked = false;
++      if (!path.empty() && std::remove(path.c_str()) == 0) {
++        play_sound(Audio::TypeSfxAhhh);
++        file_list->refresh();
++        minimap->set_displayed(false);  /* until a save is chosen */
++      } else {
++        play_sound(Audio::TypeSfxNotAccepted);
++      }
++      break;
++    }
++    case ActionDeleteNo:
++      play_sound(Audio::TypeSfxClick);
++      delete_asked = false;
++      break;
+     case ActionGenRandom: {
+       random_input->set_random(Random());
+       set_redraw();
+@@ -580,6 +628,19 @@ GameInitBox::handle_click_left(int cx, int cy) {
+     ActionClose,           308, 216, 32, 16,
+     -1
+   };
++  const int clickmap_load_delete[] = {
++    ActionStartGame,        20,  16, 32, 32,
++    ActionToggleGameType,   60,  16, 32, 32,
++    ActionShowOptions,     308,  16, 32, 32,
++    ActionDeleteSave, kDeleteX, kDeleteY, kDeleteWidth, 16,
++    ActionClose,           308, 216, 32, 16,
++    -1
++  };
++  const int clickmap_load_question[] = {
++    ActionDeleteYes,  kYesX, kDeleteY, kYesNoWidth, 16,
++    ActionDeleteNo,   kNoX,  kDeleteY, kYesNoWidth, 16,
++    -1
++  };
+ 
+   const int *clickmap = nullptr;
+   switch (game_type) {
+@@ -592,7 +653,8 @@ GameInitBox::handle_click_left(int cx, int cy) {
+       clickmap = clickmap_custom;
+       break;
+     case GameLoad:
+-      clickmap = clickmap_load;
++      clickmap = delete_asked ? clickmap_load_question
++                              : clickmap_load_delete;
+       break;
+     default:
+       return false;
+@@ -716,6 +778,13 @@ GameInitBox::handle_player_click(unsigned int player_index, int cx, int cy) {
+ 
+ void
+ GameInitBox::update_preview() {
++  if (start_requested) {
++    start_requested = false;
++    if (game_type == GameLoad && !delete_asked) {
++      handle_action(ActionStartGame);  /* may close this box */
++      return;
++    }
++  }
+   /* The Sand of the Advanced box changed: the preview again, once the
+      options (and Advanced) are closed. */
+   if (is_custom() && !preview_pending &&
+diff --git a/src/game-init.h b/src/game-init.h
+index 135f918..b217338 100644
+--- a/src/game-init.h
++++ b/src/game-init.h
+@@ -44,7 +44,10 @@ class GameInitBox : public GuiObject {
+     ActionDecrement,
+     ActionClose,
+     ActionGenRandom,
+-    ActionApplyRandom
++    ActionApplyRandom,
++    ActionDeleteSave,
++    ActionDeleteYes,
++    ActionDeleteNo
+   } Action;
+ 
+   typedef enum GameType {
+@@ -69,6 +72,10 @@ class GameInitBox : public GuiObject {
+      through the sizes or game types made one map after another. Until
+      then the preview area says so. */
+   bool preview_pending;
++  /* DELETE pressed: the question whether to delete the save is up. */
++  bool delete_asked;
++  /* A save was double clicked: Start in the next update. */
++  bool start_requested;
+   unsigned int preview_due;
+   /* The Sand (%) of the shown preview of a new map. */
+   unsigned int preview_sand;
+diff --git a/src/lan-box.cc b/src/lan-box.cc
+index f621df2..e6323bb 100644
+--- a/src/lan-box.cc
++++ b/src/lan-box.cc
+@@ -108,6 +108,13 @@ LanBox::LanBox(Interface *_interface, PGameInfo _mission)
+   , save_delay(0) {
+   set_size(kWidth, kHeight);
+   save_list->set_size(kListW, 96);
++  save_list->set_open_handler([this](const std::string &path) {
++    if (use_saved_game(path)) {
++      set_view(ViewServer);
++    } else {
++      set_redraw();
++    }
++  });
+   save_list->set_displayed(false);
+   add_float(save_list.get(), kListX, 36);
+   add_float(server_name_field.get(), kValueX - 4, kRowsY - 1);
+@@ -300,13 +307,7 @@ LanBox::inside(int x, int y, int bx, int by, int bw, int bh) {
+ void
+ LanBox::draw_text_button(int x, int y, int w, const std::string &text,
+                          bool enabled) {
+-  frame->fill_rect(x, y, w, kButtonHeight, Color(0x55, 0x22, 0x00));
+-  frame->fill_rect(x + 1, y + 1, w - 2, kButtonHeight - 2,
+-                   enabled ? Color(0x99, 0x55, 0x22) : Color(0x55, 0x55, 0x55));
+-  int tx = x + (w - frame->get_string_width(text)) / 2;
+-  frame->draw_string(tx, y + 4, text,
+-                     enabled ? Color(0xdd, 0xdd, 0x00) : Color(0x99, 0x99, 0x99),
+-                     Color::black);
++  ::draw_text_button(frame, x, y, w, text, enabled);
+ }
+ 
+ void
+diff --git a/src/list.cc b/src/list.cc
+index 059dfc4..815594e 100644
+--- a/src/list.cc
++++ b/src/list.cc
+@@ -48,6 +48,14 @@ ListSavedFiles::get_selected() const {
+   return file_path;
+ }
+ 
++void
++ListSavedFiles::refresh() {
++  items = save_game->get_saved_games();
++  first_visible_item = 0;
++  selected_item = -1;
++  set_redraw();
++}
++
+ bool
+ ListSavedFiles::is_selected_lan() const {
+   return selected_item >= 0 &&
+@@ -149,6 +157,19 @@ ListSavedFiles::handle_click_left(int cx, int cy) {
+   return true;
+ }
+ 
++bool
++ListSavedFiles::handle_dbl_click(int cx, int cy, Event::Button button) {
++  if (button != Event::ButtonLeft || open_handler == nullptr ||
++      (scrollable() && cx >= width - kBarWidth)) {
++    return false;
++  }
++  int row = static_cast<int>(first_visible_item) + (cy - 3) / 9;
++  if (cy >= 3 && row == selected_item) {
++    open_handler(items[selected_item].path);
++  }
++  return true;
++}
++
+ bool
+ ListSavedFiles::handle_drag(int dx, int dy) {
+   if (!focused) {
+diff --git a/src/list.h b/src/list.h
+index 321f59e..c84a8b7 100644
+--- a/src/list.h
++++ b/src/list.h
+@@ -40,6 +40,7 @@ class ListSavedFiles : public GuiObject {
+   unsigned int first_visible_item;
+   int selected_item;
+   std::function<void(const std::string&)> selection_handler;
++  std::function<void(const std::string&)> open_handler;
+ 
+  public:
+   ListSavedFiles();
+@@ -47,9 +48,15 @@ class ListSavedFiles : public GuiObject {
+   void set_selection_handler(std::function<void(const std::string&)> handler) {
+     selection_handler = handler;
+   }
++  /* A double click on a save: open it (load). */
++  void set_open_handler(std::function<void(const std::string&)> handler) {
++    open_handler = handler;
++  }
+   std::string get_selected() const;
+   /* The selected save is one of a LAN game. */
+   bool is_selected_lan() const;
++  /* The saves read again, none selected (a save was deleted). */
++  void refresh();
+   std::string get_folder_path() const { return save_game->get_folder_path(); }
+ 
+  protected:
+@@ -61,6 +68,7 @@ class ListSavedFiles : public GuiObject {
+ 
+   virtual bool handle_click_left(int x, int y);
+   virtual bool handle_drag(int dx, int dy);
++  virtual bool handle_dbl_click(int x, int y, Event::Button button);
+   virtual bool handle_key_pressed(char key, int modifier);
+   virtual bool handle_focus_loose();
+ };
+-- 
+2.45.2.windows.1
+

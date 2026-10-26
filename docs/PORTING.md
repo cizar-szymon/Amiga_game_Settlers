@@ -882,6 +882,45 @@ u użytkownika długo bez rozjazdu – „same” przy bardzo dużym numerze kro
   oryginał), „None”, „50% of normal”; gdy tekst nie mieści się między opisem a − +, „50% of
   norm.”, a w ostateczności „50%”. Okno Advanced na Amidze 312×192 (nadal mieści się w 320).
 
+**Zapis i wczytanie gry LAN (0.76, łatka `0028`).**
+- Zapis: każda strona zapisuje grę LAN zwykłym oknem Save (stan obu jest ten sam).
+- Wczytanie: u MASTER w oknie serwera przycisk SAVED GAME → lista zapisów (`ListSavedFiles`), USE
+  GAME sprawdza, że gracz 2 w zapisie jest człowiekiem (inaczej „Player 2 is not a person
+  there.”). Wiersze pokazują nazwę zapisu i rozmiar mapy; NEW MAP wraca do nowej mapy.
+- START GAME: MASTER wczytuje plik jako tekst, `GameManager::load_game_text` (jak `GameStore::read`,
+  potem `speed_reset` – zapis nie trzyma tempa, obie strony startują z normalnym) i wysyła go
+  w całości: SAVE BEGIN „rozmiar suma opóźnienie”, kawałki po 240 B (ramki gry 5), SAVE END. Gra
+  MASTER nie robi kroku, dopóki wszystko nie wyjdzie (w linii LAN „SENDING THE GAME n%”), więc
+  TURN-y idą po zapisie. SLAVE pokazuje „Receiving the game... n%”, sprawdza rozmiar i sumę
+  FNV-1a i wczytuje ten sam tekst; gra jako gracz 2.
+- 0.77 (uwaga użytkownika: zapis LAN wczytany zwykłym Load game grał tylko u MASTER): Load game
+  w oknie startu z zapisem, w którym gracz 2 jest człowiekiem, otwiera okno LAN jako serwer z tym
+  zapisem (`Interface::open_lan_box_with_save`); dalej RUN SERVER, dołączenie SLAVE, START GAME.
+- 0.78 (zgłoszenie użytkownika: u SLAVE „The saved game came broken”): przy odbiorze proces
+  wkładał ramki do pierścienia do gry szybciej, niż gra je brała (pierścień 8 KB, gra co 20 ms),
+  nadmiar przepadał. Teraz ramka gry czeka w `in_buf` (4 KB), gdy w pierścieniu brak miejsca
+  (`rx_blocked`, gniazdo nie jest wtedy czytane – dane czekają w TCP), a gra budzi proces
+  (`net_event`, gdy pierścień w połowie pusty). Test: PC wysyła zapis 131 KB w 17 ms, `lantest
+  connect` w WinUAE odbiera całość, suma zgodna.
+- 0.79 (prośby użytkownika; wczytanie gry LAN działa): zapisy gry LAN mają w nazwie pliku `.lan`
+  (`nazwa.lan.save`: okno Save, autosave, quicksave w grze LAN); lista pokazuje przed nazwą
+  żółte LAN, a okno startu przy takim zapisie „Load LAN game”. Lista zapisów posortowana po
+  nazwie; gdy zapisów jest więcej, niż się mieści (okno startu 18 wierszy, okno LAN i okno Save
+  ok. 10), po prawej pasek z strzałkami i położeniem: kliknięcie w górną/dolną połowę – strona
+  w górę/w dół (wcześniej tylko przeciąganie myszą, prawie niewidoczne). `get_selected` bez
+  zaznaczenia nie sięga już poza listę.
+- 0.80 (prośba użytkownika): Load game w oknie startu ma przycisk DELETE (nieaktywny bez
+  zaznaczonego zapisu); po kliknięciu pytanie „Delete the save?” z YES / NO, YES usuwa plik
+  (`std::remove`) i czyta listę od nowa. Przycisk tekstowy okien przeniesiony do `box-frame`
+  (`draw_text_button`, wspólny dla okna LAN i okna startu).
+- 0.81 (prośba użytkownika): podwójne kliknięcie zapisu wczytuje go – w Load game jak Start
+  (przez `start_requested` w następnej aktualizacji, bo wczytanie zamyka okno razem z listą),
+  w liście SAVED GAME okna LAN jak USE GAME (`ListSavedFiles::set_open_handler`).
+- Proces sieciowy: ramka gry czeka w pierścieniu, póki nie zmieści się w buforze do gniazda
+  (`ring_peek`; bufor 8 KB) – wcześniej nadmiar by przepadł.
+- `lantest send <adres> <plik>` + odbiornik na PC: WinUAE → PC (127.0.0.1) 130 927 B w 0,3 s,
+  suma zgodna. (Z WinUAE na 192.168.8.126 połączenie nie wyszło – zapora/trasa, 127.0.0.1 tak.)
+
 **Raspberry Pi 400 z Amiberry** (prośba użytkownika, 26.10.2026): ten sam program Amigi w emulatorze –
 gra LAN Amiga ↔ Pi bez rozjazdów, jak z WinUAE. Pliki w `tools/pi/`: konfiguracja Amiberry
 (68040 JIT, RTG, bsdsocket, wolumin WOW:), `install-amiberry.sh` (paczka `debian-<wersja>-arm64.zip`

@@ -6,6 +6,52 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.81 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- A double click on a save loads it (Load game; in the LAN box it
+  chooses the save for the game).
+
+
+0.80 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Load game: a DELETE button deletes the selected save after a question
+  ("Delete the save?" - YES / NO).
+
+
+0.79 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Saves of LAN games marked with a yellow LAN in the list (files
+  name.lan.save), "Load LAN game" in the start box.
+- The saves listed by name; when there are more than fit, a bar with
+  arrows on the right (a click at its top or bottom scrolls a page).
+
+
+0.78 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Fix: a saved LAN game came broken ("The saved game came broken") when
+  it arrived faster than the game took it.
+
+
+0.77 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Load game with a saved LAN game (player 2 a person) opens the LAN box
+  as a server with that save - the other Amiga joins and gets it.
+
+
+0.76 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- A LAN game from a save: the server (MASTER) chooses a saved LAN game
+  with SAVED GAME in the server box, START GAME sends it to the other
+  Amiga, both go on from there. Save with the usual Save box in a LAN
+  game.
+
+
 0.75 (26.10.2026, LAN branch - test build)
 -------------------------------------------
 

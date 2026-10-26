@@ -1,7 +1,7 @@
 From c86f64a68291cf09d12e6dfe5db40f3017e37c1f Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Mon, 26 Oct 2026 15:24:56 +0100
-Subject: [PATCH 25/27] LAN game: lockstep - the players' commands done on both
+Subject: [PATCH 25/30] LAN game: lockstep - the players' commands done on both
  computers at the same turn
 
 ---
