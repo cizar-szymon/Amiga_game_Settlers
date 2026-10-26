@@ -1,7 +1,7 @@
 From b659f6f7a4d4d5179ecbc0416f9615f04604b403 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Sun, 25 Oct 2026 22:25:30 +0100
-Subject: [PATCH 12/20] Ground and road textures decoded once; tile counters
+Subject: [PATCH 12/22] Ground and road textures decoded once; tile counters
 
 The Amiga data source decoded a ground texture (and its mask) again for
 every texture/mask combination a landscape tile needs: about half of the

@@ -1,7 +1,7 @@
 THE SETTLERS - Freeserf for the Amiga with a graphics card
 ==========================================================
 
-Version 0.56 (beta), 26.10.2026
+Version 0.61 (beta), 26.10.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) on an Amiga with a graphics
 card (Picasso96) and a 68040/68060, at up to 800x600. It is based on
@@ -69,6 +69,10 @@ Options:
   Screen     resolution: the arrows next to it change it at once
              (400x300, 640x400, 640x480, 800x600); it is kept for the
              next start
+Options -> Amiga:
+  about the Amiga; with a Warp accelerator the CPU clock: MC68060 50-100
+  MHz in steps of 10 (raising only on a rev. 6 - overclocking, may hang
+  the system), MC68040 20-50 MHz in steps of 1
 Options -> Advanced:
   Invert scrolling, Large numbers, Autosave, Stock box until occupied,
   Show FPS (frame counter in the corner)

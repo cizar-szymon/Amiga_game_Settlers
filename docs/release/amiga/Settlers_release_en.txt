@@ -6,6 +6,41 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.61 (26.10.2026)
+-----------------
+
+- Fix: a saved game can be given any name - the letters (Z, I, P,
+  digits, + - 0 ...) go to the name field and not to the game's keys.
+  The name field is active as soon as the save box opens; Backspace
+  works at the full length too; Esc closes the box.
+
+
+0.60 (26.10.2026)
+-----------------
+
+- The Amiga box: a MC68040 clock 20-50 MHz in steps of 1 MHz (no
+  revision - a 68040 does not tell it); a MC68060 as before, 50-100 MHz
+  in steps of 10 MHz.
+
+
+0.59 (26.10.2026)
+-----------------
+
+- The AMIGA button shorter (just its word), no longer up to EXIT.
+- The Warp firmware with its dot (3.054).
+
+
+0.58 (26.10.2026)
+-----------------
+
+- Options: a new AMIGA button next to ADVANCED - a box about the Amiga:
+  the CPU and its revision, FPU, Kickstart, Chip and Fast memory, the
+  graphics card and its memory, the screen mode. With a Warp accelerator
+  (SYS:C/WarpTool): the model, the firmware and the CPU clock with arrows,
+  50-100 MHz in steps of 10 MHz. Raising the clock (overclocking, may hang
+  the system) only on a MC68060 rev. 6; it changes at once.
+
+
 0.56 (26.10.2026) - release candidate
 -------------------------------------
 

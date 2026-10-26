@@ -164,10 +164,6 @@ EventLoopAmiga::handle_key(const AmigaEvent &ev) {
     quit();
     return;
   }
-  if (ev.ascii == 'z' && modifier == 0 && on_zoom) {
-    on_zoom(0);
-    return;
-  }
   if (ev.ascii != 0) {
     notify_key_pressed(static_cast<unsigned char>(ev.ascii), modifier);
   }

@@ -60,7 +60,7 @@ if(AMIGA_CPU)
   # The game: Freeserf's GUI with the Amiga platform layer instead of SDL.
   add_library(fs_gui STATIC
     settings-amiga.cc video-amiga.cc event_loop-amiga.cc
-    amiga_screen.c amiga_time.c
+    amiga_screen.c amiga_time.c amiga_sysinfo.c amiga-box.cc
     ${FS}/pathfinder.cc ${FS}/advanced-box.cc ${FS}/keys-box.cc ${FS}/box-frame.cc
     ${FS}/gfx.cc ${FS}/viewport.cc ${FS}/minimap.cc ${FS}/interface.cc
     ${FS}/gui.cc ${FS}/popup.cc ${FS}/game-init.cc ${FS}/notification.cc

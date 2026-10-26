@@ -1,7 +1,7 @@
 From fe4e113bbbda9bc0fa9cf04cf7fab365f60c7972 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Sun, 25 Oct 2026 21:23:46 +0100
-Subject: [PATCH 11/20] Show the game speed in the top right corner
+Subject: [PATCH 11/22] Show the game speed in the top right corner
 
 A speed above the normal one (+ key) is drawn as X1.5 .. X3 in the top
 right corner; nothing at the normal speed and in a pause. On the Amiga

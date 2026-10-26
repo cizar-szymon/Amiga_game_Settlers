@@ -6,6 +6,41 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.61 (26.10.2026)
+-----------------
+
+- Poprawka: przy zapisie gry nazwe mozna wpisac dowolna - litery (Z, I,
+  P, cyfry, + - 0 ...) trafiaja do pola nazwy, a nie do skrotow gry.
+  Pole nazwy jest od razu aktywne po otwarciu okna zapisu; Backspace
+  dziala takze przy pelnej dlugosci nazwy; Esc zamyka okno.
+
+
+0.60 (26.10.2026)
+-----------------
+
+- Okno Amiga: dla MC68040 zegar 20-50 MHz co 1 MHz (bez rewizji -
+  na 68040 nie da sie jej odczytac); MC68060 jak dotad 50-100 MHz co
+  10 MHz.
+
+
+0.59 (26.10.2026)
+-----------------
+
+- Przycisk AMIGA krotszy (tylko napis), nie siega juz do EXIT.
+- Firmware Warpa z kropka (3.054).
+
+
+0.58 (26.10.2026)
+-----------------
+
+- Options: nowy przycisk AMIGA obok ADVANCED - okno z danymi Amigi:
+  procesor i jego rewizja, FPU, Kickstart, pamiec Chip i Fast, karta
+  graficzna i jej pamiec, tryb ekranu. Z akceleratorem Warp (SYS:C/
+  WarpTool): model, firmware i zegar CPU ze strzalkami 50-100 MHz co
+  10 MHz. Podnoszenie zegara (podkrecanie, moze zawiesic system) tylko
+  dla MC68060 rev. 6; zmiana dziala od razu.
+
+
 0.56 (26.10.2026) - kandydat do wydania
 ----------------------------------------
 

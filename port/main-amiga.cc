@@ -30,6 +30,7 @@
 #include "port/audio-amiga.h"
 #include "port/amiga_wb.h"
 #include "src/viewport.h"
+#include "port/amiga-box.h"
 
 extern "C" const char ver[];
 const char ver[] = "$VER: Settlers " SETTLERS_VERSION " (" SETTLERS_DATE ")";
@@ -203,6 +204,13 @@ main(int argc, char *argv[]) {
       return 10;
     }
 
+    /* The Amiga button of the options box: this computer and its Warp. */
+    Interface::platform_box_factory = [](Interface *i) -> GuiObject * {
+      return new AmigaBox(i);
+    };
+    Interface::platform_box_width = AmigaBox::kWidth;
+    Interface::platform_box_height = AmigaBox::kHeight;
+
     Interface interface;
     unsigned int sw = 0, sh = 0;
     gfx.get_resolution(&sw, &sh);
@@ -259,6 +267,7 @@ main(int argc, char *argv[]) {
       interface.use_frame(screen_frame);
       interface.get_viewport()->move_to_map_pos(centre);
     };
+    Interface::zoom_hook = event_loop.on_zoom;
     /* The start picture stays at least 4 s (with the music, when it is
        on); Ctrl-C quits. */
     if (VideoAmiga::start_picture_ms != 0) {

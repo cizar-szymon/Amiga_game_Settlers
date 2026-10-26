@@ -26,9 +26,9 @@ z oryginalnych danych z wersji na Amigę. Ogólne zasady: `C:\Workprojects\Amiga
 | F5 Dźwięk | ✅ | efekty i muzyka bez spadku fps poniżej celu | 0.22: Paula 22 kHz, efekty i muzyka potwierdzone odsłuchem; ~43 fps; AHI – opcja na później |
 | F6 Wydanie | ✅ | czysta instalacja z archiwum `Settlers-0.32.lha` na Amidze 2 | 0.32 beta, 25.10.2026 |
 
-**Kandydat do wydania: 0.56** (decyzja użytkownika: zawsze najnowsza sprawdzona wersja; 0.56
-potwierdzona przez użytkownika 26.10.2026), znacznik `v0.56-rc`, archiwum
-`releases/amiga/Settlers-0.56.lha`. Wcześniejsi: 0.54, 0.53, 0.52, 0.48, 0.41 (`v0.xx-rc`).
+**Kandydat do wydania: 0.61** (decyzja użytkownika: zawsze najnowsza sprawdzona wersja; 0.61
+potwierdzona przez użytkownika 26.10.2026), znacznik `v0.61-rc`, archiwum
+`releases/amiga/Settlers-0.61.lha`. Wcześniejsi: 0.56, 0.54, 0.53, 0.52, 0.48, 0.41 (`v0.xx-rc`).
 
 ## Decyzje
 
@@ -300,6 +300,7 @@ tylko 35 kroków logiki/s zamiast 50 (limit 5 kroków nadrabiania na klatkę). T
 19. `popup.*`, `interface.cc`: QUIT znów z oryginalnym napisem, przycisk i klawisz „I” z okienkiem
     klawiszy.
 20. `keys-box.*`, `interface.*`, `popup.*`: szersze okno klawiszy, napis PAUSE.
+21. `interface.*`, `popup.cc`: okno platformy (fabryka z portu), przycisk Amiga w Options.
 
 Wszystkie jako commity w `freeserf/` (gałąź `settlers-pin`) i pliki `port/freeserf-patches/`.
 
@@ -688,6 +689,32 @@ Maska bajtowa tylko dla obrazków o krótkich odcinkach (< 4 piksele średnio: t
 odcinkami (widok powiększony składa się w Fast RAM). 800×600 scene2: ×2 30,2 → **41,3**, ×3 44,5 →
 **49,5**, ×1 32,5 bez zmian. `VERIFY` 0 przy ×2 i ×3, z przewijaniem, z okienkiem nad mapą i po
 powrocie do ×1. Przy zmianie stopnia kafelki terenu są rysowane od nowa (6 kafelków, ~0,3 s).
+
+## Okno Amiga w Options (0.57–0.58)
+
+Prośba użytkownika: przycisk „Amiga” obok Advanced z danymi komputera i zegarem Warpa. Łatka `0021`:
+`Interface::platform_box_factory` (+ rozmiar) – Freeserf nie zna Amigi, port rejestruje okno w `main`;
+przycisk w Options (`button-amiga.png`: duże A z przycisku Advanced i MIGA tymi samymi literami,
+`tools/make_button_amiga.py`, od 0.59 tylko 38×16 – tyle co napis, wbudowany przez `embed_images.py`) tylko, gdy fabryka jest ustawiona.
+Port: `amiga_sysinfo.c` – procesor z `AttnFlags`, dla 68060 typ i rewizja z rejestru PCR (`MOVEC PCR,D0`
+przez `Supervisor`), FPU, wersja `exec`, `AvailMem` Chip/Fast, karta P96 (`P96BD_BoardName`,
+`P96BD_TotalMemory`); jeśli jest `SYS:C/WarpTool`: `WarpTool Diag` do pliku w RAM: (model, firmware –
+„3054” pokazywane jako 3.054 – zegar), zmiana `WarpTool CPUFreqHz` (od razu, wyjście do NIL:).
+`amiga-box.cc` (288×216, jak Keys): wiersze danych, zegar ze strzałkami 220/221 – MC68060 50–100 MHz co
+10 (podnoszenie powyżej zegara z chwili otwarcia tylko rev. 6, inaczej dźwięk „nie”), MC68040 20–50 MHz
+co 1 (0.60, prośba użytkownika; rewizji 68040 się nie odczytuje), inne procesory bez strzałek;
+ostrzeżenie o podkręcaniu. Okno sprawdził użytkownik na Amidze 2 (zrzut z wolnego łącza się nie pobrał).
+
+### Wpisywanie nazwy zapisu (0.61, zgłoszenie użytkownika)
+
+Przy nadawaniu nazwy zapisowi litery uruchamiały skróty: Z (zoom – port przechwytywał go w
+`EventLoopAmiga::handle_key`, zanim zobaczyło go GUI), I, P, `+ - 0`, a cyfry 1–5 przyciski panelu
+(pływające obiekty dostają klawisze w odwrotnej kolejności dodania). Łatka `0022`: `GuiObject::handle_event`
+na najwyższym poziomie najpierw daje klawisz obiektowi z fokusem, jeśli on i jego rodzice są widoczni;
+`ACTION_SHOW_SAVE` ustawia fokus na polu nazwy; `TextInput` obsługuje Backspace przed sprawdzeniem
+długości (wcześniej przy pełnej nazwie nie dało się kasować) i oddaje grze klawisze sterujące (Esc
+zamyka okno, Tab, Return) oraz znaki spoza 32–126. Z bez Ctrl idzie teraz przez `Interface::zoom_hook`
+(ustawiany w `main` na `on_zoom`), kółko myszy dalej w pętli zdarzeń.
 
 ## Szybkość przy zegarze 50, 75 i 100 MHz (0.56, na prośbę użytkownika)
 
