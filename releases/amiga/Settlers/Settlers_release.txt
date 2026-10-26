@@ -11,6 +11,8 @@ zapisane klawiszem F10 w chwili bledu.
 
 - Okno z klawiszami szersze (klawisz i opis w dwoch kolumnach).
 - Pauza (P): duzy napis PAUSE na srodku ekranu (chowa sie pod oknami).
+- Nowa ikona: logo "The Settlers" z obrazu startowego na czarnym tle,
+  w prawym gornym rogu napis RTG (120x56).
 
 
 0.55 (26.10.2026)

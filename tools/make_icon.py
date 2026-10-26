@@ -122,9 +122,19 @@ def main():
     ap.add_argument("--preview")
     ap.add_argument("--tooltypes", nargs="*", default=[])
     ap.add_argument("--stack", type=int, default=16384, help="stack size of the program")
+    ap.add_argument("--size", nargs=2, type=int, metavar=("W", "H"),
+                    help="scale the cropped picture to W x H (e.g. a large title picture)")
+    ap.add_argument("--colors", type=int, default=0,
+                    help="reduce to at most this many colours (the ColorIcon has 256 at most)")
     args = ap.parse_args()
     x, y, w, h = args.crop
     img = Image.open(args.frame).convert("RGB").crop((x, y, x + w, y + h))
+    if args.size:
+        w, h = args.size
+        img = img.resize((w, h), Image.LANCZOS)
+    if args.colors:
+        img = img.quantize(colors=args.colors, method=Image.Quantize.MEDIANCUT,
+                           dither=Image.Dither.NONE).convert("RGB")
     rgb = list(img.getdata())
     open(args.out, "wb").write(disk_object(rgb, w, h, args.tooltypes, args.stack))
     if args.preview:

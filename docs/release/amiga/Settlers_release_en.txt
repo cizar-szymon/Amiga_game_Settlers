@@ -12,6 +12,8 @@ the F10 key when the bug happens.
 - The keys box wider (the key and its meaning in two columns).
 - Pause (P): a large PAUSE in the middle of the screen (hidden while a
   box is open).
+- A new icon: the "The Settlers" logo of the start picture on black, RTG
+  in the top right corner (120x56).
 
 
 0.55 (26.10.2026)

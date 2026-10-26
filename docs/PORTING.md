@@ -432,6 +432,10 @@ tylko pętla gry. Zawieszony proces po Ctrl-C miał tę samą przyczynę.
 - Obrazek `button-advanced.png` wbudowany (`tools/embed_images.py` → `port/gen/resource_images.h`,
   `port/sprite-file-amiga.cc`), bo port nie ma dekodera PNG.
 - Ikona: `tools/make_icon.py` (z Vastar, dodane `--stack`), stos 1 000 000, Tool Types w nawiasach.
+  Od 0.56 ikona to logo „The Settlers” z obrazu startowego (`data/START.png`) na czarnym tle z napisem
+  RTG w prawym górnym rogu, 120×56, 64 kolory: `tools/make_icon_picture.py data/START.png pic.png`
+  (logo 96×30, RTG literami 3×5), potem `make_icon.py --frame pic.png --crop 0 0 120 56 --colors 64`
+  (opcje `--size` i `--colors` dodane).
 
 ### F6 – Wydanie (S)
 - Stała `SETTLERS_VERSION` (`0.xx` beta, `1.xx` oficjalne) widoczna w grze, w `$VER` i w tytule
