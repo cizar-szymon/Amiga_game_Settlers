@@ -1,7 +1,7 @@
 From a0ead6a74d5cff8a6a84f832f22ee9b0e0823285 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Mon, 26 Oct 2026 09:47:59 +0100
-Subject: [PATCH 22/34] Keys to the focused text field first; Z zoom through
+Subject: [PATCH 22/35] Keys to the focused text field first; Z zoom through
  Interface::zoom_hook
 
 ---

@@ -193,8 +193,8 @@ static int lockstep(const std::string &setup, unsigned int steps,
     for (unsigned int g = 0; g < 2; g++) side[g].game->update();
     unsigned int n = s + 1;
     if ((n - 1) % every == 0 || n == steps) {
-      uint32_t a = lan_checksum(side[0].game.get());
-      uint32_t b = lan_checksum(side[1].game.get());
+      uint32_t a = lan_checksum(side[0].game.get(), n);
+      uint32_t b = lan_checksum(side[1].game.get(), n);
       uint32_t sa = crc32(save_state(side[0].game.get()));
       uint32_t sb = crc32(save_state(side[1].game.get()));
       printf("step %5u  lan %08lx %08lx  state %08lx %08lx  %s\n", n,
@@ -281,8 +281,13 @@ int main(int argc, char *argv[]) {
   for (unsigned int s = 1; s <= steps; s++) {
     game->update();
     if ((s - 1) % every == 0 || s == steps) {
-      printf("step %5u  lan %08lx  state %08lx\n", s,
-             static_cast<unsigned long>(lan_checksum(game.get())),
+      /* The time of the LAN checksum (every 5 s in a LAN game). */
+      unsigned long e0 = amiga_eclock();
+      uint32_t sum = lan_checksum(game.get(), s);
+      unsigned long us = (amiga_eclock() - e0) * 1000 /
+                         amiga_eclock_per_ms();
+      printf("step %5u  lan %08lx (%lu us)  state %08lx\n", s,
+             static_cast<unsigned long>(sum), us,
              static_cast<unsigned long>(crc32(save_state(game.get()))));
     }
   }

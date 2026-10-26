@@ -1,0 +1,96 @@
+From 584467a1de4aba7decd54d2effaad541c34c57c4 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Tue, 27 Oct 2026 00:45:05 +0100
+Subject: [PATCH 35/35] LAN checksum: the random numbers and a band of the map
+ (another band each check), a few ms on any map size
+
+---
+ src/lan-game.cc |  2 +-
+ src/lan-sync.cc | 26 ++++++++++++++++----------
+ src/lan-sync.h  |  5 +++--
+ 3 files changed, 20 insertions(+), 13 deletions(-)
+
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index ed3b23d..1e47dad 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -285,7 +285,7 @@ LanGame::after_step() {
+   if ((steps - 1) % kSumSteps == 0) {
+     PGame game = interface->get_game();
+     if (game) {
+-      uint32_t sum = lan_checksum(game.get());
++      uint32_t sum = lan_checksum(game.get(), steps / kSumSteps);
+       own_sums[steps] = sum;
+       if (!gone) {
+         link->send(MessageSum, std::to_string(steps) + " " +
+diff --git a/src/lan-sync.cc b/src/lan-sync.cc
+index f9f675a..7469eb6 100644
+--- a/src/lan-sync.cc
++++ b/src/lan-sync.cc
+@@ -21,6 +21,7 @@
+ 
+ #include "src/lan-sync.h"
+ 
++#include <algorithm>
+ #include <sstream>
+ #include <string>
+ 
+@@ -89,24 +90,29 @@ lan_decode_setup(const std::string &data, Random *seed,
+   return mission;
+ }
+ 
+-/* FNV-1a of the map tiles, the step and the random numbers: what the two
+-   games have to agree on. A size 8 map is 65536 tiles, a few ms on a
+-   68060, once in kSumSteps. */
++/* What the two games have to agree on: the step, the random numbers of
++   the game (two games that went apart call them differently and soon
++   differ there) and a band of map tiles - another band each time (by
++   check, the number of the check), about 4096 tiles: the whole map of
++   size 8 took 231 ms on a 68060, a jolt every 5 s; a band takes a few ms,
++   and the checks go over the whole map one after another. */
+ uint32_t
+-lan_checksum(Game *game) {
++lan_checksum(Game *game, unsigned int check) {
+   uint32_t h = 2166136261u;
+   auto add = [&h](uint32_t v) {
+-    for (int i = 0; i < 4; i++) {
+-      h ^= (v >> (8 * i)) & 0xff;
+-      h *= 16777619u;
+-    }
++    h = (h ^ v) * 16777619u;
+   };
+   add(game->get_tick());
+   std::string rnd = game->get_random_text();
+   for (char c : rnd) add(static_cast<uint8_t>(c));
+   PMap map = game->get_map();
+-  for (unsigned int r = 0; r < map->get_rows(); r++) {
+-    for (unsigned int c = 0; c < map->get_cols(); c++) {
++  unsigned int rows = map->get_rows(), cols = map->get_cols();
++  unsigned int band = std::max(1u, std::min(rows, 4096u / cols));
++  unsigned int first = (check * band) % rows;
++  add(first);
++  for (unsigned int k = 0; k < band; k++) {
++    unsigned int r = (first + k) % rows;
++    for (unsigned int c = 0; c < cols; c++) {
+       MapPos pos = map->pos(c, r);
+       add(map->get_height(pos) | (map->paths(pos) << 8) |
+           (map->get_owner(pos) << 16) |
+diff --git a/src/lan-sync.h b/src/lan-sync.h
+index f31543b..23f3be5 100644
+--- a/src/lan-sync.h
++++ b/src/lan-sync.h
+@@ -40,8 +40,9 @@ std::string lan_encode_setup(PGameInfo mission, const Random &seed,
+ PGameInfo lan_decode_setup(const std::string &data, Random *seed,
+                            unsigned int *delay);
+ 
+-/* What the two games have to agree on at the same step. */
+-uint32_t lan_checksum(Game *game);
++/* What the two games have to agree on at the same step; check: the
++   number of the check (which band of the map). */
++uint32_t lan_checksum(Game *game, unsigned int check);
+ 
+ /* FNV-1a of bytes: a saved game sent whole. */
+ uint32_t lan_data_checksum(const std::string &data);
+-- 
+2.45.2.windows.1
+

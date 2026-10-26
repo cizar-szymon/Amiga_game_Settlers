@@ -6,6 +6,13 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.92 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN na duzych mapach bez szarpniecia co 5 s (sprawdzanie
+  zgodnosci obu gier trwalo do 0,9 s, teraz ok. 3 ms).
+
+
 0.91 (27.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 

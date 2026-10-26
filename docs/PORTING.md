@@ -972,6 +972,14 @@ kliknięcia `ActionClose` było w (308, 216) – reagowała tylko górna połowa
 Teraz pole 308,224 32×16 we wszystkich czterech mapach kliknięć; zrzut WinUAE: przycisk w tym
 miejscu.
 
+**Koszt sumy kontrolnej LAN (0.92, łatka `0035`).** Pomiar na Amidze 1 (Warp1260, 68060), suma
+całej mapy (`lansim -z N`, czas `lan_checksum`): mapa 4 – 15 ms, 6 – 58 ms, 8 – **231 ms**, 10 – ok.
+0,9 s; liczona co 5 s, czyli wyraźne zacięcie na dużych mapach. Teraz: krok, stan liczb losowych
+gry (gry, które się rozeszły, wołają je inaczej i szybko tu się różnią) i pas ok. 4096 pól mapy
+– przy każdym porównaniu kolejny (numer porównania wybiera pas), skrót słowami 32-bit zamiast
+bajtami. Czas: **3,2 ms na mapach 4, 6, 8 i 10**. `lansim -l` dalej zgodne (CRC całego zapisu jak
+przedtem).
+
 **Raspberry Pi 400 z Amiberry** (prośba użytkownika, 26.10.2026): ten sam program Amigi w emulatorze –
 gra LAN Amiga ↔ Pi bez rozjazdów, jak z WinUAE. Pliki w `tools/pi/`: konfiguracja Amiberry
 (68040 JIT, RTG, bsdsocket, wolumin WOW:), `install-amiberry.sh` (paczka `debian-<wersja>-arm64.zip`
