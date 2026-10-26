@@ -141,7 +141,7 @@ def main():
                             title="Settlers na Amigę RTG – raport", author="Settlers port")
     st = []
     st.append(P("Settlers (Freeserf) na Amigę RTG", "title"))
-    st.append(P("Raport zmian i pomiarów wydajności · wersja 0.33 beta · 25.10.2026", "sub"))
+    st.append(P("Raport zmian i pomiarów wydajności · wersja 0.56 (kandydat do wydania) · 26.10.2026", "sub"))
 
     st.append(boxed([
         P("<b>W skrócie.</b> The Settlers (Blue Byte 1993) działa na Amidze z kartą Picasso96 "
@@ -290,10 +290,70 @@ def main():
         "0003 – GuiObject::use_frame: rysowanie w miejscu (dwie kopie ekranu mniej na klatkę).",
         "0004 – Options → Screen, Advanced → Show FPS, mniejsze okno Advanced.",
         "0005 – szybsze wczytywanie i zapis zapisów tekstowych (ten sam plik wyjściowy).",
+        "0006, 0009 – dźwięki mapy z okolic środka ekranu, raz na fazę animacji (brzęczenie).",
+        "0007, 0008, 0012, 0018 – szybsze rysowanie widoku: przesunięcia sprite'ów, drogi i "
+        "granice w kafelkach terenu, tekstury dekodowane raz, kafelki zostają przy powiększeniu.",
+        "0010, 0011 – tempo gry ×1…×3 klawiszami, wskaźnik w rogu.",
+        "0013–0016, 0019, 0020 – EXIT/QUIT, podgląd mapy w menu, przycisk i okno klawiszy, "
+        "napis PAUSE.",
+        "0017 – Invert scrolling w obu osiach, tylko mysz.",
     ]:
         st.append(LI(t))
     st.append(P("Reszta portu to osobne pliki (port/): ekran, VRAM, zdarzenia, dźwięk, start z "
-                "ikony – kod Freeserf zmieniony w 5 miejscach.", "small"))
+                "ikony, powiększenie mapy. Pełny opis z pomiarami: docs/PORTING.md.", "small"))
+
+    st.append(P("Zmiany 0.34–0.56 w skrócie", "h2"))
+    for t in [
+        "Obraz startowy z muzyką (4 s), muzyka nie gra, gdy jest wyłączona.",
+        "Rysowanie postaci bez dekodowania w każdej klatce: gra z wieloma postaciami 14 → 32 kl./s; "
+        "drogi i granice w kafelkach terenu: 31 → 44 kl./s (640×400).",
+        "Tempo gry ×1…×3 (+, −, 0), wskaźnik w prawym górnym rogu; pauza z napisem PAUSE.",
+        "Powiększenie mapy ×2, w 800×600 też ×3 (Z, rolka myszy); na kartę tylko zmiany obrazu.",
+        "Menu: EXIT w grze → menu startowe, QUIT w menu z pytaniem; podgląd mapy po chwili spokoju; "
+        "przycisk i klawisz I z oknem klawiszy.",
+        "Start gry ok. 1,4 s zamiast 3 s (tekstury terenu dekodowane raz).",
+    ]:
+        st.append(LI(t))
+
+    st.append(PageBreak())
+    st.append(P("Szybkość przy zegarze 50, 75 i 100 MHz (0.56)", "h2"))
+    st.append(P("Amiga 1: A1200 z Warp1260X (68060), zegar ustawiany przez <i>WarpTool CPUFreqHz</i> "
+                "(działa od razu, bez restartu; po pomiarach z powrotem 100 MHz). Wszystkie pomiary "
+                "dotychczasowe są przy 100 MHz. kl./s – średnia z 3 próbek po 25 s od startu, z muzyką "
+                "i efektami; we wszystkich przebiegach 0 przerw w dźwięku. Skrypt: "
+                "<i>tools/clockbench.sh</i> (tylko na prośbę – nie przy każdej poprawce).", "small"))
+    st.append(table(["Logika gry", "50 MHz", "75 MHz", "100 MHz"],
+                    [["6000 kroków (10 min gry), simtest", "10,4 s", "7,0 s", "5,2 s"],
+                     ["krok logiki, średnio", "1,73 ms", "1,16 ms", "0,87 ms"]],
+                    [78, 34, 34, 34]))
+    st.append(Spacer(1, 4))
+    st.append(table(["Scena, rozdzielczość", "50 MHz", "75 MHz", "100 MHz"],
+                    [["scena testowa 400×300", "50,2", "50,0", "50,0"],
+                     ["scena testowa 640×400", "30,2", "45,6", "50,0"],
+                     ["scena testowa 640×480", "26,7", "40,0", "50,1"],
+                     ["scena testowa 800×600", "18,8", "28,1", "37,5"],
+                     ["gra z wieloma postaciami 400×300", "40,2", "48,8", "50,1"],
+                     ["gra z wieloma postaciami 640×400", "21,4", "31,3", "44,3"],
+                     ["gra z wieloma postaciami 640×480", "19,6", "28,6", "40,3"],
+                     ["gra z wieloma postaciami 800×600", "15,1", "22,5", "31,7"],
+                     ["  … 800×600, powiększenie ×2", "12,5*", "31,5", "46,6"],
+                     ["  … 800×600, powiększenie ×3", "37,5*", "50,3", "50,2"]],
+                    [78, 34, 34, 34]))
+    st.append(P("kl./s; pułap 50 (PAL). Scena testowa: misja 0 z zamkiem gracza po 10 min gry; gra z "
+                "wieloma postaciami: zapis gry użytkownika (Misja 1). * Przy 50 MHz powiększenie "
+                "zmierzone dwa razy z tym samym wynikiem (×1 15, ×2 12–13, ×3 37–38); jeden przebieg "
+                "dał 5–7 kl./s przy ×2 i ×3 – nie powtórzył się, przyczyna nieznana.", "small"))
+    st.append(P("Wnioski", "h3"))
+    for t in [
+        "Logika gry skaluje się dokładnie z zegarem (2× wolniej przy 50 MHz) i nawet przy 50 MHz "
+        "zajmuje mniej niż 2 ms na krok 20 ms – gra zawsze chodzi w pełnym tempie, zwalnia tylko obraz.",
+        "50 MHz (np. Warp1260 bez podkręcania): 400×300 bez ograniczeń, 640×400/640×480 grywalne "
+        "(20–30 kl./s), 800×600 15–19 kl./s – tam warto powiększenie ×3 (37 kl./s).",
+        "75 MHz: 640×400 i 640×480 30–45 kl./s, 800×600 22–28 kl./s, z powiększeniem ×2 31.",
+        "Obraz przy 50 MHz: ×2 w 800×600 nie przyspiesza (widok 400×300 składany w Fast RAM i "
+        "rozciągany przez CPU), ×3 tak (mniej mapy do narysowania).",
+    ]:
+        st.append(LI(t))
 
     st.append(P("Co dalej", "h2"))
     for t in [

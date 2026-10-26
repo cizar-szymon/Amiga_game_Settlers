@@ -685,6 +685,26 @@ odcinkami (widok powiększony składa się w Fast RAM). 800×600 scene2: ×2 30,
 **49,5**, ×1 32,5 bez zmian. `VERIFY` 0 przy ×2 i ×3, z przewijaniem, z okienkiem nad mapą i po
 powrocie do ×1. Przy zmianie stopnia kafelki terenu są rysowane od nowa (6 kafelków, ~0,3 s).
 
+## Szybkość przy zegarze 50, 75 i 100 MHz (0.56, na prośbę użytkownika)
+
+Amiga 1 (A1200, Warp1260X), zegar `WarpTool CPUFreqHz=<Hz>` – działa od razu, bez restartu (`Diag`
+pokazuje, `simtest` potwierdza: 6000 kroków 5,2 s przy 100 MHz, 10,4 s przy 50). Pomiary zwykłe są przy
+100 MHz; tych przy innym zegarze nie powtarzamy przy każdej poprawce, tylko na prośbę
+(`tools/clockbench.sh MHZ OUT.csv`; po pomiarach zegar z powrotem na 100 MHz).
+
+| kl./s | 50 MHz | 75 MHz | 100 MHz |
+|---|---|---|---|
+| logika: 6000 kroków / krok | 10,4 s / 1,73 ms | 7,0 s / 1,16 ms | 5,2 s / 0,87 ms |
+| scena testowa 400×300 / 640×400 / 640×480 / 800×600 | 50,2 / 30,2 / 26,7 / 18,8 | 50,0 / 45,6 / 40,0 / 28,1 | 50,0 / 50,0 / 50,1 / 37,5 |
+| gra z wieloma postaciami (scene2) 400×300 / 640×400 / 640×480 / 800×600 | 40,2 / 21,4 / 19,6 / 15,1 | 48,8 / 31,3 / 28,6 / 22,5 | 50,1 / 44,3 / 40,3 / 31,7 |
+| scene2 800×600 ×2 / ×3 | 12,5 / 37,5 | 31,5 / 50,3 | 46,6 / 50,2 |
+
+Dźwięk: 0 przerw we wszystkich. Przy 50 MHz powiększenie zmierzone dwa razy z tym samym wynikiem;
+jeden przebieg dał 5–7 kl./s przy ×2 i ×3 i się nie powtórzył (przyczyna nieznana; liczniki kafelków w
+powtórce bez zmian). Logika nawet przy 50 MHz < 2 ms na krok – zwalnia tylko obraz. Przy 50 MHz ×2 w
+800×600 nie przyspiesza (składanie 400×300 w Fast RAM + rozciąganie CPU), ×3 tak. Raport PDF:
+`docs/Settlers-raport.pdf`, rozdział „Szybkość przy zegarze”.
+
 ## Przycisk i klawisz Info (0.55)
 
 Na życzenie użytkownika (łatka `0019`): na przycisku wyjścia do menu w oknie ustawień znów oryginalny
