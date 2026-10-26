@@ -1,7 +1,7 @@
 From ad1b3342fd9b44cd2722b755f895da7ae1ed10c4 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Mon, 26 Oct 2026 00:42:20 +0100
-Subject: [PATCH 19/23] QUIT label again; an I button and key with the keys of
+Subject: [PATCH 19/24] QUIT label again; an I button and key with the keys of
  the game
 
 The settings box's button to the start menu shows the original QUIT

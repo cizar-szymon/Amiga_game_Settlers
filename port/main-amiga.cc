@@ -32,6 +32,7 @@
 #include "src/viewport.h"
 #include "port/amiga-box.h"
 #include "port/lan-amiga.h"
+#include "src/lan-game.h"
 
 extern "C" const char ver[];
 const char ver[] = "$VER: Settlers " SETTLERS_VERSION " (" SETTLERS_DATE ")";
@@ -247,9 +248,12 @@ main(int argc, char *argv[]) {
         interface.set_size(w, h);
       }
       interface.use_frame(screen_frame);
-      Settings &s = Settings::get_instance();
-      s.set("amiga", "mode", std::to_string(w) + "x" + std::to_string(h));
-      s.save();
+      /* A LAN game's 640x480 is not the mode of the Options box. */
+      if (interface.get_lan_game() == nullptr) {
+        Settings &s = Settings::get_instance();
+        s.set("amiga", "mode", std::to_string(w) + "x" + std::to_string(h));
+        s.save();
+      }
     };
     /* Z and the mouse wheel: the map view magnified around the middle of
        the screen, in steps of x2 and x3 (max_map_zoom). The panel and the

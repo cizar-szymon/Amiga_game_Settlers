@@ -1,0 +1,59 @@
+; Amiberry on a Raspberry Pi 400: the A1200 of the Settlers tests (as the
+; WinUAE configs in C:\amiga-dev\winuae), but a 68040 with JIT - the JIT of
+; Amiberry on ARM is made for the 68020-68040, and the game runs on a 040.
+; @HOME@ is put in by install-amiberry.sh.
+config_description=Settlers - A1200 68040 JIT, OS 3.2, RTG 8 bit, bsdsocket (Pi 400)
+config_hardware=true
+config_host=true
+
+kickstart_rom_file=@HOME@/amiga/roms/kicka1200.rom
+chipset=aga
+chipset_compatible=A1200
+ntsc=false
+
+cpu_type=68040
+cpu_model=68040
+fpu_model=68040
+cpu_compatible=false
+cpu_24bit_addressing=false
+cpu_cycle_exact=false
+cpu_speed=max
+cachesize=16384
+comp_trustbyte=indirect
+comp_trustword=indirect
+comp_trustlong=indirect
+comp_trustnaddr=indirect
+comp_nf=true
+comp_constjump=true
+comp_flushmode=soft
+compfpu=true
+
+chipmem_size=4
+fastmem_size=0
+bogomem_size=0
+z3mem_size=256
+z3mapping=real
+
+; Picasso96 (uaegfx): the game opens its own 8 bit screen
+gfxcard_type=ZorroIII
+gfxcard_size=32
+gfx_fullscreen_amiga=fullwindow
+gfx_fullscreen_picasso=fullwindow
+
+; The network of the LAN game (Settlers LAN process) and AmiAgent
+bsdsocket_emu=true
+
+sound_output=exact
+sound_channels=stereo
+sound_frequency=44100
+joyport0=mouse
+
+; DH0: the system of the WinUAE tests (AmiAgent in its User-Startup);
+; SETTLERS: the game with its data; WOW: empty and read-only - the shared
+; User-Startup looks for WOW:autorun and stops without the volume.
+filesystem2=rw,DH0:System:@HOME@/amiga/System,0
+uaehf0=dir,rw,DH0:System:@HOME@/amiga/System,0
+filesystem2=rw,SETTLERS:Settlers:@HOME@/amiga/Settlers,-128
+uaehf1=dir,rw,SETTLERS:Settlers:@HOME@/amiga/Settlers,-128
+filesystem2=ro,WOW:WOW:@HOME@/amiga/empty_wow,-128
+uaehf2=dir,ro,WOW:WOW:@HOME@/amiga/empty_wow,-128

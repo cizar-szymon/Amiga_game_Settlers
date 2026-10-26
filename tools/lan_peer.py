@@ -5,9 +5,11 @@
   python tools/lan_peer.py announce [--name PC] [--version 0.67] [--to IP]
       announce a server like RUN SERVER does, once a second
   python tools/lan_peer.py connect <address> [--name SLAVE] [--version 0.67]
-                                   [--seconds 20] [--pings 0]
+                                   [--seconds 20] [--pings 0] [--echo-sums]
       join a server like the game does: HELLO, answer its PINGs, and with
-      --pings N send N pings of our own and print the times there and back
+      --pings N send N pings of our own and print the times there and back;
+      --echo-sums sends the server's checksums back (a test of the LAN line
+      in the game without a second Amiga)
 
 Frames on TCP 6810: length (1 byte: type + data) | type | data.
 """
@@ -97,7 +99,12 @@ def connect(args):
                 print(f"BYE: {data.decode('latin-1')}")
                 end = 0
             else:
-                print(f"game frame {ftype}: {data!r}", flush=True)
+                print(f"game frame {ftype - 16}: {data.decode('latin-1')}",
+                      flush=True)
+                # SUM (game frame 1) back: the server sees its own
+                # checksums as the other side's - "same" in its LAN line.
+                if ftype == 17 and args.echo_sums:
+                    s.sendall(frame(ftype, data))
     s.close()
     if times:
         times.sort()
@@ -112,15 +119,16 @@ def main():
     pl.add_argument("seconds", nargs="?", type=float, default=15)
     pa = sub.add_parser("announce")
     pa.add_argument("--name", default="PC")
-    pa.add_argument("--version", default="0.67")
+    pa.add_argument("--version", default="0.68")
     pa.add_argument("--seconds", type=float, default=5)
     pa.add_argument("--to", default="255.255.255.255")
     pc = sub.add_parser("connect")
     pc.add_argument("address")
     pc.add_argument("--name", default="SLAVE")
-    pc.add_argument("--version", default="0.67")
+    pc.add_argument("--version", default="0.68")
     pc.add_argument("--seconds", type=float, default=20)
     pc.add_argument("--pings", type=int, default=0)
+    pc.add_argument("--echo-sums", action="store_true")
     args = p.parse_args()
     if args.mode == "listen":
         listen(args.seconds)

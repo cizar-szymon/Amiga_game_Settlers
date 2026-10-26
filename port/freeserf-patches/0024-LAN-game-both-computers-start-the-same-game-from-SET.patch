@@ -1,0 +1,755 @@
+From 46a566c7875dceeb5604a9ce6fc6858760158606 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Mon, 26 Oct 2026 13:26:34 +0100
+Subject: [PATCH 24/24] LAN game: both computers start the same game from
+ SETUP, checksums compared
+
+---
+ src/game.h       |   3 +
+ src/interface.cc |  32 ++++++++++
+ src/interface.h  |   9 +++
+ src/lan-box.cc   |  38 +++++++-----
+ src/lan-box.h    |   6 --
+ src/lan-game.cc  | 154 +++++++++++++++++++++++++++++++++++++++++++++++
+ src/lan-game.h   |  83 +++++++++++++++++++++++++
+ src/lan-sync.cc  | 108 +++++++++++++++++++++++++++++++++
+ src/lan-sync.h   |  43 +++++++++++++
+ src/mission.cc   |   7 ++-
+ src/mission.h    |   8 +++
+ 11 files changed, 468 insertions(+), 23 deletions(-)
+ create mode 100644 src/lan-game.cc
+ create mode 100644 src/lan-game.h
+ create mode 100644 src/lan-sync.cc
+ create mode 100644 src/lan-sync.h
+
+diff --git a/src/game.h b/src/game.h
+index 2fd44c8..42cc51b 100644
+--- a/src/game.h
++++ b/src/game.h
+@@ -217,6 +217,9 @@ class Game {
+   void lose_resource(Resource::Type type);
+ 
+   uint16_t random_int();
++  /* A LAN game: both computers start with the same random numbers. */
++  void set_random(const Random &random) { rnd = random; }
++  std::string get_random_text() const { return std::string(rnd); }
+ 
+   bool send_serf_to_flag(Flag *dest, Serf::Type type, Resource::Type res1,
+                          Resource::Type res2);
+diff --git a/src/interface.cc b/src/interface.cc
+index 4a83a09..1735fd3 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -40,6 +40,8 @@
+ #include "src/advanced-box.h"
+ #include "src/keys-box.h"
+ #include "src/lan-box.h"
++#include "src/lan-game.h"
++#include "src/lan-sync.h"
+ #include "src/settings.h"
+ #include "src/data-source-mixed.h"
+ #include "src/viewport.h"
+@@ -112,6 +114,7 @@ Interface::Interface()
+ }
+ 
+ Interface::~Interface() {
++  lan_game.reset();
+   GameManager::get_instance().del_handler(this);
+   set_game(nullptr);
+ 
+@@ -343,6 +346,28 @@ Interface::open_lan_box(PGameInfo mission) {
+   layout();
+ }
+ 
++bool
++Interface::start_lan_game(const std::string &setup, bool server) {
++  Random seed;
++  PGameInfo mission = lan_decode_setup(setup, &seed);
++  if (!mission) {
++    return false;
++  }
++  mission->set_game_random(seed);
++  if (!GameManager::get_instance().start_game(mission)) {
++    return false;
++  }
++  /* The link goes on in the game; the boxes go. */
++  lan_game.reset(new LanGame(this, lan_link, server));
++  if (!server) {
++    set_player(1);
++  }
++  close_lan_box();
++  close_game_init();
++  lan_game->started();
++  return true;
++}
++
+ void
+ Interface::close_lan_box() {
+   if (lan_box != nullptr) {
+@@ -1357,6 +1382,7 @@ Interface::update() {
+ 
+   if (exit_to_menu) {
+     exit_to_menu = false;
++    lan_game.reset();  /* the connection ends, the screen mode is back */
+     close_popup();
+     GameManager::get_instance().start_random_game();
+     open_game_init();
+@@ -1368,6 +1394,9 @@ Interface::update() {
+   }
+ 
+   game->update();
++  if (lan_game) {
++    lan_game->update();
++  }
+   play_ambient_sounds();
+   autosave();
+ 
+@@ -1565,6 +1594,9 @@ Interface::handle_event(const Event *event) {
+       draw(reinterpret_cast<Frame*>(event->object));
+       draw_fps(reinterpret_cast<Frame*>(event->object));
+       draw_game_speed(reinterpret_cast<Frame*>(event->object));
++      if (lan_game && game) {
++        lan_game->draw(reinterpret_cast<Frame*>(event->object));
++      }
+       draw_pause(reinterpret_cast<Frame*>(event->object));
+       break;
+     case Event::TypeInvalidate:
+diff --git a/src/interface.h b/src/interface.h
+index 12f42c9..32ca226 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -23,6 +23,7 @@
+ #define SRC_INTERFACE_H_
+ 
+ #include <functional>
++#include <memory>
+ #include <string>
+ 
+ #include "src/misc.h"
+@@ -48,6 +49,7 @@ class AdvancedBox;
+ class KeysBox;
+ class LanBox;
+ class LanLink;
++class LanGame;
+ class NotificationBox;
+ 
+ class Interface : public GuiObject, public GameManager::Handler {
+@@ -143,6 +145,8 @@ class Interface : public GuiObject, public GameManager::Handler {
+   /* Frames per second display (Ctrl+Shift+F). */
+   bool show_fps;
+   bool exit_to_menu;
++  /* A game of two players on two computers, while it runs. */
++  std::unique_ptr<LanGame> lan_game;
+   bool quit_program;
+   unsigned int fps;
+   unsigned int fps_frames;
+@@ -253,6 +257,11 @@ class Interface : public GuiObject, public GameManager::Handler {
+   void open_lan_box(PGameInfo mission);
+   /* The network of a LAN game, given by the platform; none: nullptr. */
+   static LanLink *lan_link;
++  /* Both computers start the same game from SETUP (the LAN box: the
++     server when START GAME is pressed, the other one when SETUP comes);
++     the one who joined plays player 2. false: a bad SETUP. */
++  bool start_lan_game(const std::string &setup, bool server);
++  LanGame *get_lan_game() { return lan_game.get(); }
+   void close_lan_box();
+ 
+   /* A box of the platform, opened by a button next to Advanced in the
+diff --git a/src/lan-box.cc b/src/lan-box.cc
+index ee72e69..63189db 100644
+--- a/src/lan-box.cc
++++ b/src/lan-box.cc
+@@ -31,6 +31,9 @@
+ #include "src/data.h"
+ #include "src/gfx.h"
+ #include "src/settings.h"
++#include "src/random.h"
++#include "src/lan-game.h"
++#include "src/lan-sync.h"
+ 
+ static const int kExitSize = 16;
+ static const int kButtonWidth = 112;
+@@ -92,8 +95,7 @@ LanBox::LanBox(Interface *_interface, PGameInfo _mission)
+   , view(ViewChoose)
+   , server_name_field(make_name_field("server_name", "MASTER"))
+   , player_name_field(make_name_field("player_name", "SLAVE"))
+-  , address_field(new TextInput())
+-  , starting(false) {
++  , address_field(new TextInput()) {
+   set_size(kWidth, kHeight);
+   add_float(server_name_field.get(), kValueX - 4, kRowsY - 1);
+   add_float(player_name_field.get(), kValueX - 4, kJoinNameY - 1);
+@@ -108,7 +110,8 @@ LanBox::LanBox(Interface *_interface, PGameInfo _mission)
+ }
+ 
+ LanBox::~LanBox() {
+-  if (link() != nullptr) {
++  /* Unless the link goes on in a LAN game that just started. */
++  if (link() != nullptr && interface->get_lan_game() == nullptr) {
+     link()->close();
+   }
+   Settings &settings = Settings::get_instance();
+@@ -139,7 +142,6 @@ LanBox::set_view(View _view) {
+   }
+   view = _view;
+   message.clear();
+-  starting = false;
+   server_name_field->set_displayed(view == ViewServer);
+   player_name_field->set_displayed(view == ViewJoin);
+   address_field->set_displayed(view == ViewJoin);
+@@ -168,7 +170,6 @@ LanBox::update() {
+   std::string m = l->take_message();
+   if (!m.empty()) {
+     message = m;
+-    starting = false;
+   }
+   if (view == ViewJoin) {
+     servers = l->get_servers();
+@@ -183,10 +184,12 @@ LanBox::update() {
+   int type = 0;
+   std::string data;
+   while (l->receive(&type, &data)) {
+-    if (type == MessageSetup) {
+-      /* Point 3 of the plan: the game itself. */
+-      starting = true;
+-      message = "The server starts the game...";
++    if (type == LanGame::MessageSetup) {
++      /* The same game as the server; closes this box. */
++      if (interface->start_lan_game(data, false)) {
++        return;
++      }
++      message = "Bad settings from the server.";
+     }
+   }
+   set_redraw();
+@@ -284,7 +287,7 @@ LanBox::internal_draw() {
+       draw_text_button(kLeftButtonX, kRunY, kButtonWidth,
+                        running ? "STOP SERVER" : "RUN SERVER");
+       draw_text_button(kRightButtonX, kRunY, kButtonWidth, "START GAME",
+-                       joined && !starting);
++                       joined);
+       draw_text_button(kButtonX, kCancelY, kButtonWidth, "CANCEL");
+       break;
+     }
+@@ -383,15 +386,18 @@ LanBox::handle_click_left(int x, int y) {
+         set_redraw();
+       } else if (inside(x, y, kRightButtonX, kRunY, kButtonWidth,
+                         kButtonHeight)) {
+-        if (state != LanLink::StateConnected || starting) {
++        if (state != LanLink::StateConnected) {
+           play_sound(Audio::TypeSfxNotAccepted);
+         } else {
+           play_sound(Audio::TypeSfxClick);
+-          std::string setup = std::to_string(mission->get_map_size()) + " " +
+-                              std::string(mission->get_random_base());
+-          l->send(MessageSetup, setup);
+-          starting = true;
+-          message = "Starting the game...";
++          /* The other side makes the same game from the same SETUP; a new
++             seed for the random numbers of this game. */
++          std::string setup = lan_encode_setup(mission, Random());
++          if (l->send(LanGame::MessageSetup, setup) &&
++              interface->start_lan_game(setup, true)) {
++            return true;  /* This box is gone. */
++          }
++          message = "The game did not start.";
+           set_redraw();
+         }
+       } else if (inside(x, y, kButtonX, kCancelY, kButtonWidth,
+diff --git a/src/lan-box.h b/src/lan-box.h
+index 34e243f..41f9497 100644
+--- a/src/lan-box.h
++++ b/src/lan-box.h
+@@ -43,11 +43,6 @@ class LanBox : public GuiObject {
+   static const int kWidth = 352;
+   static const int kHeight = 216;
+ 
+-  /* The frames of the game through the link. */
+-  typedef enum Message {
+-    MessageSetup = 0   /* START GAME: the settings of the game */
+-  } Message;
+-
+  protected:
+   typedef enum View {
+     ViewChoose,
+@@ -68,7 +63,6 @@ class LanBox : public GuiObject {
+   std::unique_ptr<TextInput> address_field;
+   std::vector<LanLink::Server> servers;
+   std::string message;
+-  bool starting;
+ 
+  public:
+   LanBox(Interface *interface, PGameInfo mission);
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+new file mode 100644
+index 0000000..23b422e
+--- /dev/null
++++ b/src/lan-game.cc
+@@ -0,0 +1,154 @@
++/*
++ * lan-game.cc - A game of two players on two computers (LAN)
++ *
++ * Copyright (C) 2026  Wicked_Digger <wicked_digger@mail.ru>
++ *
++ * This file is part of freeserf.
++ *
++ * freeserf is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * freeserf is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "src/lan-game.h"
++
++#include <sstream>
++#include <string>
++
++#include "src/interface.h"
++#include "src/lan-link.h"
++#include "src/lan-sync.h"
++#include "src/game.h"
++#include "src/map.h"
++#include "src/gfx.h"
++
++/* The largest screen of a LAN game. */
++static const unsigned int kMaxWidth = 640;
++static const unsigned int kMaxHeight = 480;
++
++LanGame::LanGame(Interface *_interface, LanLink *_link, bool _server)
++  : interface(_interface)
++  , link(_link)
++  , server(_server)
++  , steps(0)
++  , last_checked(0)
++  , out_of_step(false)
++  , out_of_step_at(0)
++  , gone(false)
++  , old_width(0)
++  , old_height(0) {
++}
++
++LanGame::~LanGame() {
++  if (link != nullptr) {
++    link->close();
++  }
++  if (old_width != 0) {
++    Graphics::get_instance().set_resolution(old_width, old_height, true);
++  }
++}
++
++void
++LanGame::started() {
++  Graphics &gfx = Graphics::get_instance();
++  unsigned int w = 0, h = 0;
++  gfx.get_resolution(&w, &h);
++  if (w > kMaxWidth || h > kMaxHeight) {
++    old_width = w;
++    old_height = h;
++    gfx.set_resolution(kMaxWidth, kMaxHeight, true);
++  }
++}
++
++void
++LanGame::update() {
++  steps++;
++  if (link == nullptr) {
++    return;
++  }
++  link->poll();
++  if (!gone && link->get_state() != LanLink::StateConnected) {
++    gone = true;
++  }
++  int type = 0;
++  std::string data;
++  while (link->receive(&type, &data)) {
++    if (type == MessageSum) {
++      std::istringstream s(data);
++      unsigned int step = 0;
++      uint32_t sum = 0;
++      if (s >> step >> sum) {
++        other_sums[step] = sum;
++      }
++    }
++  }
++  if ((steps - 1) % kSumSteps == 0) {
++    PGame game = interface->get_game();
++    if (game) {
++      uint32_t sum = lan_checksum(game.get());
++      own_sums[steps] = sum;
++      link->send(MessageSum, std::to_string(steps) + " " +
++                             std::to_string(sum));
++    }
++  }
++  compare();
++}
++
++void
++LanGame::compare() {
++  while (!other_sums.empty()) {
++    auto theirs = other_sums.begin();
++    auto mine = own_sums.find(theirs->first);
++    if (mine == own_sums.end()) {
++      if (own_sums.empty() || own_sums.rbegin()->first < theirs->first) {
++        break;  /* This side is not there yet. */
++      }
++      other_sums.erase(theirs);  /* Too old to compare. */
++      continue;
++    }
++    if (mine->second != theirs->second && !out_of_step) {
++      out_of_step = true;
++      out_of_step_at = theirs->first;
++    }
++    last_checked = theirs->first;
++    own_sums.erase(own_sums.begin(), ++mine);
++    other_sums.erase(theirs);
++  }
++  /* The other side may be gone or far behind. */
++  while (own_sums.size() > 64) {
++    own_sums.erase(own_sums.begin());
++  }
++}
++
++void
++LanGame::draw(Frame *frame) {
++  std::string text = "LAN ";
++  if (link == nullptr) {
++    text += "-";
++  } else if (gone) {
++    text += "player gone";
++  } else {
++    text += link->get_peer_name();
++    int ms = link->get_ping_ms();
++    if (ms >= 0) text += " " + std::to_string(ms) + " ms";
++  }
++  if (out_of_step) {
++    text += " OUT OF STEP " + std::to_string(out_of_step_at);
++  } else if (last_checked != 0) {
++    text += " same " + std::to_string(last_checked);
++  }
++  int w = 8 * static_cast<int>(text.size()) + 4;
++  frame->fill_rect(0, 12, w, 11, Color::black);
++  frame->draw_string(2, 14, text,
++                     out_of_step ? Color(0xff, 0x40, 0x40) : Color::green,
++                     Color::transparent);
++}
+diff --git a/src/lan-game.h b/src/lan-game.h
+new file mode 100644
+index 0000000..86347c4
+--- /dev/null
++++ b/src/lan-game.h
+@@ -0,0 +1,83 @@
++/*
++ * lan-game.h - A game of two players on two computers (LAN)
++ *
++ * Copyright (C) 2026  Wicked_Digger <wicked_digger@mail.ru>
++ *
++ * This file is part of freeserf.
++ *
++ * freeserf is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * freeserf is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef SRC_LAN_GAME_H_
++#define SRC_LAN_GAME_H_
++
++#include <cstdint>
++#include <map>
++#include <string>
++
++#include "src/mission.h"
++#include "src/random.h"
++
++class Interface;
++class LanLink;
++class Game;
++class Frame;
++
++/* Both computers make the same game from the same settings (SETUP: the
++   map, the players and the seed of the game's random numbers) and, as the
++   logic of the game depends on nothing else, it stays the same on both as
++   long as the players' commands reach both at the same step (point 4 of
++   the plan). To see that, both send a checksum of the game every
++   kSumSteps steps and compare it with their own of the same step. */
++class LanGame {
++ public:
++  /* The frames of the game through the link. */
++  typedef enum Message {
++    MessageSetup = 0,  /* START GAME: the settings of the game */
++    MessageSum = 1     /* step and checksum */
++  } Message;
++
++  static const unsigned int kSumSteps = 250;  /* 5 s */
++
++ protected:
++  Interface *interface;
++  LanLink *link;
++  bool server;
++  unsigned int steps;
++  std::map<unsigned int, uint32_t> own_sums;
++  std::map<unsigned int, uint32_t> other_sums;
++  unsigned int last_checked;
++  bool out_of_step;
++  unsigned int out_of_step_at;
++  bool gone;
++  /* The mode before a LAN game made it 640x480; 0: not changed. */
++  unsigned int old_width, old_height;
++
++ public:
++  LanGame(Interface *interface, LanLink *link, bool server);
++  ~LanGame();
++
++  /* After the game started: the screen to at most 640x480. */
++  void started();
++  /* After every step of the game. */
++  void update();
++  /* The state of the link in the top left corner of the game. */
++  void draw(Frame *frame);
++  bool is_server() const { return server; }
++
++ protected:
++  void compare();
++};
++
++#endif  // SRC_LAN_GAME_H_
+diff --git a/src/lan-sync.cc b/src/lan-sync.cc
+new file mode 100644
+index 0000000..502c2f6
+--- /dev/null
++++ b/src/lan-sync.cc
+@@ -0,0 +1,108 @@
++/*
++ * lan-sync.cc - What makes the two games of a LAN game the same
++ *
++ * Copyright (C) 2026  Wicked_Digger <wicked_digger@mail.ru>
++ *
++ * This file is part of freeserf.
++ *
++ * freeserf is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * freeserf is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "src/lan-sync.h"
++
++#include <sstream>
++#include <string>
++
++#include "src/game.h"
++#include "src/map.h"
++#include "src/player.h"
++
++/* The version of SETUP. */
++static const int kSetupVersion = 1;
++
++/* "1 <map size> <random base> <seed> <players>" and for each player
++   "<face> <r> <g> <b> <intelligence> <supplies> <reproduction>". */
++std::string
++lan_encode_setup(PGameInfo mission, const Random &seed) {
++  std::ostringstream s;
++  s << kSetupVersion << ' ' << mission->get_map_size() << ' '
++    << std::string(mission->get_random_base()) << ' '
++    << std::string(seed) << ' ' << mission->get_player_count();
++  for (size_t i = 0; i < mission->get_player_count(); i++) {
++    PPlayerInfo p = mission->get_player(i);
++    Player::Color c = p->get_color();
++    s << ' ' << p->get_face() << ' ' << static_cast<unsigned int>(c.red)
++      << ' ' << static_cast<unsigned int>(c.green) << ' '
++      << static_cast<unsigned int>(c.blue) << ' ' << p->get_intelligence()
++      << ' ' << p->get_supplies() << ' ' << p->get_reproduction();
++  }
++  return s.str();
++}
++
++PGameInfo
++lan_decode_setup(const std::string &data, Random *seed) {
++  std::istringstream s(data);
++  int version = 0;
++  unsigned int map_size = 0;
++  size_t count = 0;
++  std::string base, seed_text;
++  s >> version >> map_size >> base >> seed_text >> count;
++  if (!s || version != kSetupVersion || base.size() != 16 ||
++      seed_text.size() != 16 || count < 2 || count > 4) {
++    return nullptr;
++  }
++  PGameInfo mission = std::make_shared<GameInfo>(Random(base));
++  mission->set_map_size(map_size);
++  mission->remove_all_players();
++  for (size_t i = 0; i < count; i++) {
++    unsigned int face, r, g, b, intelligence, supplies, reproduction;
++    s >> face >> r >> g >> b >> intelligence >> supplies >> reproduction;
++    if (!s) {
++      return nullptr;
++    }
++    Player::Color c = { static_cast<uint8_t>(r), static_cast<uint8_t>(g),
++                        static_cast<uint8_t>(b) };
++    mission->add_player(face, c, intelligence, supplies, reproduction);
++  }
++  *seed = Random(seed_text);
++  return mission;
++}
++
++/* FNV-1a of the map tiles, the step and the random numbers: what the two
++   games have to agree on. A size 8 map is 65536 tiles, a few ms on a
++   68060, once in kSumSteps. */
++uint32_t
++lan_checksum(Game *game) {
++  uint32_t h = 2166136261u;
++  auto add = [&h](uint32_t v) {
++    for (int i = 0; i < 4; i++) {
++      h ^= (v >> (8 * i)) & 0xff;
++      h *= 16777619u;
++    }
++  };
++  add(game->get_tick());
++  std::string rnd = game->get_random_text();
++  for (char c : rnd) add(static_cast<uint8_t>(c));
++  PMap map = game->get_map();
++  for (unsigned int r = 0; r < map->get_rows(); r++) {
++    for (unsigned int c = 0; c < map->get_cols(); c++) {
++      MapPos pos = map->pos(c, r);
++      add(map->get_height(pos) | (map->paths(pos) << 8) |
++          (map->get_owner(pos) << 16) |
++          (static_cast<uint32_t>(map->get_obj(pos)) << 24));
++      add(map->get_serf_index(pos) | (map->get_res_amount(pos) << 16));
++    }
++  }
++  return h;
++}
+diff --git a/src/lan-sync.h b/src/lan-sync.h
+new file mode 100644
+index 0000000..480bdf0
+--- /dev/null
++++ b/src/lan-sync.h
+@@ -0,0 +1,43 @@
++/*
++ * lan-sync.h - What makes the two games of a LAN game the same
++ *
++ * Copyright (C) 2026  Wicked_Digger <wicked_digger@mail.ru>
++ *
++ * This file is part of freeserf.
++ *
++ * freeserf is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * freeserf is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef SRC_LAN_SYNC_H_
++#define SRC_LAN_SYNC_H_
++
++#include <cstdint>
++#include <string>
++
++#include "src/mission.h"
++#include "src/random.h"
++
++class Game;
++
++/* SETUP: the settings of the start box (map, players) and the seed of the
++   game's random numbers, as text; both computers make their game from it,
++   the server too (from its own text), so the two are the same. */
++std::string lan_encode_setup(PGameInfo mission, const Random &seed);
++/* nullptr: not a SETUP of this version. */
++PGameInfo lan_decode_setup(const std::string &data, Random *seed);
++
++/* What the two games have to agree on at the same step. */
++uint32_t lan_checksum(Game *game);
++
++#endif  // SRC_LAN_SYNC_H_
+diff --git a/src/mission.cc b/src/mission.cc
+index ce6ad70..b773f0a 100644
+--- a/src/mission.cc
++++ b/src/mission.cc
+@@ -383,6 +383,7 @@ GameInfo::Mission missions[] = {
+ 
+ GameInfo::GameInfo(const Random &_random_base)
+   : map_size(3)
++  , has_game_random(false)
+   , name(_random_base)
+   , game_type(Game::GameTypeOnePlayer)
+   , level(0) {
+@@ -390,7 +391,8 @@ GameInfo::GameInfo(const Random &_random_base)
+ }
+ 
+ GameInfo::GameInfo(const GameInfo::Mission *mission_preset)
+-  : game_type(Game::GameTypeMission)
++  : has_game_random(false)
++  , game_type(Game::GameTypeMission)
+   , level(0) {
+   map_size = 3;
+   name = mission_preset->name;
+@@ -525,6 +527,9 @@ GameInfo::get_character_count() {
+ PGame
+ GameInfo::instantiate() {
+   PGame game = std::make_shared<Game>();
++  if (has_game_random) {
++    game->set_random(game_random);
++  }
+ 
+   if (!game->init(map_size, random_base)) {
+     return nullptr;
+diff --git a/src/mission.h b/src/mission.h
+index 10c446d..47577fc 100644
+--- a/src/mission.h
++++ b/src/mission.h
+@@ -103,6 +103,10 @@ class GameInfo {
+  protected:
+   unsigned int map_size;
+   Random random_base;
++  /* The seed of the game's random numbers (a LAN game); else from the
++     clock. */
++  bool has_game_random;
++  Random game_random;
+   PlayerInfos players;
+   std::string name;
+   int game_type;  /* Game::GameType */
+@@ -119,6 +123,10 @@ class GameInfo {
+   void set_map_size(unsigned int size) { map_size = size; }
+   Random get_random_base() const { return random_base; }
+   void set_random_base(const Random &base);
++  void set_game_random(const Random &random) {
++    game_random = random;
++    has_game_random = true;
++  }
+   size_t get_player_count() const { return players.size(); }
+   PPlayerInfo get_player(size_t player) const { return players[player]; }
+ 
+-- 
+2.45.2.windows.1
+

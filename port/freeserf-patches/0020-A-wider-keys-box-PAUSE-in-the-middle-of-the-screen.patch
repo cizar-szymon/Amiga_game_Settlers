@@ -1,7 +1,7 @@
 From 72931c1a14a90bafe64381a5a9e23e3460deb293 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Mon, 26 Oct 2026 00:50:34 +0100
-Subject: [PATCH 20/23] A wider keys box; PAUSE in the middle of the screen
+Subject: [PATCH 20/24] A wider keys box; PAUSE in the middle of the screen
 
 The keys box is a box of its own (KeysBox, 272x160, the frame of the
 advanced box, two columns: key and meaning) instead of a popup, whose

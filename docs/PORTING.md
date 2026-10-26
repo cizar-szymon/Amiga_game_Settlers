@@ -703,8 +703,8 @@ i WinUAE; punkt 1 to same okna, bez sieci.
 | Punkt | Stan | Opis |
 |---|---|---|
 | 1. Okna | ✅ (0.62–0.66, ocenione przez użytkownika) | typ gry LAN w oknie startu, okno START SERVER / JOIN SERVER |
-| 2. Połączenie | ✅ zbudowane (0.67), ⏳ test użytkownika w grze | `port/lan-amiga.cc` (bsdsocket): START SERVER nasłuchuje TCP 6810 i rozgłasza się UDP; dołączający znajduje go (SEARCH) albo wpisuje adres; powitanie z wersją; dołączający pojawia się w oknie serwera, serwer naciska START GAME |
-| 3. Start wspólnej gry | ⏳ | serwer wysyła cały stan (`GameStore::write` do strumienia), bo `Game::rnd` Freeserf losuje z zegara; dołączający gra graczem 2 (`set_player(1)`) |
+| 2. Połączenie | ✅ (0.67; z PC jako SLAVE sprawdzone w grze 26.10.2026) | `port/lan-amiga.cc` (bsdsocket): START SERVER nasłuchuje TCP 6810 i rozgłasza się UDP; dołączający znajduje go (SEARCH) albo wpisuje adres; powitanie z wersją; dołączający pojawia się w oknie serwera, serwer naciska START GAME |
+| 3. Start wspólnej gry | ✅ (0.68; Amiga 2 + WinUAE sprawdzone w grze 26.10.2026) | SETUP (~100 B) z ziarnem liczb losowych (Freeserf brał je z zegara), obie strony budują grę same; dołączający gra graczem 2; 640×480; suma kontrolna co 5 s |
 | 4. Lockstep | ⏳ | polecenia graczy jako komunikaty w tym samym ticku, tempo z sieci, suma kontrolna co N ticków, rozłączenie |
 | 5. Wydanie | ⏳ | 040 i 060, opisy, scalenie do `amiga-port` |
 
@@ -794,6 +794,43 @@ Testy (26.10.2026, Amiga 2 + PC, `port/lantest.c` z tym samym procesem co gra,
   sieciowy 96 ms w 30 s przy 221 ramkach w każdą stronę (~0,4 ms na parę ramek, 0,3% CPU).
   Amiga 1 nie ma trasy do sieci PC i Amigi 2 (ping 100% strat) – VPN łączy tylko PC z siecią
   Amigi 1, więc gra Amiga 1 ↔ Amiga 2 przez VPN nie jest możliwa bez trasy w VPN.
+
+**Punkt 3 (0.68): start wspólnej gry** (łatka `0024`).
+- `src/lan-sync.cc`: SETUP jako tekst `1 <rozmiar mapy> <random base> <ziarno> <gracze>` + dla
+  gracza `twarz r g b inteligencja zapasy rozmnażanie` (~100 B). Serwer też buduje grę z własnego
+  tekstu SETUP, więc obie strony mają ten sam `GameInfo`.
+- Ziarno liczb losowych gry: `GameInfo::set_game_random` → `Game::set_random` przed `Game::init`
+  (Freeserf brał je z zegara). Nowe przy każdym START GAME.
+- `Interface::start_lan_game(setup, server)`: `GameManager::start_game`, `LanGame` przejmuje
+  połączenie (okno LAN go nie zamyka), u dołączającego `set_player(1)`, zamyka okna LAN i startu.
+  Wyjście do menu kończy `LanGame` (połączenie, powrót trybu ekranu).
+- `LanGame::started`: ekran większy niż 640×480 → 640×480 na czas gry (decyzja użytkownika);
+  `main` nie zapisuje tego trybu do ustawień; po grze wraca poprzedni.
+- Suma kontrolna `lan_checksum` (FNV-1a: krok, stan liczb losowych, kafelki mapy – wysokość,
+  drogi, właściciel, obiekt, postać, surowce) w kroku 1 i co 250 kroków (5 s), wysyłana jako
+  ramka gry 1 i porównywana z sumą drugiej strony z tego samego kroku. Napis w grze pod FPS:
+  `LAN <nazwa> <ms> same <krok>` albo na czerwono `OUT OF STEP <krok>`; `player gone` po
+  rozłączeniu.
+- Bez poleceń graczy (punkt 4) obie gry liczą się dalej same i zostają zgodne, dopóki nikt nic nie
+  zbuduje – AI gra tak samo po obu stronach. Pierwsze kliknięcie (np. zamek) je rozjedzie.
+- **`lansim`** (port, bez sieci): gra z SETUP (2 ludzi + 2 AI, mapa 4), 3000 kroków. Na Amidze 2
+  dwa uruchomienia: identyczne sumy LAN i CRC32 całego zapisu w krokach 1, 501 … 3000.
+  Na Amidze 1 do sprawdzenia (VPN był rozłączony).
+- `lansim` w WinUAE (68060 bez JIT, `C:\amiga-dev\winuae\Settlers_A1200_OS32_net.uae`, wolumin
+  `SETTLERS:` = `build/amiga` z kopią `data/`): te same sumy co Amiga 2 we wszystkich punktach.
+- **Test w grze (26.10.2026):** MASTER na Amidze 2, SLAVE w WinUAE na PC (zapora Windows: reguły
+  „Settlers LAN 6810 TCP/UDP”, tylko sieć lokalna i 192.168.5.0/24). SEARCH znalazł serwer,
+  CONNECT, START GAME – obie gry wystartowały, sumy zgodne; po postawieniu zamku na Amidze napis
+  `LAN SLAVE 21ms OUT OF STEP 1001` – rozjazd wykryty przy pierwszym porównaniu po kliknięciu,
+  zgodnie z oczekiwaniem (polecenia graczy to punkt 4).
+- `tools/lan_peer.py connect … --echo-sums` odsyła sumy serwera: test napisu w grze bez drugiej
+  Amigi.
+
+**Raspberry Pi 400 z Amiberry** (prośba użytkownika, 26.10.2026): ten sam program Amigi w emulatorze –
+gra LAN Amiga ↔ Pi bez rozjazdów, jak z WinUAE. Pliki w `tools/pi/`: konfiguracja Amiberry
+(68040 JIT, RTG, bsdsocket, wolumin WOW:), `install-amiberry.sh` (paczka `debian-<wersja>-arm64.zip`
+z wydań Amiberry, 8.4.2), `pi_deploy.sh` (scp z PC), opis w `tools/pi/README.md`. Kartę SD
+przygotowuje użytkownik (Raspberry Pi Imager, SSH); natywny Freeserf na Pi (SDL3) odłożony.
 
 
 - logika bez liczb zmiennoprzecinkowych, bez wątków, kolekcje po indeksach, AI w

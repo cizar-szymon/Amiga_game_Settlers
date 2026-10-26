@@ -6,6 +6,17 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.68 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN, krok 3: START GAME uruchamia te sama gre na obu Amigach
+  (ta sama mapa, gracze i liczby losowe); dolaczajacy gra graczem 2.
+  Ekran wiekszy niz 640x480 przechodzi na czas gry LAN na 640x480.
+  W rogu gry napis LAN z nazwa drugiej strony, czasem odpowiedzi i
+  zgodnoscia obu gier ("same" albo "OUT OF STEP"). Polecenia graczy
+  jeszcze nie przechodza na druga strone - nastepny krok.
+
+
 0.67 (26.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 

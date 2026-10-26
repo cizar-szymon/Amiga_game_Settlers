@@ -6,6 +6,17 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.68 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- LAN game, step 3: START GAME starts the same game on both Amigas (the
+  same map, players and random numbers); the one who joined plays
+  player 2. A screen larger than 640x480 becomes 640x480 for a LAN
+  game. A LAN line in the corner: the other side's name, response time
+  and whether both games agree ("same" or "OUT OF STEP"). The players'
+  commands do not reach the other side yet - the next step.
+
+
 0.67 (26.10.2026, LAN branch - test build)
 -------------------------------------------
 
