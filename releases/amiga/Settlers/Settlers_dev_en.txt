@@ -1,7 +1,7 @@
 THE SETTLERS (Freeserf) for the Amiga - notes for developers
 ============================================================
 
-Version 0.61. The full description of the port, decisions and
+Version 0.96. The full description of the port, decisions and
 measurements: docs/PORTING.md in the Settlers repository (Polish).
 
 
@@ -88,3 +88,29 @@ Test programs (build/amiga): simtest (logic: CRC of the state after N
 steps, -c builds player 0's castle, -s saves the scene), datacheck (data:
 CRC of all resources, sprite sheets), modelist (Picasso96 modes),
 Settlers-hg (AmiXcom's heap guard, log RAM:Settlers-heap.txt).
+
+
+LAN GAME
+--------
+
+Lockstep: both Amigas run the same game (logic without floating point,
+the AI in Game::update), only the players' commands (LanCommand, 18-30
+bytes) and a checksum every 5 s go through the network. Details:
+docs/PORTING.md, chapter "Gra LAN".
+
+  network       process "Settlers LAN" (port/amiga_net.c, priority 1,
+                WaitSelect); bsdsocket.library; the game reads a ring only
+  search        UDP 255.255.255.255:6810 once a second (RUN SERVER)
+  game          TCP 6810, TCP_NODELAY; frame: length, type, data
+  start         SETUP (map, players, the seed of the random numbers, the
+                delay, sand, rocks) or a whole saved game (240 byte pieces)
+  turns         4 steps (80 ms); a command of turn t is done in turn
+                t + delay (2-8 turns by the response time)
+
+The end of a game for a test: the option LANTEST, in a LAN game
+Ctrl+Shift+W - the player of this computer wins at once (on both).
+
+Tests: lansim (the same game without a network; -l two games in
+lockstep, -s/-r sand/rocks, the time of the checksum), lantest (the
+network process from the Shell: serve, search, connect, send FILE),
+tools/lan_peer.py (the other side on the PC).

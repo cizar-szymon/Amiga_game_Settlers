@@ -1,7 +1,7 @@
 THE SETTLERS (Freeserf) na Amige - opis dla programistow
 ========================================================
 
-Wersja 0.61. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
+Wersja 0.96. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
 w repozytorium Settlers.
 
 
@@ -85,3 +85,28 @@ Programy testowe (build/amiga): simtest (logika: CRC stanu po N krokach,
 -c buduje zamek gracza 0, -s zapis sceny), datacheck (dane: CRC wszystkich
 zasobow, arkusze sprite'ow), modelist (tryby Picasso96), Settlers-hg
 (straznik sterty z AmiXcom, dziennik RAM:Settlers-heap.txt).
+
+
+GRA LAN
+-------
+
+Lockstep: obie Amigi licza te sama gre (logika bez liczb
+zmiennoprzecinkowych, AI w Game::update), przez siec ida tylko polecenia
+graczy (LanCommand, 18-30 B) i co 5 s suma kontrolna. Szczegoly:
+docs/PORTING.md, rozdzial "Gra LAN".
+
+  siec          proces "Settlers LAN" (port/amiga_net.c, priorytet 1,
+                WaitSelect); bsdsocket.library; gra czyta tylko pierscien
+  szukanie      UDP 255.255.255.255:6810 co 1 s (RUN SERVER)
+  gra           TCP 6810, TCP_NODELAY; ramka: dlugosc, typ, dane
+  start         SETUP (mapa, gracze, ziarno liczb losowych, opoznienie,
+                piasek, skaly) albo caly zapis gry (kawalki po 240 B)
+  tury          4 kroki (80 ms); polecenie z tury t dziala w turze
+                t + opoznienie (2-8 tur wg czasu odpowiedzi)
+
+Koniec gry do testu: opcja LANTEST, w grze LAN Ctrl+Shift+W - gracz
+tego komputera wygrywa od razu (u obu).
+
+Testy: lansim (ta sama gra bez sieci; -l dwie gry w lockstepie, -s/-r
+piasek/skaly, czas sumy kontrolnej), lantest (proces sieciowy z Shella:
+serve, search, connect, send PLIK), tools/lan_peer.py (druga strona na PC).

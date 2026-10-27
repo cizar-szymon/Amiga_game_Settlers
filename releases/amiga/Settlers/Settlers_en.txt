@@ -1,7 +1,7 @@
 THE SETTLERS - Freeserf for the Amiga with a graphics card
 ==========================================================
 
-Version 0.61 (beta), 26.10.2026
+Version 0.96 (beta), 26.10.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) on an Amiga with a graphics
 card (Picasso96) and a 68040/68060, at up to 800x600. It is based on
@@ -47,7 +47,7 @@ CONTROLS
   B                        building sites
   Tab                      next message
   +                        game speed: x1.5 / x2 / x2.5 / x3
-  -                        slower, down to the normal speed
+  -                        slower, down to x0.5
   0                        normal speed (x1)
                            (a speed other than x1 is shown top right)
   M / S                    music / sound effects on and off
@@ -76,9 +76,68 @@ Options -> Amiga:
 Options -> Advanced:
   Invert scrolling, Large numbers, Autosave, Stock box until occupied,
   Show FPS (frame counter in the corner)
+Options -> Advanced -> VIDEO:
+  Sand on new maps (the deserts of new maps: None, 10% of normal
+    ... Normal, - + buttons),
+  Rocks on new maps (the brown boulders of new maps, the same way),
+  More kinds of trees (mirrored trees and birches, only the look),
+  Wild boars (boars among the trees)
 
 Settings are kept in Settlers.ini next to the game, saved games in the
 freeserf drawer.
+
+
+PLAYING OVER A NETWORK (LAN)
+----------------------------
+
+Two players on two Amigas (or an Amiga and an emulator, e.g. WinUAE or
+Amiberry), and up to 2 computer players.
+
+Needed:
+- a TCP/IP stack (e.g. Roadshow) on both computers,
+- the same version of the game on both (another version is turned away
+  with a message),
+- port 6810 (TCP and UDP) open between the computers; on a PC with
+  WinUAE it has to be let through the Windows firewall.
+
+The one who sets up the game (MASTER):
+1. In the start box switch the game type to "LAN game" (the icon with
+   LAN on it, third after New game and Start mission).
+2. Set up the map as in New game: size, random number, computer players
+   (player 1 is you, player 2 the other person). Sand and rocks of the
+   map: Options -> Advanced -> VIDEO; the settings of this side count.
+3. Start -> START SERVER. Type the name of the server (MASTER) and click
+   RUN SERVER - the server announces itself in the network.
+4. When the other player joins, their name, address and response time
+   show. Click START GAME.
+
+The one who joins (SLAVE):
+1. In the start box "LAN game" -> Start -> JOIN SERVER.
+2. SEARCH looks for servers in the network for 3 s; click a server in
+   the list or type its IP address into "Server address". Through a VPN
+   and between networks the search does not work - type the address.
+3. Type your name (Your name, SLAVE) and click CONNECT.
+4. Wait for the server to start the game - it begins by itself.
+
+During the game:
+- Both Amigas run the same game. Everything you do (building, roads,
+  settings, attacks, pause P, speed + - 0) happens on both after about
+  0.2 s (longer on a slow WiFi).
+- A LAN line in the top left corner: the other player's name, the
+  response time, "same <step>" - both games agree. WAITING: the game
+  waits for the other side (a slow network). "OUT OF STEP" in red: the
+  games went apart - please report it.
+- A screen larger than 640x480 becomes 640x480 for a LAN game.
+- When one player leaves the game (or the link breaks), the other sees a
+  notice and goes back to the start menu after 4 s.
+
+Saving and going on:
+- Save with the usual Save box. Saves of LAN games show a yellow LAN in
+  the list (files name.lan.save).
+- The one who sets up: Load game -> a LAN save -> Start (or a double
+  click) opens the server box with that save; then RUN SERVER, START
+  GAME. The save goes to the other Amiga, both go on from there. The
+  server box can also choose a save with SAVED GAME.
 
 
 ICON SETTINGS (Tool Types)

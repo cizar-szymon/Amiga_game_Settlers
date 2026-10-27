@@ -6,6 +6,262 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.96 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- LAN game: joining a new road to an existing road with a special click
+  works as in a game on one Amiga.
+
+
+0.95 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- For a test of the end of a LAN game: the option LANTEST, in the game
+  Ctrl+Shift+W - the player who pressed it wins (on both Amigas).
+
+
+0.94 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- A wild boar goes when a building (also one being built), a flag or a
+  road comes next to it.
+
+
+0.93 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- End of a LAN game: each player sees the picture of a win or a loss
+  from their own side (a winning player 2 saw a loss before).
+
+
+0.92 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- A LAN game on large maps without a jolt every 5 s (checking that both
+  games agree took up to 0.9 s, now about 3 ms).
+
+
+0.91 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Fix: the Quit button of the start box answered only in its upper
+  half - now on all of it.
+
+
+0.90 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- The wild boar's voice lower still.
+
+
+0.89 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Fix: the wild boar could not be heard (other sounds held the channels).
+
+
+0.88 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- The wild boar grunts in a lower, deeper voice than a pig.
+
+
+0.87 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- More wild boars in the woods (they were too rare).
+
+
+0.86 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Wild boars: now and then, where trees stand around, a dark brown boar
+  walks and grunts (Options -> Advanced -> VIDEO "Wild boars").
+- Smaller letters on the VIDEO and AUDIO buttons.
+
+
+0.85 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- The Advanced box: VIDEO and AUDIO next to EXIT. VIDEO opens a "Video"
+  box with the sand, rocks and kinds of trees (moved from Advanced);
+  AUDIO an "Audio" box, empty for now.
+
+
+0.84 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Birch: the trunk no longer shows through the swaying crown (flicker).
+
+
+0.83 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- A new birch: a white trunk with black marks and an oval crown (own
+  drawing in the style of the game's trees) instead of a recoloured tree.
+
+
+0.82 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- More kinds of trees: mirrored trees and birches (Options -> Advanced
+  "More kinds of trees", on at first). Only the look - the woodcutter
+  fells them as other trees; no cost in speed.
+
+
+0.81 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- A double click on a save loads it (Load game; in the LAN box it
+  chooses the save for the game).
+
+
+0.80 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Load game: a DELETE button deletes the selected save after a question
+  ("Delete the save?" - YES / NO).
+
+
+0.79 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Saves of LAN games marked with a yellow LAN in the list (files
+  name.lan.save), "Load LAN game" in the start box.
+- The saves listed by name; when there are more than fit, a bar with
+  arrows on the right (a click at its top or bottom scrolls a page).
+
+
+0.78 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Fix: a saved LAN game came broken ("The saved game came broken") when
+  it arrived faster than the game took it.
+
+
+0.77 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Load game with a saved LAN game (player 2 a person) opens the LAN box
+  as a server with that save - the other Amiga joins and gets it.
+
+
+0.76 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- A LAN game from a save: the server (MASTER) chooses a saved LAN game
+  with SAVED GAME in the server box, START GAME sends it to the other
+  Amiga, both go on from there. Save with the usual Save box in a LAN
+  game.
+
+
+0.75 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Sand / Rocks on new maps: "Normal" (as the original), "None" or e.g.
+  "50% of normal"; a wider Advanced box.
+
+
+0.74 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Options -> Advanced: "Rocks on new maps" - the brown boulders of new
+  maps from 0% to 100% (- + buttons), like the sand. The grey stones of
+  the stonecutter stay as they are.
+
+
+0.73 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Sand on new maps: the value in % with - + buttons next to it; the map
+  preview of the start box is made again when Options is closed.
+
+
+0.72 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- Options -> Advanced: "Sand on new maps" - the amount of desert on new
+  maps from 0% (none) to 100% (as the original), in steps of 10%.
+  Missions stay as they are; a LAN game uses the server's setting.
+- Game speed x0.5: the - key goes below the normal speed.
+
+
+0.71 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- LAN game: when one player ends the game (or the link breaks), the
+  other sees a notice and goes back to the start menu after 4 s.
+
+
+0.69 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- LAN game, step 4: playing over the network. Everything a player does
+  (building, roads, demolishing, settings, attacks, pause, speed) is
+  done on both Amigas at the same moment (after about 0.16 s). Without
+  the other side's commands the game waits (WAITING). Joining a new
+  road to an existing road with a special click does not work in a LAN
+  game.
+
+
+0.68 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- LAN game, step 3: START GAME starts the same game on both Amigas (the
+  same map, players and random numbers); the one who joined plays
+  player 2. A screen larger than 640x480 becomes 640x480 for a LAN
+  game. A LAN line in the corner: the other side's name, response time
+  and whether both games agree ("same" or "OUT OF STEP"). The players'
+  commands do not reach the other side yet - the next step.
+
+
+0.67 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- LAN game, step 2: the connection. RUN SERVER announces the server in
+  the network, SEARCH finds servers (name and address), CONNECT joins.
+  The server shows the name, address and response time of player 2,
+  START GAME becomes active. The game over the network - the next step.
+
+
+0.66 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- A wider LAN box: the labels and the IP addresses well apart.
+
+
+0.65 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- The server box: the name MASTER at first (the one who joins: SLAVE),
+  the IP address of this Amiga read from the network, no random number.
+  A RUN SERVER button (STOP SERVER once clicked) - only then the server
+  announces itself in the network.
+
+
+0.64 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- A little smaller LAN on the icon. The LAN box: the name of this Amiga
+  (the server is seen in the network by it, remembered), the server
+  address, and for player 2 a name and an address on separate rows.
+
+
+0.63 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- LAN game chosen third (after Start mission), a large LAN on the top of
+  its icon; the server box has a "Player 2" row for the one who joins.
+
+
+0.62 (26.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- LAN game, step 1: a new game type "LAN game" in the start box (the
+  game type icon). Start opens a START SERVER / JOIN SERVER box with an
+  address to type. No network yet - only the windows.
+
+
 0.61 (26.10.2026)
 -----------------
 

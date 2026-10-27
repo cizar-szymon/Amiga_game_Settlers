@@ -6,6 +6,261 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.96 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN: laczenie nowej drogi z istniejaca droga specjalnym
+  kliknieciem dziala jak w grze na jednej Amidze.
+
+
+0.95 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Do testu konca gry LAN: opcja LANTEST, w grze Ctrl+Shift+W - wygrywa
+  gracz, ktory nacisnal (na obu Amigach).
+
+
+0.94 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Dzik znika, gdy obok niego stanie budynek (takze w budowie), flaga
+  albo droga.
+
+
+0.93 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Koniec gry LAN: kazdy gracz widzi obrazek zwyciestwa albo porazki ze
+  swojej strony (wygrywajacy gracz 2 widzial wczesniej porazke).
+
+
+0.92 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN na duzych mapach bez szarpniecia co 5 s (sprawdzanie
+  zgodnosci obu gier trwalo do 0,9 s, teraz ok. 3 ms).
+
+
+0.91 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Poprawka: przycisk Quit w oknie startu reagowal tylko w gornej
+  polowie - teraz na calej powierzchni.
+
+
+0.90 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Glos dzika jeszcze nizszy.
+
+
+0.89 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Poprawka: glosu dzika nie bylo slychac (inne odglosy zajmowaly kanaly).
+
+
+0.88 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Dzik chrzaka nizszym, glebszym glosem niz swinia.
+
+
+0.87 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Wiecej dzikow w lasach (byly za rzadko).
+
+
+0.86 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Dziki: rzadko, w miejscach otoczonych drzewami, chodzi ciemnobrazowy
+  dzik i chrzaka (Options -> Advanced -> VIDEO "Wild boars").
+- Mniejsze napisy na przyciskach VIDEO i AUDIO.
+
+
+0.85 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Okno Advanced: obok EXIT przyciski VIDEO i AUDIO. VIDEO otwiera okno
+  "Video" z ustawieniami piasku, skal i rodzajow drzew (przeniesione z
+  Advanced); AUDIO - okno "Audio", na razie puste.
+
+
+0.84 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Brzoza: pien nie przeswituje juz przez kolyszaca sie korone (miganie).
+
+
+0.83 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Nowa brzoza: bialy pien w czarne plamy i owalna korona (wlasny
+  rysunek w stylu drzew gry) zamiast przebarwionego drzewa.
+
+
+0.82 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Wiecej rodzajow drzew: odbite drzewa i brzozy (Options -> Advanced
+  "More kinds of trees", domyslnie wlaczone). Tylko wyglad - drwal
+  scina je jak inne drzewa; bez wplywu na szybkosc gry.
+
+
+0.81 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Podwojne klikniecie zapisu na liscie wczytuje go (Load game, a w
+  oknie LAN wybiera zapis do gry).
+
+
+0.80 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Load game: przycisk DELETE usuwa zaznaczony zapis po potwierdzeniu
+  (pytanie "Delete the save?" - YES / NO).
+
+
+0.79 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Zapisy gier LAN oznaczone na liscie zoltym napisem LAN (pliki
+  nazwa.lan.save), w oknie startu "Load LAN game".
+- Lista zapisow alfabetycznie, a gdy zapisow jest wiecej niz miesci
+  okno - pasek ze strzalkami po prawej (klikniecie u gory/u dolu
+  przewija o strone).
+
+
+0.78 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Poprawka: przesylany zapis gry LAN docieral uszkodzony ("The saved
+  game came broken"), gdy przychodzil szybciej, niz gra go odbierala.
+
+
+0.77 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Load game z zapisem gry LAN (gracz 2 to czlowiek) otwiera okno LAN
+  jako serwer z tym zapisem - druga Amiga dolacza i dostaje zapis.
+
+
+0.76 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN z zapisu: serwer (MASTER) wybiera w oknie serwera SAVED GAME
+  zapis gry LAN, a START GAME wysyla go do drugiej Amigi; obie graja
+  dalej od tego miejsca. Zapis robi sie zwyklym oknem Save w grze LAN.
+
+
+0.75 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Sand / Rocks on new maps: wartosci "Normal" (jak w oryginale), "None"
+  albo np. "50% of normal"; okno Advanced szersze.
+
+
+0.74 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Options -> Advanced: "Rocks on new maps" - ilosc brazowych skal na
+  nowych mapach od 0% do 100% (przyciski - +), jak piasek. Szare
+  kamienie dla kamieniarza bez zmian.
+
+
+0.73 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Sand on new maps: wartosc w % i przyciski - + obok; podglad mapy w
+  oknie startu odswieza sie po zamknieciu okna Options.
+
+
+0.72 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Options -> Advanced: "Sand on new maps" - ilosc piasku (pustyn) na
+  nowych mapach od 0% (bez pustyn) do 100% (jak w oryginale), co 10%.
+  Misje bez zmian; w grze LAN obowiazuje ustawienie serwera.
+- Tempo gry x0.5: klawisz - schodzi ponizej normalnego tempa.
+
+
+0.71 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN: gdy jeden z graczy konczy gre (lub polaczenie sie zerwie),
+  drugi widzi komunikat i po 4 s wraca do menu startowego.
+
+
+0.69 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN, krok 4: gra przez siec. Wszystko, co gracz robi (budowa,
+  drogi, burzenie, ustawienia, atak, pauza, tempo), wykonuje sie na obu
+  Amigach w tym samym momencie (po ok. 0,16 s). Gdy brakuje polecen
+  drugiej strony, gra czeka (napis WAITING). Laczenie nowej drogi z
+  istniejaca droga specjalnym kliknieciem w grze LAN nie dziala.
+
+
+0.68 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN, krok 3: START GAME uruchamia te sama gre na obu Amigach
+  (ta sama mapa, gracze i liczby losowe); dolaczajacy gra graczem 2.
+  Ekran wiekszy niz 640x480 przechodzi na czas gry LAN na 640x480.
+  W rogu gry napis LAN z nazwa drugiej strony, czasem odpowiedzi i
+  zgodnoscia obu gier ("same" albo "OUT OF STEP"). Polecenia graczy
+  jeszcze nie przechodza na druga strone - nastepny krok.
+
+
+0.67 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN, krok 2: polaczenie. RUN SERVER oglasza serwer w sieci,
+  SEARCH znajduje serwery (nazwa i adres), CONNECT laczy. Serwer
+  pokazuje nazwe, adres i czas odpowiedzi gracza 2, START GAME staje sie
+  aktywny. Sama gra przez siec - w nastepnym kroku.
+
+
+0.66 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Okno LAN szersze: opisy i adresy IP wyraznie rozdzielone.
+
+
+0.65 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Okno serwera: nazwa domyslnie MASTER (dolaczajacy: SLAVE), adres IP
+  tej Amigi odczytany z sieci, bez liczby losowej. Przycisk RUN SERVER
+  (po kliknieciu STOP SERVER) - dopiero wtedy serwer oglasza sie w sieci.
+
+
+0.64 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Napis LAN na ikonie troche mniejszy. Okno LAN: nazwa tej Amigi (pod
+  ta nazwa serwer bedzie widoczny w sieci, zapamietywana), adres
+  serwera, a dla gracza 2 nazwa i adres w osobnych wierszach.
+
+
+0.63 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- LAN game wybierane jako trzecie (po Start mission), na ikonie duzy
+  napis LAN u gory; w oknie serwera wiersz "Player 2" na gracza, ktory
+  dolaczy.
+
+
+0.62 (26.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN, krok 1: w oknie startu nowy typ gry "LAN game" (ikona ze
+  zmiana typu gry). Start otwiera okno START SERVER / JOIN SERVER z
+  wpisaniem adresu. Siec jeszcze nie dziala - to tylko okna.
+
+
 0.61 (26.10.2026)
 -----------------
 
