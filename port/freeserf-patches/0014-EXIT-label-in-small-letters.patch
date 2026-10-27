@@ -1,7 +1,7 @@
 From 45eb93906c6497c5ea16c6ddc713ffaa57e022bc Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Sun, 25 Oct 2026 23:03:41 +0100
-Subject: [PATCH 14/39] EXIT label in small letters
+Subject: [PATCH 14/41] EXIT label in small letters
 
 The game's 8x8 font filled the whole 32x16 button. The label is drawn in
 5 pixel high letters, yellow with a dark outline, like the lettering of

@@ -132,6 +132,10 @@ class VideoAmiga : public Video {
 
   /* VERIFY: every blended row is checked against the reference version. */
   static bool verify;
+  /* ZOOMGAP=n (a test, 0.104): changed pieces of a magnified row closer
+     than n pixels are sent as one; a large n: the whole part from the
+     first to the last change (as before 0.104). */
+  static int zoom_gap;
   uint32_t verify_errors;
   /* The magnified map view (draw_frame_scaled) is sent to the card only
      where it changed: its last picture, and the screen rows anything else

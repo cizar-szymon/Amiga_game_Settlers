@@ -1,7 +1,7 @@
 From 290dbce11fb1671cc8107acbfc4a96161fcb14c6 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Tue, 27 Oct 2026 01:06:20 +0100
-Subject: [PATCH 38/39] LANTEST: Ctrl+Shift+W in a LAN game - this player wins
+Subject: [PATCH 38/41] LANTEST: Ctrl+Shift+W in a LAN game - this player wins
  at once on both computers (a test of the end)
 
 ---

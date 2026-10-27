@@ -1,0 +1,443 @@
+From 29e0581801d339153a5650f2d3a168acac2fa211 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Tue, 27 Oct 2026 19:52:35 +0100
+Subject: [PATCH 40/41] LAN game: chat box (Tab), lines of up to 32 characters
+ in the players' colours
+
+The box has the frame of the game's boxes and the background of the start
+box; it is drawn again only when it changes. A line goes at once, not in a
+turn (it does not change the game). draw_box_frame cuts its sides for a low
+box.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Uqv2KDnCV91tQsZeLq3naz
+---
+ src/box-frame.cc |   3 +-
+ src/box-frame.h  |   2 +-
+ src/interface.cc |   8 ++
+ src/lan-game.cc  | 228 ++++++++++++++++++++++++++++++++++++++++++++++-
+ src/lan-game.h   |  34 ++++++-
+ 5 files changed, 269 insertions(+), 6 deletions(-)
+
+diff --git a/src/box-frame.cc b/src/box-frame.cc
+index 418efd1..ebade7f 100644
+--- a/src/box-frame.cc
++++ b/src/box-frame.cc
+@@ -113,7 +113,8 @@ draw_box_frame(Frame *frame, int width, int height) {
+   for (int i = 0; i < 2; i++) {
+     Frame *side = edge(2 + i, side_w, 144);
+     int x = (i == 0) ? 0 : width - side_w;
+-    frame->draw_frame(x, top_h, 0, 0, side, side_w, 144);
++    /* A low box (the chat) takes only the part of the sprite that fits. */
++    frame->draw_frame(x, top_h, 0, 0, side, side_w, std::min(144, side_h));
+     fill_y(side, x, top_h + 144, side_h - 144, 16, 96, side_w);
+     delete side;
+   }
+diff --git a/src/box-frame.h b/src/box-frame.h
+index dec5a2a..d53af0c 100644
+--- a/src/box-frame.h
++++ b/src/box-frame.h
+@@ -27,7 +27,7 @@
+ class Frame;
+ 
+ /* Draw the frame of the popup boxes along the edges of a box of any size
+-   (at least the 144x160 of a popup). */
++   (at least 144 wide as a popup, and at least 16 high). */
+ void draw_box_frame(Frame *frame, int width, int height);
+ 
+ /* Letters 5 pixels high (rows of '#', or as many rows as given) at x, y,
+diff --git a/src/interface.cc b/src/interface.cc
+index 480df03..1a8034d 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -1736,6 +1736,14 @@ Interface::handle_event(const Event *event) {
+     case Event::TypeInvalidate:
+       invalidate();
+       break;
++    case Event::TypeKeyPressed:
++      /* The chat of a LAN game takes the keys before the boxes and the
++         panel (its letters and digits are no keys of the game). */
++      if (lan_game && game && lan_game->handle_chat_key(event->dx,
++                                                       event->dy)) {
++        return true;
++      }
++      return GuiObject::handle_event(event);
+ 
+     default:
+       return GuiObject::handle_event(event);
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index 1e47dad..4b5377a 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -32,6 +32,11 @@
+ #include "src/map.h"
+ #include "src/gfx.h"
+ #include "src/event_loop.h"
++#include "src/settings.h"
++#include "src/audio.h"
++#include "src/data.h"
++#include "src/gui.h"
++#include "src/box-frame.h"
+ 
+ /* The largest screen of a LAN game. */
+ static const unsigned int kMaxWidth = 640;
+@@ -39,6 +44,22 @@ static const unsigned int kMaxHeight = 480;
+ /* "Waiting" shows after this long without the other side's turn. */
+ static const unsigned int kShowWaitingMs = 300;
+ 
++/* The box of the chat, a float of the interface: its picture is drawn
++   only when something in it changed, then just copied to the screen like
++   any open box. */
++class LanChatBox : public GuiObject {
++ protected:
++  LanGame *owner;
++
++ public:
++  explicit LanChatBox(LanGame *_owner) : owner(_owner) {}
++
++ protected:
++  virtual void internal_draw() { owner->draw_chat(frame, width, height); }
++  /* A click on the box does not go to the map under it. */
++  virtual bool handle_click_left(int x, int y) { return true; }
++};
++
+ LanGame::LanGame(Interface *_interface, LanLink *_link, bool _server,
+                  unsigned int _delay)
+   : interface(_interface)
+@@ -59,10 +80,19 @@ LanGame::LanGame(Interface *_interface, LanLink *_link, bool _server,
+   , notice_until(0)
+   , leave_at(0)
+   , old_width(0)
+-  , old_height(0) {
++  , old_height(0)
++  , chat_open(false)
++  , chat_shown_until(0) {
++  /* The name this side gave in the LAN box. */
++  own_name = Settings::get_instance().get(
++    "lan", server ? "server_name" : "player_name",
++    std::string(server ? "MASTER" : "SLAVE"));
+ }
+ 
+ LanGame::~LanGame() {
++  if (chat_box) {
++    interface->del_float(chat_box.get());
++  }
+   if (link != nullptr) {
+     /* The other side learns that this one left (sent before the BYE of
+        close()). */
+@@ -94,7 +124,12 @@ LanGame::started() {
+   if (w > kMaxWidth || h > kMaxHeight) {
+     old_width = w;
+     old_height = h;
+-    gfx.set_resolution(kMaxWidth, kMaxHeight, true);
++    /* A wide screen (16:9) stays wide: 1280x720 -> 640x360. */
++    if (w * 9 == h * 16) {
++      gfx.set_resolution(kMaxWidth, kMaxWidth * 9 / 16, true);
++    } else {
++      gfx.set_resolution(kMaxWidth, kMaxHeight, true);
++    }
+   }
+ }
+ 
+@@ -140,7 +175,16 @@ LanGame::receive() {
+   int type = 0;
+   std::string data;
+   while (link->receive(&type, &data)) {
+-    if (type == MessageQuit) {
++    if (type == MessageChat && data.size() >= 2) {
++      size_t nl = data.find('\n', 1);
++      if (nl != std::string::npos) {
++        add_chat(static_cast<uint8_t>(data[0]), data.substr(1, nl - 1),
++                 data.substr(nl + 1));
++        chat_shown_until = EventLoop::get_instance().get_ticks() + 10000;
++        Audio::get_instance().enqueue_sfx(Audio::TypeSfxMessage);
++        update_chat_box(true);
++      }
++    } else if (type == MessageQuit) {
+       other_quit = true;
+     } else if (type == MessageSum) {
+       std::istringstream s(data);
+@@ -221,6 +265,7 @@ LanGame::pump_save() {
+ bool
+ LanGame::before_step() {
+   receive();
++  update_chat_box(false);   /* the lines go some time after the last */
+   if (!end_seen && (gone || other_quit)) {
+     gone = true;
+     other_side_ended();
+@@ -367,3 +412,180 @@ LanGame::draw(Frame *frame) {
+                        Color::transparent);
+   }
+ }
++
++/* The letters of the game's font (it shows them in capitals). */
++static bool
++chat_letter(char c) {
++  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
++         (c >= '0' && c <= '9') || c == ' ' || c == '-' || c == '.' ||
++         c == ':' || c == '?' || c == '%';
++}
++
++/* Only the letters of the font, at most max of them (the other side may
++   send anything). */
++static std::string
++chat_clean(const std::string &s, size_t max) {
++  std::string r;
++  for (char c : s) {
++    if (r.size() >= max) break;
++    if (chat_letter(c)) r += c;
++  }
++  return r;
++}
++
++void
++LanGame::add_chat(int player, const std::string &name,
++                  const std::string &text) {
++  ChatLine line;
++  line.player = player;
++  line.name = chat_clean(name, 15);
++  line.text = chat_clean(text, kChatLength);
++  chat.push_back(line);
++  while (chat.size() > kChatLines) {
++    chat.pop_front();
++  }
++}
++
++void
++LanGame::send_chat() {
++  if (chat_input.empty()) return;
++  int player = static_cast<int>(interface->get_player()->get_index());
++  if (link == nullptr || gone) {
++    add_chat(-1, std::string(), "NOT SENT - NO CONNECTION");
++    return;
++  }
++  link->send(MessageChat, std::string(1, static_cast<char>(player)) +
++                          own_name + "\n" + chat_input);
++  add_chat(player, own_name, chat_input);
++  chat_input.clear();
++}
++
++bool
++LanGame::handle_chat_key(char key, int modifier) {
++  if (!chat_open) {
++    /* Tab opens the chat (Shift+Tab stays: back from a message). */
++    if (key == '\t' && (modifier & 3) == 0) {
++      chat_open = true;
++      update_chat_box(true);
++      return true;
++    }
++    return false;
++  }
++  /* Ctrl with a key stays for the game (Ctrl+Z, Ctrl+C...). */
++  if (modifier & 1) {
++    return false;
++  }
++  if (key == '\t' || key == 27) {
++    chat_open = false;   /* what was typed stays for the next time */
++    chat_shown_until = 0;
++  } else if (key == '\r' || key == '\n') {
++    send_chat();
++  } else if (key == '\b') {
++    if (!chat_input.empty()) chat_input.erase(chat_input.size() - 1);
++  } else if (chat_letter(key) && chat_input.size() < kChatLength) {
++    chat_input += key;
++  }
++  update_chat_box(true);
++  /* All the other keys too: the letters do not go to the game. */
++  return true;
++}
++
++/* The width of the names in the box (longer ones are cut). */
++static const size_t kChatNameShown = 10;
++static const int kChatRow = 10;
++/* Inside the frame: its top and sides, the bottom. */
++static const int kChatTop = 9 + 3;
++static const int kChatSide = 8 + 4;
++static const int kChatBottom = 7 + 3;
++
++void
++LanGame::update_chat_box(bool changed) {
++  bool recent = !chat.empty() &&
++    static_cast<int>(EventLoop::get_instance().get_ticks() -
++                     chat_shown_until) < 0;
++  bool show = chat_open || recent;
++  if (!show) {
++    if (chat_box && chat_box->is_displayed()) {
++      chat_box->set_displayed(false);
++      interface->set_redraw();
++    }
++    return;
++  }
++  if (!chat_box) {
++    chat_box.reset(new LanChatBox(this));
++    interface->add_float(chat_box.get(), 4, 26);
++  }
++  size_t name_len = std::min(kChatNameShown, own_name.size());
++  for (const ChatLine &l : chat) {
++    name_len = std::max(name_len, std::min(kChatNameShown, l.name.size()));
++  }
++  int w = 2 * kChatSide + 8 * static_cast<int>(name_len + 1 + kChatLength + 1);
++  int rows = chat_open ? static_cast<int>(kChatLines) : static_cast<int>(
++                                                          chat.size());
++  int h = kChatTop + rows * kChatRow + kChatBottom +
++          (chat_open ? kChatRow + 4 : 0);
++  int bw = 0, bh = 0;
++  chat_box->get_size(&bw, &bh);
++  if (!chat_box->is_displayed() || bw != w || bh != h) {
++    chat_box->set_size(w, h);
++    chat_box->set_displayed(true);
++    interface->set_redraw();
++  } else if (changed) {
++    chat_box->set_redraw();
++  }
++}
++
++/* A line of each message, the name in the colour of the writer's player.
++   Open: kChatLines rows and under them the line being typed; closed: the
++   lines for a while after one came. */
++void
++LanGame::draw_chat(Frame *frame, int w, int h) {
++  PGame game = interface->get_game();
++  if (!game) return;
++
++  /* The background of the start box, then the frame of the boxes. */
++  unsigned int icon = 290;
++  for (int by = 0; by < h; by += 8) {
++    for (int bx = 0; bx < w; bx += 40) {
++      frame->draw_sprite(bx, by, Data::AssetIcon, icon);
++    }
++    icon = (icon == 290) ? 294 : icon - 1;
++  }
++  draw_box_frame(frame, w, h);
++
++  size_t name_len = std::min(kChatNameShown, own_name.size());
++  for (const ChatLine &l : chat) {
++    name_len = std::max(name_len, std::min(kChatNameShown, l.name.size()));
++  }
++  int text_x = kChatSide + 8 * static_cast<int>(name_len + 1);
++  int ry = kChatTop;
++  if (chat_open) {
++    ry += kChatRow * static_cast<int>(kChatLines - chat.size());
++  }
++  for (const ChatLine &l : chat) {
++    if (l.player < 0 || game->get_player(l.player) == nullptr) {
++      frame->draw_string(kChatSide, ry, l.text, Color(0xdd, 0xdd, 0x00),
++                         Color::black);
++    } else {
++      frame->draw_string(kChatSide, ry, l.name.substr(0, kChatNameShown),
++                         interface->get_player_color(l.player), Color::black);
++      frame->draw_string(text_x, ry, l.text, Color(0xdd, 0xdd, 0xdd),
++                         Color::black);
++    }
++    ry += kChatRow;
++  }
++  if (chat_open) {
++    int own = static_cast<int>(interface->get_player()->get_index());
++    Color own_color = interface->get_player_color(own);
++    ry = kChatTop + kChatRow * static_cast<int>(kChatLines) + 1;
++    frame->fill_rect(kChatSide, ry, w - 2 * kChatSide, 1, own_color);
++    ry += 4;
++    frame->draw_string(kChatSide, ry, own_name.substr(0, kChatNameShown),
++                       own_color, Color::black);
++    frame->draw_string(text_x, ry, chat_input, Color::white, Color::black);
++    if (chat_input.size() < kChatLength) {
++      frame->fill_rect(text_x + 8 * static_cast<int>(chat_input.size()),
++                       ry + 7, 7, 1, Color::white);
++    }
++  }
++}
+diff --git a/src/lan-game.h b/src/lan-game.h
+index 381d771..3a44b15 100644
+--- a/src/lan-game.h
++++ b/src/lan-game.h
+@@ -23,7 +23,9 @@
+ #define SRC_LAN_GAME_H_
+ 
+ #include <cstdint>
++#include <deque>
+ #include <map>
++#include <memory>
+ #include <string>
+ #include <vector>
+ 
+@@ -35,6 +37,7 @@ class Interface;
+ class LanLink;
+ class Game;
+ class Frame;
++class LanChatBox;
+ 
+ /* Both computers make the same game from the same settings (SETUP: the
+    map, the players and the seed of the game's random numbers) and, as the
+@@ -58,11 +61,17 @@ class LanGame {
+        then its bytes in pieces, then the end. */
+     MessageSaveBegin = 4,
+     MessageSaveData = 5,
+-    MessageSaveEnd = 6
++    MessageSaveEnd = 6,
++    /* A line of the chat: the writer's player, name, '\n', the text. It
++       does not change the game, so it goes at once, not in a turn. */
++    MessageChat = 7
+   } Message;
+ 
+   static const unsigned int kSumSteps = 250;  /* 5 s */
+   static const unsigned int kTurnSteps = 4;   /* 80 ms */
++  /* The chat: letters of a line, lines kept and shown. */
++  static const unsigned int kChatLength = 32;
++  static const unsigned int kChatLines = 8;
+ 
+  protected:
+   typedef struct Turn {
+@@ -70,6 +79,12 @@ class LanGame {
+     bool complete;
+   } Turn;
+ 
++  typedef struct ChatLine {
++    int player;          /* the colour of the name; -1: a note of the game */
++    std::string name;
++    std::string text;
++  } ChatLine;
++
+   Interface *interface;
+   LanLink *link;
+   bool server;
+@@ -104,6 +119,14 @@ class LanGame {
+   unsigned int leave_at;
+   /* The mode before a LAN game made it 640x480; 0: not changed. */
+   unsigned int old_width, old_height;
++  /* The chat (Tab): the last lines, the line being typed, and until when
++     the lines show with the window closed (after a line came). */
++  std::deque<ChatLine> chat;
++  bool chat_open;
++  std::string chat_input;
++  unsigned int chat_shown_until;
++  std::string own_name;
++  std::unique_ptr<LanChatBox> chat_box;
+ 
+  public:
+   LanGame(Interface *interface, LanLink *link, bool server,
+@@ -126,6 +149,11 @@ class LanGame {
+   /* The state of the link in the top left corner of the game. */
+   void draw(Frame *frame);
+   bool is_server() const { return server; }
++  /* A key for the chat: Tab opens and closes it, while open it takes the
++     letters (Return sends the line). false: the key is not for it. */
++  bool handle_chat_key(char key, int modifier);
++  /* The picture of the chat box (w x h). */
++  void draw_chat(Frame *frame, int w, int h);
+   /* The time there and back -> the turns a command waits (SETUP). */
+   static unsigned int delay_for_ping(int ms);
+ 
+@@ -138,6 +166,10 @@ class LanGame {
+   void other_side_ended();
+   /* false while the saved game is not all sent. */
+   bool pump_save();
++  void add_chat(int player, const std::string &name, const std::string &text);
++  void send_chat();
++  /* Show, size or hide the box; changed: draw it again. */
++  void update_chat_box(bool changed);
+ };
+ 
+ #endif  // SRC_LAN_GAME_H_
+-- 
+2.45.2.windows.1
+

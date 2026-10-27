@@ -1,7 +1,7 @@
 From bf3966b16dfbcee331c5b553c950144706e77402 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Mon, 26 Oct 2026 19:44:20 +0100
-Subject: [PATCH 28/39] LAN game: go on with a saved game - the server sends it
+Subject: [PATCH 28/41] LAN game: go on with a saved game - the server sends it
  whole, both load it
 
 ---

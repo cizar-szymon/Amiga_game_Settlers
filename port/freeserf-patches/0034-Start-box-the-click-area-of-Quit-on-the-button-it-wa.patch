@@ -1,7 +1,7 @@
 From cd417bf54a70785265ca295c594759c32777687d Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Tue, 27 Oct 2026 00:15:04 +0100
-Subject: [PATCH 34/39] Start box: the click area of Quit on the button (it was
+Subject: [PATCH 34/41] Start box: the click area of Quit on the button (it was
  8 pixels higher)
 
 ---

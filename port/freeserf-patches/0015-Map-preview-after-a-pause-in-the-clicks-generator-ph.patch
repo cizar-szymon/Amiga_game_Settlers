@@ -1,7 +1,7 @@
 From 60701d1eac9c808ccf28575c1300d2e2fcccb20a Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Sun, 25 Oct 2026 23:21:32 +0100
-Subject: [PATCH 15/39] Map preview after a pause in the clicks; generator
+Subject: [PATCH 15/41] Map preview after a pause in the clicks; generator
  phase clock
 
 Every click on the map size, the mission or the game type made a whole

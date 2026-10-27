@@ -23,7 +23,11 @@ latki z port/freeserf-patches/).
 OPCJE (Shell i Tool Types)
 --------------------------
 
-  MODE=WxH         400x300, 640x400, 640x480, 800x600 (tryby 8-bit karty)
+  MODE=WxH         400x300, 640x400, 640x480, 800x600, 640x360, 960x540
+                   (tryby 8-bit karty; 1280x720 tylko do pomiarow)
+  ZOOMGAP=n        (test) powiekszony widok: zmienione kawalki wiersza
+                   blizej niz n pikseli wysylane razem (domyslnie 16;
+                   100000 = caly odcinek wiersza jak przed 0.104)
   DATA=sciezka     szuflada z danymi (szuka podszuflady amiga)
   LOAD=plik        wczytanie zapisu Freeserf
   NOSOUND          bez dzwieku

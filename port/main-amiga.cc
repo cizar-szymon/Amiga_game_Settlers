@@ -2,7 +2,7 @@
  * main-amiga.cc - main program of the Amiga port (replaces src/freeserf.cc)
  *
  * Options, in the Shell or as Tool Types of the icon:
- *   MODE=400x300|640x400|640x480|800x600|WxH  DATA=path  LOAD=savefile  NOSOUND  FPS
+ *   MODE=400x300|640x360|640x400|640x480|800x600|960x540|WxH  DATA=path  LOAD=savefile  NOSOUND  FPS
  *   STATS[=FULL]  VERIFY  RENDER=VRAM|FAST  LOCK=FRAME|CALL  BLIT=0|1|2
  *   DEBUG=0..4
  */
@@ -45,11 +45,22 @@ option_value(const char *arg, const char *key) {
   return nullptr;
 }
 
-/* The steps of the magnified map view a screen width allows: x2 above
-   400x300, x3 too from 800x600 (a view of about 267x200, the original's
-   size). */
+/* A wide screen (16:9): 640x360, 960x540, 1280x720. */
+static bool
+wide_mode(unsigned int width, unsigned int height) {
+  return width * 9 == height * 16;
+}
+
+/* The steps of the magnified map view a screen allows: x2 above 400x300,
+   x3 too from 800x600 (a view of about 267x200, the original's size).
+   The wide screens: x2 and x3 on 960x540 (and 1280x720 of MODE=; since
+   0.105: only the changed pieces of the view go to the card), none on
+   640x360. */
 static int
-max_map_zoom(unsigned int width) {
+max_map_zoom(unsigned int width, unsigned int height) {
+  if (wide_mode(width, height)) {
+    return width >= 960 ? 3 : 1;
+  }
   return width >= 800 ? 3 : (width > 400 ? 2 : 1);
 }
 
@@ -110,6 +121,8 @@ parse_option(const char *a) {
     VideoAmiga::lock_per_call = strcasecmp(v, "CALL") == 0;
   } else if ((v = option_value(a, "BLIT")) != nullptr) {
     amiga_blit_mode = atoi(v);
+  } else if ((v = option_value(a, "ZOOMGAP")) != nullptr) {
+    VideoAmiga::zoom_gap = atoi(v);
   } else if (strcasecmp(a, "VERIFY") == 0) {
     VideoAmiga::verify = true;
     Viewport::verify_tiles = true;
@@ -142,7 +155,8 @@ main(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
       if (!parse_option(argv[i])) {
         amiga_message("Settlers " SETTLERS_VERSION "\n"
-                      "usage: Settlers [MODE=400x300|640x400|640x480|800x600] "
+                      "usage: Settlers [MODE=400x300|640x360|640x400|640x480|"
+                      "800x600|960x540] "
                       "[DATA=path] [LOAD=savefile] [NOSOUND] [SFXAREA=WxH|ALL] [FPS] "
                       "[STATS[=FULL]] "
                       "[VERIFY] [RENDER=VRAM|FAST] [LOCK=FRAME|CALL] "
@@ -166,6 +180,12 @@ main(int argc, char *argv[]) {
       unsigned int w = 0, h = 0;
       if (sscanf(mode.c_str(), "%ux%u", &w, &h) == 2 && w >= 320 &&
           h >= 200) {
+        /* 1280x720 of 0.99-0.105 is no longer in the Options box: the
+           largest wide screen there. */
+        if (w == 1280 && h == 720) {
+          w = 960;
+          h = 540;
+        }
         width = w;
         height = h;
       }
@@ -243,7 +263,7 @@ main(int argc, char *argv[]) {
     event_loop.on_mode_change = [&interface, screen_frame]() {
       unsigned int w = 0, h = 0;
       Graphics::get_instance().get_resolution(&w, &h);
-      int most = max_map_zoom(w);
+      int most = max_map_zoom(w, h);
       if (Graphics::get_instance().get_map_zoom() > most) {
         /* Less magnified at a smaller mode. */
         Graphics::get_instance().set_map_zoom(static_cast<float>(most));
@@ -265,7 +285,7 @@ main(int argc, char *argv[]) {
       unsigned int w = 0, h = 0;
       g.get_resolution(&w, &h);
       Viewport *viewport = interface.get_viewport();
-      int most = max_map_zoom(w);
+      int most = max_map_zoom(w, h);
       int now = static_cast<int>(g.get_map_zoom());
       int want = (step == 0) ? (now >= most ? 1 : now + 1) : now + step;
       want = std::max(1, std::min(most, want));

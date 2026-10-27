@@ -23,7 +23,11 @@ the patches in port/freeserf-patches/).
 OPTIONS (Shell and Tool Types)
 ------------------------------
 
-  MODE=WxH         400x300, 640x400, 640x480, 800x600 (the card's 8-bit modes)
+  MODE=WxH         400x300, 640x400, 640x480, 800x600, 640x360, 960x540
+                   (the card's 8-bit modes; 1280x720 only for measurements)
+  ZOOMGAP=n        (a test) the magnified view: changed pieces of a row
+                   closer than n pixels are sent as one (default 16;
+                   100000 = the whole part of a row as before 0.104)
   DATA=path        drawer with the data (it looks in its amiga subdrawer)
   LOAD=file        load a Freeserf save
   NOSOUND          no sound

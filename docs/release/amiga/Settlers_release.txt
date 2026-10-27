@@ -6,6 +6,22 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.106 (27.10.2026, wersja testowa)
+-----------------------------------
+
+- Czat w grze LAN: Tab otwiera okno (ramka i tlo jak w oknach gry),
+  Return wysyla wpis do 32 znakow, nazwa w kolorze gracza; zamkniete
+  okno pokazuje nowy wpis przez 10 s z dzwiekiem wiadomosci.
+- Ekrany panoramiczne 16:9: 640x360 i 960x540.
+- Options: zamiast "Fullscreen video" (gra ma zawsze wlasny ekran)
+  Aspect 4:3 / 16:9 - wybiera, ktore rozdzielczosci sa pod Screen;
+  zmiana zaczyna od najmniejszej. Messages przeniesione pod Volume.
+- Powiekszenie mapy (Z, rolka) szybsze na duzych ekranach: do karty
+  ida tylko zmienione kawalki obrazu. W 960x540 x2 i x3, w 640x360 bez
+  powiekszenia.
+- Gra LAN z ekranu 960x540 przechodzi na 640x360.
+
+
 0.96 (27.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 

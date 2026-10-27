@@ -1,0 +1,174 @@
+From 093abc564dccd73599177eb8823b76cbcccec6a0 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Tue, 27 Oct 2026 19:52:35 +0100
+Subject: [PATCH 41/41] Amiga Options: Aspect 4:3 / 16:9 with its modes,
+ Messages under Volume, no Fullscreen video
+
+16:9: 640x360 and 960x540; a change of the aspect starts at its smallest
+mode.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Uqv2KDnCV91tQsZeLq3naz
+---
+ src/popup.cc | 85 ++++++++++++++++++++++++++++++++++++++--------------
+ 1 file changed, 62 insertions(+), 23 deletions(-)
+
+diff --git a/src/popup.cc b/src/popup.cc
+index 01927bc..0f0efc4 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -296,17 +296,29 @@ typedef enum Action {
+   ACTION_OPTIONS_ADVANCED,
+   ACTION_NEW_NAME,
+   ACTION_OPTIONS_SCREEN_PREV,
+-  ACTION_OPTIONS_SCREEN_NEXT
++  ACTION_OPTIONS_SCREEN_NEXT,
++  ACTION_OPTIONS_ASPECT
+ } Action;
+ 
+ #ifdef __AMIGA__
+-/* Amiga port: the screen modes of the Options box, switched in turn.
+-   The lowest is 400x300: the game's boxes were made for the Amiga's PAL
++/* Amiga port: the screen modes of the Options box, switched in turn, of
++   the aspect chosen there (4:3 - with 640x400 - or the wide 16:9). The
++   lowest is 400x300: the game's boxes were made for the Amiga's PAL
+    overscan screen (start box 360x254, panel 352 wide), which 320x200
+    cannot show. */
+-static const unsigned int amiga_screen_modes[][2] = {
++static const unsigned int amiga_modes_4_3[][2] = {
+   { 400, 300 }, { 640, 400 }, { 640, 480 }, { 800, 600 }
+ };
++/* 1280x720 is not among them (0.106): 15-17 fps, too slow on a large map;
++   MODE=1280x720 for tests. */
++static const unsigned int amiga_modes_16_9[][2] = {
++  { 640, 360 }, { 960, 540 }
++};
++
++static bool
++amiga_wide_screen(unsigned int w, unsigned int h) {
++  return w * 9 == h * 16;
++}
+ #endif
+ 
+ PopupBox::PopupBox(Interface *_interface)
+@@ -2005,28 +2017,35 @@ PopupBox::draw_options_box() {
+   str << static_cast<int>(volume);
+   draw_green_string(8, 54, str.str());
+ 
+-  draw_green_lines(1, 70, _("Fullscreen\nvideo"), 9);
+-
+-  draw_popup_icon(13, 70,   /* Fullscreen mode */
+-                  Graphics::get_instance().is_fullscreen() ? 288 : 220);
+-
+   const char *const levels[] = {
+     NC_("messages", "None"), NC_("messages", "Few"),
+     NC_("messages", "Most"), NC_("messages", "All")
+   };
+   const char *value = levels[interface->get_message_level()];
+-  draw_green_string(1, 94, _("Messages"));
+-  draw_green_string(11, 94, C_("messages", value));
+-
+ #ifdef __AMIGA__
+-  /* Amiga port: the screen mode, with arrows for the previous and the
+-     next mode, as the volume. */
++  /* Amiga port: no "Fullscreen video" (the game has its own screen);
++     Messages under Volume, then the aspect of the screen (it chooses the
++     modes of Screen) and the screen mode, with arrows for the previous
++     and the next mode, as the volume. */
++  draw_green_string(1, 74, _("Messages"));
++  draw_green_string(11, 74, C_("messages", value));
++
+   unsigned int sw = 0, sh = 0;
+   Graphics::get_instance().get_resolution(&sw, &sh);
++  draw_green_string(1, 90, _("Aspect"));
++  draw_green_string(11, 90, amiga_wide_screen(sw, sh) ? "16:9" : "4:3");
+   draw_green_string(1, 106, _("Screen"));
+   draw_green_string(1, 115, std::to_string(sw) + "x" + std::to_string(sh));
+   draw_popup_icon(11, 106, 220); /* previous mode */
+   draw_popup_icon(13, 106, 221); /* next mode */
++#else
++  draw_green_lines(1, 70, _("Fullscreen\nvideo"), 9);
++
++  draw_popup_icon(13, 70,   /* Fullscreen mode */
++                  Graphics::get_instance().is_fullscreen() ? 288 : 220);
++
++  draw_green_string(1, 94, _("Messages"));
++  draw_green_string(11, 94, C_("messages", value));
+ #endif
+ 
+   /* Advanced options (not in the original game) */
+@@ -3798,14 +3817,18 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+ #ifdef __AMIGA__
+   case ACTION_OPTIONS_SCREEN_PREV:
+   case ACTION_OPTIONS_SCREEN_NEXT: {
+-    /* The mode before or after the current one, no wrapping around; the
+-       port opens the new screen between frames. */
++    /* The mode of the same aspect before or after the current one, no
++       wrapping around; the port opens the new screen between frames. */
+     unsigned int sw = 0, sh = 0;
+     Graphics::get_instance().get_resolution(&sw, &sh);
+-    const int n = sizeof(amiga_screen_modes) / sizeof(amiga_screen_modes[0]);
+-    int cur = 2;  /* 640x480 when the mode is none of the list */
++    bool wide = amiga_wide_screen(sw, sh);
++    const unsigned int (*modes)[2] = wide ? amiga_modes_16_9
++                                          : amiga_modes_4_3;
++    const int n = wide ? sizeof(amiga_modes_16_9) / sizeof(modes[0])
++                       : sizeof(amiga_modes_4_3) / sizeof(modes[0]);
++    int cur = wide ? 0 : 2;  /* 640x360, 640x480: a mode not in the list */
+     for (int i = 0; i < n; i++) {
+-      if (amiga_screen_modes[i][0] == sw && amiga_screen_modes[i][1] == sh) {
++      if (modes[i][0] == sw && modes[i][1] == sh) {
+         cur = i;
+       }
+     }
+@@ -3814,12 +3837,25 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+       play_sound(Audio::TypeSfxNotAccepted);
+       break;
+     }
+-    Graphics::get_instance().set_resolution(amiga_screen_modes[next][0],
+-                                            amiga_screen_modes[next][1],
++    Graphics::get_instance().set_resolution(modes[next][0], modes[next][1],
+                                             true);
+     play_sound(Audio::TypeSfxClick);
+     break;
+   }
++  case ACTION_OPTIONS_ASPECT: {
++    /* 4:3 <-> 16:9, always from the lowest mode of the other aspect. */
++    unsigned int sw = 0, sh = 0;
++    Graphics::get_instance().get_resolution(&sw, &sh);
++    if (amiga_wide_screen(sw, sh)) {
++      Graphics::get_instance().set_resolution(amiga_modes_4_3[0][0],
++                                              amiga_modes_4_3[0][1], true);
++    } else {
++      Graphics::get_instance().set_resolution(amiga_modes_16_9[0][0],
++                                              amiga_modes_16_9[0][1], true);
++    }
++    play_sound(Audio::TypeSfxClick);
++    break;
++  }
+ #endif
+   case ACTION_OPTIONS_VOLUME_MINUS: {
+     Audio &audio = Audio::get_instance();
+@@ -3915,14 +3951,17 @@ PopupBox::handle_box_options_clk(int cx, int cy) {
+     ACTION_OPTIONS_SFX, 106, 30, 16, 16,
+     ACTION_OPTIONS_VOLUME_MINUS, 90, 50, 16, 16,
+     ACTION_OPTIONS_VOLUME_PLUS, 106, 50, 16, 16,
+-    ACTION_OPTIONS_FULLSCREEN, 106, 70, 16, 16,
+-    ACTION_OPTIONS_MESSAGE_COUNT_1, 90, 90, 32, 16,
+     ACTION_CLOSE_OPTIONS, 112, 126, 16, 16,
+     ACTION_OPTIONS_ADVANCED, 0, 126, 56, 16,
+     ActionShowPlatform, 56, 126, 38, 16,
+ #ifdef __AMIGA__
++    ACTION_OPTIONS_MESSAGE_COUNT_1, 0, 70, 128, 16,
++    ACTION_OPTIONS_ASPECT, 0, 86, 128, 16,
+     ACTION_OPTIONS_SCREEN_PREV, 90, 106, 16, 16,
+     ACTION_OPTIONS_SCREEN_NEXT, 106, 106, 16, 16,
++#else
++    ACTION_OPTIONS_FULLSCREEN, 106, 70, 16, 16,
++    ACTION_OPTIONS_MESSAGE_COUNT_1, 90, 90, 32, 16,
+ #endif
+     -1
+   };
+-- 
+2.45.2.windows.1
+

@@ -37,6 +37,7 @@ std::string VideoAmiga::start_picture;
 unsigned long VideoAmiga::start_picture_ms = 0;
 bool VideoAmiga::profile = false;
 bool VideoAmiga::verify = false;
+int VideoAmiga::zoom_gap = 16;
 bool VideoAmiga::render_vram = true;
 bool VideoAmiga::lock_per_call = false;
 
@@ -823,6 +824,10 @@ VideoAmiga::draw_frame(int dx, int dy, Video::Frame *dest, int sx, int sy,
   }
 }
 
+/* The widest magnified row: a 1280x720 screen, x3 of a view 427 wide is
+   1281 (the rest clipped). */
+static const int kWideMax = 1296;
+
 void
 VideoAmiga::draw_frame_scaled(int dx, int dy, int dw, int dh,
                               Video::Frame *dest, Video::Frame *src,
@@ -837,7 +842,7 @@ VideoAmiga::draw_frame_scaled(int dx, int dy, int dw, int dh,
   touch(dest);
   if (dw <= 0 || dh <= 0) return;
   int f = (w > 0 && dw % w == 0) ? dw / w : 0;
-  if ((f == 2 || f == 3) && dh == f * h && dw <= 1024) {
+  if ((f == 2 || f == 3) && dh == f * h && dw <= kWideMax) {
     /* The map view magnified 2 or 3 times (Z, the wheel): a row widened
        into a buffer and copied to f rows by memcpy. Into the card's
        memory only what changed since the last frame (all of an 800x600
@@ -845,7 +850,7 @@ VideoAmiga::draw_frame_scaled(int dx, int dy, int dw, int dh,
        out, of a changed one the part from its first to its last change;
        rows something else was drawn on since are sent whole. A row with a
        transparent or shade pixel goes pixel by pixel. */
-    uint32_t wide_longs[1024 / 4];
+    uint32_t wide_longs[kWideMax / 4];
     uint8_t *wide = reinterpret_cast<uint8_t *>(wide_longs);
     int x0 = std::max(0, dx), x1 = std::min(static_cast<int>(dest->w), dx + dw);
     bool diff = in_vram(dest);
@@ -859,9 +864,18 @@ VideoAmiga::draw_frame_scaled(int dx, int dy, int dw, int dh,
       }
       scaled_frame = frame_no;
     }
+    /* The parts of a changed row to send: pieces of kPiece source pixels
+       that changed, joined when less than zoom_gap pixels apart (0.104; the
+       part from the first to the last change sent all the pixels between
+       two serfs at the ends of a row). */
+    static const int kPiece = 8;
+    static const int kMaxSpans = 64;
+    int spans[kMaxSpans][2];
     for (int j = 0; j < h && x0 < x1; j++) {
       const uint8_t *s = src->pixels + j * src->w;
-      int a = 0, b = w - 1;  /* the source pixels to send */
+      int nspans = 1;
+      spans[0][0] = 0;
+      spans[0][1] = w - 1;
       if (diff) {
         uint8_t *prev = &scaled_prev[static_cast<size_t>(j) * w];
         bool whole = false;
@@ -873,41 +887,62 @@ VideoAmiga::draw_frame_scaled(int dx, int dy, int dw, int dh,
         }
         if (!whole) {
           if (std::memcmp(prev, s, w) == 0) continue;
+          int a = 0, b = w - 1;
           while (prev[a] == s[a]) a++;
           while (prev[b] == s[b]) b--;
+          nspans = 0;
+          int start = a, end = a - 1;
+          for (int i = a; i <= b; i += kPiece) {
+            int n = std::min(kPiece, b + 1 - i);
+            if (std::memcmp(prev + i, s + i, n) == 0) continue;
+            if (i - end > zoom_gap && end >= start && nspans < kMaxSpans - 1) {
+              spans[nspans][0] = start;
+              spans[nspans][1] = end;
+              nspans++;
+              start = i;
+            }
+            end = i + n - 1;
+          }
+          spans[nspans][0] = start;
+          spans[nspans][1] = std::min(end, b);
+          nspans++;
         }
         std::memcpy(prev, s, w);
       }
-      bool plain = true;
-      for (int i = a; i <= b; i++) {
-        uint8_t v = s[i];
-        if (v <= kShade) {
-          plain = false;
-          break;
+      for (int p = 0; p < nspans; p++) {
+        int a = spans[p][0], b = spans[p][1];
+        bool plain = true;
+        for (int i = a; i <= b; i++) {
+          uint8_t v = s[i];
+          if (v <= kShade) {
+            plain = false;
+            break;
+          }
+          if (f == 2) {
+            reinterpret_cast<uint16_t *>(wide)[i] =
+              static_cast<uint16_t>((v << 8) | v);
+          } else {
+            wide[3 * i] = wide[3 * i + 1] = wide[3 * i + 2] = v;
+          }
         }
-        if (f == 2) {
-          reinterpret_cast<uint16_t *>(wide)[i] =
-            static_cast<uint16_t>((v << 8) | v);
-        } else {
-          wide[3 * i] = wide[3 * i + 1] = wide[3 * i + 2] = v;
-        }
-      }
-      int sx0 = std::max(x0, dx + f * a), sx1 = std::min(x1, dx + f * (b + 1));
-      if (sx0 >= sx1) continue;
-      for (int k = 0; k < f; k++) {
-        int y = dy + f * j + k;
-        if (y < 0 || y >= static_cast<int>(dest->h)) continue;
-        if (plain) {
-          std::memcpy(row_ptr(dest, sx0, y), wide + (sx0 - dx), sx1 - sx0);
-          continue;
-        }
-        for (int x = sx0; x < sx1; x++) {
-          uint8_t v = s[(x - dx) / f];
-          uint8_t *d = row_ptr(dest, x, y);
-          if (v > kShade) {
-            *d = v;
-          } else if (v == kShade) {
-            *d = shade[*d];
+        int sx0 = std::max(x0, dx + f * a);
+        int sx1 = std::min(x1, dx + f * (b + 1));
+        if (sx0 >= sx1) continue;
+        for (int k = 0; k < f; k++) {
+          int y = dy + f * j + k;
+          if (y < 0 || y >= static_cast<int>(dest->h)) continue;
+          if (plain) {
+            std::memcpy(row_ptr(dest, sx0, y), wide + (sx0 - dx), sx1 - sx0);
+            continue;
+          }
+          for (int x = sx0; x < sx1; x++) {
+            uint8_t v = s[(x - dx) / f];
+            uint8_t *d = row_ptr(dest, x, y);
+            if (v > kShade) {
+              *d = v;
+            } else if (v == kShade) {
+              *d = shade[*d];
+            }
           }
         }
       }

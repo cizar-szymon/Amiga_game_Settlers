@@ -434,7 +434,11 @@ tylko pętla gry. Zawieszony proces po Ctrl-C miał tę samą przyczynę.
   poziomu (inaczej libnix otwierał okno konsoli na Workbenchu, a tekst w konsoli przy zablokowanej
   bitmapie karty grozi zawieszeniem).
 - **F10:** `RAM:Settlers-state.save` (zapis Freeserf) + `.txt`; zapis trwa na 060 ~1–2 s.
-- **Options → Screen:** strzałki poprzedni/następny tryb (400×300, 640×400, 640×480, 800×600),
+- **Options** (Amiga, 0.102): bez „Fullscreen video” (gra ma zawsze własny ekran); Messages pod
+  Volume, pod nim **Aspect** 4:3 / 16:9 (kliknięcie zmienia i zawsze zaczyna od najniższego trybu:
+  400×300 albo 640×360), niżej Screen.
+- **Options → Screen:** strzałki poprzedni/następny tryb wybranego Aspect: 4:3 – 400×300, 640×400,
+  640×480, 800×600; 16:9 – 640×360, 960×540 (1280×720 w 0.99–0.105, potem usunięty),
   zmiana między klatkami (`amiga_screen_reopen`, ramka ekranu zmieniana w miejscu,
   `notify_resize`, ponowne `use_frame`), wybór w `Settlers.ini` (`[amiga] mode`).
 - **Options → Advanced** (Amiga): Show FPS (licznik Freeserf, zielony na czarnym, zapisywany),
@@ -1021,6 +1025,75 @@ przygotowuje użytkownik (Raspberry Pi Imager, SSH); natywny Freeserf na Pi (SDL
   `pull_roads_through_flag`, settery `Player` z okien ustawień, zapis wprost do
   `get_flag_prio()`/`get_inventory_prio()`, pola ataku + `start_attack`, `add_timer`, pauza i tempo;
 - rysowanie płonącego budynku zapisuje stan budynku (`viewport.cc:1213`) – do sprawdzenia.
+
+### Czat w grze LAN (0.97–0.98)
+
+Tab otwiera i zamyka okno czatu (Esc też zamyka, wpisany tekst zostaje), Return wysyła. Wpis do
+32 znaków czcionki gry (litery, cyfry, spacja, `- . : ? %`). Komunikat `MessageChat` (7): numer
+gracza, nazwa, `\n`, tekst – idzie od razu, poza turami, bo nie zmienia gry; odbiorca czyści znaki i
+długość. Okno `LanChatBox` (float interfejsu, lewy górny róg pod linią LAN): tło okna startowego
+(ikony 290–294) i ramka okien (`draw_box_frame`, boki przycinane w niskim oknie), nazwa w kolorze
+gracza (do 10 znaków), 8 ostatnich wpisów, linia pisania. Obraz okna rysowany tylko po zmianie
+(klawisz, wpis, otwarcie); w klatce tylko kopia jak każdego okna. Zamknięte: wpisy widać 10 s po
+nadejściu, z dźwiękiem wiadomości. Klawisze z Ctrl idą do gry; przy otwartym czacie litery i cyfry
+nie. Sprawdzone przez użytkownika w grze Amiga 2 ↔ WinUAE (0.98).
+
+## Ekrany panoramiczne 640×360, 960×540 i 1280×720 (0.99–0.100)
+
+Wszystkie trzy są w 8 bitach na karcie Warp (`modelist`; jest też 1360×768). Options → Screen:
+400×300, **640×360**, 640×400, 640×480, 800×600, **960×540** (0.100), **1280×720**; `MODE=` jak dotąd. **Zoom w 16:9 (0.105, decyzja
+użytkownika):** ×2 i ×3 w 960×540 i 1280×720 jak w 4:3 (rozciąganie w tym samym trybie, nowy sposób
+wysyłania z 0.104 – niżej), w 640×360 brak. W 0.103–0.104 zoomu w 16:9 nie było. Próby w 0.99–0.102: powiększenie ×2
+procesorem w 1280×720 – 12,5 kl./s (wolniej niż bez niego); przełączanie trybu ekranu 1280×720 →
+960×540 → 640×360 – szybkie (43–50 kl./s), ale monitor za każdym razem gaśnie (zamknięcie ekranu
+pokazuje na chwilę Workbench, potem nowy tryb); `BitMapScale` karty – 437 ms na obraz (niżej). W 4:3
+zoom bez zmian (rozciąganie w tym samym trybie, monitor się nie przestawia). Gra LAN (najwyżej
+640×480): 1280×720 i 960×540 przechodzą na 640×360. Sprawdzone na Amidze 2 (`tools/widetest.sh`:
+trzy razy `Z`, rolka w górę i w dół – tryb i FPS bez zmian). Wersje 0.100–0.103 (nie 1.00: 1.xx to
+wydania oficjalne).
+
+Pomiar (Amiga 2, Warp7060 100 MHz, zapis `aaazii`, `STATS`):
+
+| ekran | kl./s |
+|---|---|
+| 640×360 | 43,7–50,1 |
+| 960×540 | 23,8–27,0 |
+| 1280×720 | 14,9–17,2 (1,9× pikseli 800×600: tam ~32) |
+| 1280×720 → zmiana trybu na 640×360 (próba 0.99–0.102, odrzucona: monitor gaśnie) | 42,7 |
+| 1280×720 z powiększeniem ×2 (próba, odrzucona) | 12,5; `STATS=FULL`: 8,8, rozciąganie `OTHER` 358 ms/s – ~40 ms na klatkę, prawie 900 KB do VRAM |
+
+Skalowanie na karcie (`WarpBench/scalebench`, Amiga 2): `BitMapScale` 640×360 ×2 → 1280×720 437 ms,
+480×270 ×2 → 960×540 246 ms – P96 na Warpie nie przyspiesza skalowania; blitter tylko 1:1 (cały
+1280×720: 1,6 ms), zapis CPU całego 1280×720: 29,5 ms. Zoom bez przerwy obrazu tylko w FPGA (np. tryb
+640×360 wysyłany jako 1280×720) – pytanie do autora oprogramowania RTG (Andrzej, Sellen).
+
+### Powiększony widok: tylko zmienione kawałki wiersza (0.104)
+
+Do karty szedł z każdego zmienionego wiersza widoku odcinek od pierwszej do ostatniej zmiany – dwie
+postacie na końcach wiersza wysyłały wszystko między nimi. Teraz kawałki po 8 pikseli widoku, które
+się zmieniły, łączone, gdy dzieli je mniej niż 16 pikseli (`draw_frame_scaled`, `zoom_gap`);
+szybka ścieżka do szerokości 1296 (×3 widoku 427 pikseli = 1281 – wcześniej przy 1280×720 ×3 gra
+spadała do pętli piksel po pikselu: 0,8 kl./s). Opcje testowe: `ZOOMGAP=n` (100000 = jak przed
+0.104), `WIDEZOOM` (zoom także w 16:9 – tylko w 0.104, od 0.105 zawsze). Pomiar `tools/zoombench.sh`, Amiga 2, zapis `aaazii`,
+kl./s (dwie próbki, druga):
+
+| ekran | ×1 | ×2 stary / nowy | ×3 stary / nowy |
+|---|---|---|---|
+| 800×600 | 29,9 | 49,0 / 49,7 | 50,2 / 49,8 |
+| 960×540 | 28,1 | 44,7 / **48,4** | 49,7 / 50,0 |
+| 1280×720 | 17,3 | 12,0 / **18,4** | 37,4 / **44,2** |
+
+`VERIFY` 0 (800×600 i 1280×720, ×1–×3). Ta scena jest lekka dla 800×600 (×2 już przy 50 kl./s) –
+zysk widać przy dużym ekranie. 1280×720 ×2 (widok 640×360) zostaje na poziomie ×1: składanie widoku
+w Fast RAM (teren bez blittera) i zapis ~900 KB przy zmianach w wielu wierszach.
+
+0.105: nowy sposób jest jedynym (także w 4:3), zoom w 960×540 i 1280×720 bez opcji. Sprawdzone na
+Amidze 2 (`tools/widetest.sh`): 640×360 – `Z` i rolka bez zmian; 960×540 – ×1 23,9, ×2 47,8, ×3 50,5;
+1280×720 – ×1 14,9, ×2 18,1, ×3 44,6; rolka w górę ×2 (zrzut), w dół ×1.
+
+**0.106: bez 1280×720 w Options** (decyzja użytkownika: 15–17 kl./s, na ciężkich mapach za wolno).
+16:9 w Options: 640×360, 960×540. `Settlers.ini` z 1280×720 z wcześniejszych wersji otwiera 960×540
+(sprawdzone na Amidze 2). `MODE=1280x720` w Shellu dalej działa do pomiarów (z zoomem).
 
 ## Okno Amiga w Options (0.57–0.58)
 

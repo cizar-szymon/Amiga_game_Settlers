@@ -1,7 +1,7 @@
 From 4800cf22fa0696b81559a93174f0253628119b07 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Tue, 27 Oct 2026 00:50:34 +0100
-Subject: [PATCH 36/39] LAN game end: the result picture from the side of the
+Subject: [PATCH 36/41] LAN game end: the result picture from the side of the
  player of this computer
 
 ---

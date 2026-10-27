@@ -6,6 +6,23 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.106 (27.10.2026, test build)
+------------------------------
+
+- Chat in a LAN game: Tab opens the box (frame and background as the
+  game's boxes), Return sends a line of up to 32 characters, the name in
+  the player's colour; with the box closed a new line shows for 10 s
+  with the message sound.
+- Wide screens 16:9: 640x360 and 960x540.
+- Options: instead of "Fullscreen video" (the game always has its own
+  screen) Aspect 4:3 / 16:9 - it chooses the resolutions of Screen; a
+  change starts at the smallest one. Messages moved under Volume.
+- The magnified map (Z, wheel) faster on large screens: only the changed
+  pieces of the picture go to the card. On 960x540 x2 and x3, on
+  640x360 no magnification.
+- A LAN game goes from a 960x540 screen to 640x360.
+
+
 0.96 (27.10.2026, LAN branch - test build)
 -------------------------------------------
 
