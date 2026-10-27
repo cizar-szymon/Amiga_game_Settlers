@@ -30,6 +30,11 @@ z oryginalnych danych z wersji na Amigę. Ogólne zasady: `C:\Workprojects\Amiga
 LAN, sprawdzona przez użytkownika 27.10.2026; gałąź `lan-game` scalona z `amiga-port`, wersja LAN
 zastępuje zwykłą), znacznik `v0.96-rc`, archiwum `releases/amiga/Settlers-0.96.lha`.
 Wcześniejsi: 0.61, 0.56, 0.54, 0.53, 0.52, 0.48, 0.41 (`v0.xx-rc`).
+Amiga 1 po wydaniu (27.10.2026): w `WorkSD:Settlers` tylko gra 0.96, opisy, `Settlers.ini`, `data`
+i zapisy (`freeserf`); pliki testowe (skrypty `run-*`, sceny `scene*.save`, `simtest`, `lansim`,
+`lantest`, `datacheck`, `loadtest*`, `mapgentest`, `modelist`, `Settlers-hg`) przeniesione do
+`WorkSD:Settlers/test`. Skrypty z `tools/amiga` i `tools/measure.sh` zakładają je w głównej
+szufladzie – przed pomiarami `tools/install1.sh` albo przeniesienie z powrotem.
 
 ## Decyzje
 
