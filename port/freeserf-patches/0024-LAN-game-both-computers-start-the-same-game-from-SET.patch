@@ -1,7 +1,7 @@
 From 46a566c7875dceeb5604a9ce6fc6858760158606 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Mon, 26 Oct 2026 13:26:34 +0100
-Subject: [PATCH 24/41] LAN game: both computers start the same game from
+Subject: [PATCH 24/42] LAN game: both computers start the same game from
  SETUP, checksums compared
 
 ---

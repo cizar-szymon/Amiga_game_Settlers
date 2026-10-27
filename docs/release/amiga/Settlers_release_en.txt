@@ -6,6 +6,14 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.108 (27.10.2026, test build)
+------------------------------
+
+- A test build shows TEST and its build number in the top left corner
+  (e.g. TEST 0.108), where the FPS counter is; with Show FPS on, the
+  counter is shown instead.
+
+
 0.107 (27.10.2026, test build)
 ------------------------------
 

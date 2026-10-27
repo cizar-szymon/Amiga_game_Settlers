@@ -6,6 +6,14 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.108 (27.10.2026, wersja testowa)
+-----------------------------------
+
+- Wersja testowa ma w lewym gornym rogu napis TEST i numer kompilacji
+  (np. TEST 0.108) - w miejscu licznika FPS; przy wlaczonym Show FPS
+  widac licznik zamiast napisu.
+
+
 0.107 (27.10.2026, wersja testowa)
 -----------------------------------
 

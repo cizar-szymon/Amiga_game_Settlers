@@ -1,7 +1,7 @@
 From b365b21e4d7259f17c38dc3936da3bff2c520308 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Mon, 26 Oct 2026 00:18:24 +0100
-Subject: [PATCH 17/41] Invert scrolling both ways, for the mouse only
+Subject: [PATCH 17/42] Invert scrolling both ways, for the mouse only
 
 Invert scrolling inverted only the vertical drag. Both directions are
 inverted now, and only for the mouse: GuiObject keeps the button of the

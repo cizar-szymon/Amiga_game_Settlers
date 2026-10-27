@@ -1,0 +1,54 @@
+From 31693f9b4a3833bf3888372c61e7cbf3688c2ecb Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Tue, 27 Oct 2026 20:15:33 +0100
+Subject: [PATCH 42/42] A build label (the port: TEST and the build number)
+ where the FPS are, while they are off
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Uqv2KDnCV91tQsZeLq3naz
+---
+ src/interface.cc | 6 ++++++
+ src/interface.h  | 3 +++
+ 2 files changed, 9 insertions(+)
+
+diff --git a/src/interface.cc b/src/interface.cc
+index 1a8034d..c9caf6e 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -325,6 +325,7 @@ int Interface::platform_box_height = 0;
+ std::function<void(int)> Interface::zoom_hook;
+ LanLink *Interface::lan_link = nullptr;
+ bool Interface::lan_test_keys = false;
++std::string Interface::build_label;
+ 
+ void
+ Interface::open_platform_box() {
+@@ -1405,6 +1406,11 @@ Interface::switch_show_fps() {
+ void
+ Interface::draw_fps(Frame *frame) {
+   if (!show_fps) {
++    if (!build_label.empty()) {
++      frame->fill_rect(0, 0, 8 * static_cast<int>(build_label.size()) + 4, 11,
++                       Color::black);
++      frame->draw_string(2, 2, build_label, Color::green, Color::transparent);
++    }
+     return;
+   }
+ 
+diff --git a/src/interface.h b/src/interface.h
+index ae0f4cc..4c6c30d 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -284,6 +284,9 @@ class Interface : public GuiObject, public GameManager::Handler {
+   /* LANTEST (the port's option): Ctrl+Shift+W in a LAN game - this
+      player wins at once, on both computers (a test of the end). */
+   static bool lan_test_keys;
++  /* Shown where the FPS are while they are off (the port: "TEST 0.108",
++     the build of a test version); "": nothing. */
++  static std::string build_label;
+   /* Both computers start the same game from SETUP (the LAN box: the
+      server when START GAME is pressed, the other one when SETUP comes);
+      the one who joined plays player 2. false: a bad SETUP. */
+-- 
+2.45.2.windows.1
+

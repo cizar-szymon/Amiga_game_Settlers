@@ -1,7 +1,7 @@
 From 29e0581801d339153a5650f2d3a168acac2fa211 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Tue, 27 Oct 2026 19:52:35 +0100
-Subject: [PATCH 40/41] LAN game: chat box (Tab), lines of up to 32 characters
+Subject: [PATCH 40/42] LAN game: chat box (Tab), lines of up to 32 characters
  in the players' colours
 
 The box has the frame of the game's boxes and the background of the start

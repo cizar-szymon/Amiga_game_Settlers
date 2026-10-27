@@ -1,7 +1,7 @@
 From 58818f3637c8ca305e031244385531a27fc15a8a Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Sun, 25 Oct 2026 16:44:51 +0100
-Subject: [PATCH 02/41] Fix make_transparent on big-endian hosts
+Subject: [PATCH 02/42] Fix make_transparent on big-endian hosts
 
 The pixel was compared as a uint32_t masked with 0x00FFFFFF, which holds
 R, G, B only on little-endian machines. On the 68k the transparent colour

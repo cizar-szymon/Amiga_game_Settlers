@@ -1,7 +1,7 @@
 From 093abc564dccd73599177eb8823b76cbcccec6a0 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Tue, 27 Oct 2026 19:52:35 +0100
-Subject: [PATCH 41/41] Amiga Options: Aspect 4:3 / 16:9 with its modes,
+Subject: [PATCH 41/42] Amiga Options: Aspect 4:3 / 16:9 with its modes,
  Messages under Volume, no Fullscreen video
 
 16:9: 640x360 and 960x540; a change of the aspect starts at its smallest

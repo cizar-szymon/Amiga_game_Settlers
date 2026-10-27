@@ -1095,6 +1095,13 @@ Amidze 2 (`tools/widetest.sh`): 640×360 – `Z` i rolka bez zmian; 960×540 –
 16:9 w Options: 640×360, 960×540. `Settlers.ini` z 1280×720 z wcześniejszych wersji otwiera 960×540
 (sprawdzone na Amidze 2). `MODE=1280x720` w Shellu dalej działa do pomiarów (z zoomem).
 
+## Napis TEST z numerem kompilacji (0.108)
+
+Wersje testowe (`SETTLERS_LABEL "TEST"` w `port/settlers_version.h`) pokazują w lewym górnym rogu
+„TEST <wersja>” (`Interface::build_label`, rysowany w `draw_fps` tym samym zielonym na czarnym), gdy
+licznik FPS jest wyłączony; z Show FPS – tylko licznik. Wydanie oficjalne: pusty `SETTLERS_LABEL`.
+Sprawdzone w WinUAE (zrzuty: „TEST 0.108” przy `show_fps = 0`, „FPS 49” przy włączonym).
+
 ## Koniec przeciągania to nie kliknięcie (0.107, zgłoszenie użytkownika)
 
 Po przesunięciu mapy prawym przyciskiem znacznik skakał w inne miejsce, a gdy trafił na budynek,

@@ -1,7 +1,7 @@
 From 4bd133c6bb89aaa9c497c8b7ac16de8966fd9314 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Mon, 26 Oct 2026 19:04:31 +0100
-Subject: [PATCH 27/41] Sand and rocks on new maps (0-100% of the original) in
+Subject: [PATCH 27/42] Sand and rocks on new maps (0-100% of the original) in
  the Advanced box; game speed x0.5
 
 ---

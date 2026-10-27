@@ -1,7 +1,7 @@
 From d508bd68706d16e9ab76f57c9fad0129bff5b6c6 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Tue, 27 Oct 2026 01:00:36 +0100
-Subject: [PATCH 37/41] Wild boars away from buildings, flags and roads
+Subject: [PATCH 37/42] Wild boars away from buildings, flags and roads
 
 ---
  src/viewport.cc | 12 ++++++++++--
