@@ -35,6 +35,9 @@ i zapisy (`freeserf`); pliki testowe (skrypty `run-*`, sceny `scene*.save`, `sim
 `lantest`, `datacheck`, `loadtest*`, `mapgentest`, `modelist`, `Settlers-hg`) przeniesione do
 `WorkSD:Settlers/test`. Skrypty z `tools/amiga` i `tools/measure.sh` zakładają je w głównej
 szufladzie – przed pomiarami `tools/install1.sh` albo przeniesienie z powrotem.
+Amiga 2 (27.10.2026): `Settlers` 0.96 z opisami (wcześniej 0.61 i `Settlers-LAN` 0.67); usunięte
+`Settlers-LAN`, programy i skrypty testowe, sceny pomiarowe (`scene1–3.save`); zostały dane,
+`Settlers.ini` i zapisy w `freeserf/saves`.
 
 ## Decyzje
 
