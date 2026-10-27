@@ -37,6 +37,8 @@ class EventLoopAmiga : public EventLoop {
   int drag_x, drag_y;
   int last_x, last_y;
   bool dragged;
+  /* How far the pointer went in the drag (|dx| + |dy|, pixels). */
+  int drag_dist;
   unsigned int last_click[4];
   int last_click_x, last_click_y;
   std::string stats_lines[4];

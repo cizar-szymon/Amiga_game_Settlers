@@ -6,6 +6,14 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.107 (27.10.2026, wersja testowa)
+-----------------------------------
+
+- Przesuwanie mapy prawym przyciskiem: po puszczeniu przycisku znacznik
+  nie skacze juz w inne miejsce i nie otwiera sie okno budynku, ktory
+  sie tam akurat znalazl.
+
+
 0.106 (27.10.2026, wersja testowa)
 -----------------------------------
 

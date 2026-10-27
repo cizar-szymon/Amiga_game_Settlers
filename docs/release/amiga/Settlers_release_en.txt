@@ -6,6 +6,14 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.107 (27.10.2026, test build)
+------------------------------
+
+- Scrolling the map with the right button: on the release the cursor no
+  longer jumps elsewhere and no box opens of a building that happened to
+  be there.
+
+
 0.106 (27.10.2026, test build)
 ------------------------------
 

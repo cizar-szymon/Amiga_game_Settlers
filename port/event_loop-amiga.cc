@@ -9,6 +9,7 @@
 #include "port/event_loop-amiga.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <list>
 
@@ -88,6 +89,7 @@ EventLoopAmiga::EventLoopAmiga()
   , last_x(0)
   , last_y(0)
   , dragged(false)
+  , drag_dist(0)
   , last_click_x(0)
   , last_click_y(0)
   , message_until(0) {
@@ -184,17 +186,23 @@ EventLoopAmiga::handle_event(const AmigaEvent &ev) {
         break;
       }
       buttons_down[b] = 0;
-      /* After a drag SDL has put the pointer back where the drag began,
-         so the click of the release is there too. */
       int x = ev.x;
       int y = ev.y;
       if (drag_button == b) {
-        if (dragged) {
-          x = drag_x;
-          y = drag_y;
-        }
+        bool moved = dragged && drag_dist > MOUSE_MOVE_SENSITIVITY;
         drag_button = 0;
         dragged = false;
+        drag_dist = 0;
+        /* The end of a drag (the map scrolled with the right button) is
+           no click: it gave a special click where the drag began, on what
+           the map had moved there since - the cursor jumped and the box
+           of a building there opened (0.107). A small move during a click
+           still clicks, where the button went down. */
+        if (moved) {
+          break;
+        }
+        x = drag_x;
+        y = drag_y;
       }
       notify_click(x, y, static_cast<Event::Button>(b));
 
@@ -219,6 +227,7 @@ EventLoopAmiga::handle_event(const AmigaEvent &ev) {
           drag_x = last_x;
           drag_y = last_y;
           dragged = false;
+          drag_dist = 0;
         }
         if (drag_button != b) break;
         int dx = ev.x - last_x;
@@ -226,6 +235,7 @@ EventLoopAmiga::handle_event(const AmigaEvent &ev) {
         if (dx != 0 || dy != 0) {
           notify_drag(drag_x, drag_y, dx, dy, static_cast<Event::Button>(b));
           dragged = true;
+          drag_dist += std::abs(dx) + std::abs(dy);
         }
         break;
       }

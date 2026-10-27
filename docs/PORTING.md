@@ -1095,6 +1095,16 @@ Amidze 2 (`tools/widetest.sh`): 640×360 – `Z` i rolka bez zmian; 960×540 –
 16:9 w Options: 640×360, 960×540. `Settlers.ini` z 1280×720 z wcześniejszych wersji otwiera 960×540
 (sprawdzone na Amidze 2). `MODE=1280x720` w Shellu dalej działa do pomiarów (z zoomem).
 
+## Koniec przeciągania to nie kliknięcie (0.107, zgłoszenie użytkownika)
+
+Po przesunięciu mapy prawym przyciskiem znacznik skakał w inne miejsce, a gdy trafił na budynek,
+otwierało się jego okno. Pętla zdarzeń (jak `event_loop-sdl.cc` Freeserf) po puszczeniu przycisku
+wysyłała kliknięcie w miejscu początku przeciągania – mapa była już przesunięta, a kliknięcie prawym
+to w porcie kliknięcie specjalne (znacznik + okno obiektu). Teraz `event_loop-amiga.cc`: gdy wskaźnik
+w czasie przeciągania przeszedł więcej niż 8 pikseli (`drag_dist`), puszczenie nie jest kliknięciem
+(ani podwójnym); mały ruch w czasie kliknięcia dalej klika w miejscu wciśnięcia. Sprawdzenie myszą –
+użytkownik (AmiAgent nie przesuwa myszy): działa (Amiga 2, 0.107).
+
 ## Okno Amiga w Options (0.57–0.58)
 
 Prośba użytkownika: przycisk „Amiga” obok Advanced z danymi komputera i zegarem Warpa. Łatka `0021`:
