@@ -1,7 +1,7 @@
 From c9756822d01d7382a229d015e91cb63943d436b1 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Mon, 26 Oct 2026 22:44:21 +0100
-Subject: [PATCH 30/35] DELETE in Load game with a question, a double click
+Subject: [PATCH 30/39] DELETE in Load game with a question, a double click
  loads a save; a text button for the boxes
 
 ---

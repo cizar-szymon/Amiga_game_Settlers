@@ -1,7 +1,7 @@
 THE SETTLERS - Freeserf na Amige z karta graficzna
 ==================================================
 
-Wersja 0.92 (beta), 26.10.2026
+Wersja 0.96 (beta), 26.10.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) na Amige z karta graficzna
 (Picasso96) i procesorem 68040/68060, w rozdzielczosci do 800x600.
@@ -76,13 +76,65 @@ Options -> Advanced:
   Invert scrolling, Large numbers, Autosave, Stock box until occupied,
   Show FPS (licznik klatek w rogu ekranu)
 Options -> Advanced -> VIDEO:
-  Sand on new maps (ilosc pustyn na nowych mapach: od None przez 10% of normal do Normal, przyciski - +),
+  Sand on new maps (ilosc pustyn na nowych mapach: None, 10% of normal
+    ... Normal, przyciski - +),
   Rocks on new maps (brazowe skaly na nowych mapach, tak samo),
   More kinds of trees (odbite drzewa i brzozy, tylko wyglad),
   Wild boars (dziki wsrod drzew)
 
 Ustawienia zapisuja sie w pliku Settlers.ini obok gry, zapisy gier
 w szufladzie freeserf.
+
+
+GRA PRZEZ SIEC (LAN)
+--------------------
+
+Dwoch graczy na dwoch Amigach (albo Amiga i emulator, np. WinUAE lub
+Amiberry), do tego do 2 graczy komputerowych.
+
+Potrzebne:
+- stos TCP/IP (np. Roadshow) na obu komputerach,
+- ta sama wersja gry na obu (inna wersja jest odrzucana z komunikatem),
+- port 6810 (TCP i UDP) otwarty miedzy komputerami; na PC z WinUAE
+  trzeba go przepuscic w zaporze Windows.
+
+Zakladajacy gre (MASTER):
+1. W oknie startu zmien typ gry na "LAN game" (ikona z napisem LAN,
+   trzecia po New game i Start mission).
+2. Ustaw mape jak w New game: rozmiar, liczba losowa, gracze komputerowi
+   (gracz 1 to Ty, gracz 2 - drugi czlowiek). Piasek i skaly na mapie:
+   Options -> Advanced -> VIDEO; obowiazuja ustawienia zakladajacego.
+3. Start -> START SERVER. Wpisz nazwe serwera (MASTER) i kliknij
+   RUN SERVER - serwer oglasza sie w sieci.
+4. Gdy drugi gracz dolaczy, pojawi sie jego nazwa, adres i czas
+   odpowiedzi. Kliknij START GAME.
+
+Dolaczajacy (SLAVE):
+1. W oknie startu "LAN game" -> Start -> JOIN SERVER.
+2. SEARCH szuka serwerow w sieci przez 3 s; kliknij serwer na liscie
+   albo wpisz jego adres IP w pole "Server address". Przez VPN i miedzy
+   sieciami szukanie nie dziala - wpisz adres.
+3. Wpisz swoja nazwe (Your name, SLAVE) i kliknij CONNECT.
+4. Czekaj, az zakladajacy wystartuje gre - gra zacznie sie sama.
+
+W czasie gry:
+- Obie Amigi licza te sama gre. Wszystko, co robisz (budowa, drogi,
+  ustawienia, atak, pauza P, tempo + - 0), dziala u obu po ok. 0,2 s
+  (przy wolnym WiFi dluzej).
+- W lewym gornym rogu linia LAN: nazwa drugiego gracza, czas odpowiedzi,
+  "same <krok>" - obie gry zgodne. WAITING: gra czeka na druga strone
+  (wolna siec). "OUT OF STEP" na czerwono: gry sie rozeszly - zglos blad.
+- Ekran wiekszy niz 640x480 przechodzi na czas gry LAN na 640x480.
+- Gdy jeden gracz wyjdzie z gry (albo zerwie sie polaczenie), drugi
+  widzi komunikat i po 4 s wraca do menu startowego.
+
+Zapis i dalsza gra:
+- Zapisuj zwyklym oknem Save. Zapisy gier LAN maja na liscie zolte LAN
+  (pliki nazwa.lan.save).
+- Zakladajacy: Load game -> zapis LAN -> Start (albo dwuklik) otwiera
+  okno serwera z tym zapisem; dalej RUN SERVER, START GAME. Zapis idzie
+  do drugiej Amigi, obie graja dalej od tego miejsca. W oknie serwera
+  mozna tez wybrac zapis przyciskiem SAVED GAME.
 
 
 USTAWIENIA W IKONIE (Tool Types)

@@ -1,0 +1,38 @@
+From 4800cf22fa0696b81559a93174f0253628119b07 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Tue, 27 Oct 2026 00:50:34 +0100
+Subject: [PATCH 36/39] LAN game end: the result picture from the side of the
+ player of this computer
+
+---
+ src/popup.cc | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/src/popup.cc b/src/popup.cc
+index c947bc0..01927bc 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -33,6 +33,7 @@
+ #include "src/audio.h"
+ #include "src/gfx.h"
+ #include "src/interface.h"
++#include "src/lan-game.h"
+ #include "src/box-frame.h"
+ #include "src/event_loop.h"
+ #include "src/minimap.h"
+@@ -2699,6 +2700,12 @@ PopupBox::get_game_end_picture() const {
+   PGame game = interface->get_game();
+   int winner = std::max(0, game->get_winning_player());
+   if (game_end_stage == 0) {
++    /* A LAN game: won or lost for the player of this computer (the one
++       who joined is player 2). */
++    if (interface->get_lan_game() != nullptr) {
++      return (winner == static_cast<int>(
++                interface->get_player()->get_index())) ? 0 : 2;
++    }
+     if (winner == 0) return 0;
+     if (game->get_game_type() == Game::GameTypeTwoPlayers && winner == 1) {
+       return 1;
+-- 
+2.45.2.windows.1
+

@@ -1,0 +1,42 @@
+From 732efa9809ad26e414ad6b551980618b1bc441df Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Tue, 27 Oct 2026 01:13:53 +0100
+Subject: [PATCH 39/39] LAN game: joining a new road to an existing road, as
+ one command
+
+---
+ src/interface.cc | 16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/src/interface.cc b/src/interface.cc
+index 3e64209..480df03 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -914,11 +914,21 @@ Interface::build_road_segment(Direction dir, bool special) {
+   PMap map = game->get_map();
+   MapPos target = map->move(map_cursor_pos, dir);
+   if (map->paths(target) != 0 && !map->has_flag(target)) {
+-    /* Not in a LAN game: the flag would be there only a turn later. */
+-    if (!special || lan_game ||
+-        !game->can_join_road(map_cursor_pos, dir, player)) {
++    if (!special || !game->can_join_road(map_cursor_pos, dir, player)) {
+       return -1;
+     }
++    if (lan_game) {
++      /* The flag would be there only a turn later: one command, done on
++         both computers - the flag on the old road (splitting it), then
++         the new road to it. */
++      LanCommand road_command(LanCommand::TypeBuildRoad, 0, 0, 1);
++      road_command.road = building_road;
++      road_command.road.extend(dir);
++      command(road_command);
++      build_road_end();
++      update_map_cursor_pos(target);
++      return 1;
++    }
+     if (!game->build_flag(target, player)) {
+       return -1;
+     }
+-- 
+2.45.2.windows.1
+

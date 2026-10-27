@@ -131,6 +131,80 @@ def fps_chart(path):
     plt.close(fig)
 
 
+def lan_chapter(st):
+    """Gra przez sieć: dla graczy, jak to działa, pomiary (gałąź lan-game)."""
+    st.append(PageBreak())
+    st.append(P("Gra przez sieć (LAN) – gałąź lan-game, wersja testowa 0.96", "h2"))
+    st.append(boxed([
+        P("<b>Dwóch graczy na dwóch Amigach</b> (albo Amiga i WinUAE / Amiberry), do tego do "
+          "2 graczy komputerowych. Obie Amigi liczą tę samą grę; przez sieć idą tylko polecenia "
+          "graczy i co 5 s suma kontrolna. Sprawdzone w grze: Amiga 2 + WinUAE i Amiga 1 (przez "
+          "VPN) + WinUAE – długa gra bez rozjazdu.", "box"),
+    ]))
+
+    st.append(P("Jak zagrać", "h3"))
+    st.append(LI("<b>Potrzebne:</b> stos TCP/IP (np. Roadshow), ta sama wersja gry u obu, port "
+                 "6810 (TCP i UDP) otwarty między komputerami – na PC z WinUAE w zaporze Windows."))
+    st.append(LI("<b>Zakładający (MASTER):</b> okno startu → typ gry <i>LAN game</i> (ikona z "
+                 "napisem LAN, trzecia) → mapa jak w New game (gracz 1 to on, gracz 2 – drugi "
+                 "człowiek, reszta AI; piasek i skały: Options → Advanced → VIDEO) → Start → "
+                 "<i>START SERVER</i> → nazwa → <i>RUN SERVER</i>. Gdy ktoś dołączy: jego nazwa, "
+                 "adres i czas odpowiedzi; <i>START GAME</i>."))
+    st.append(LI("<b>Dołączający (SLAVE):</b> LAN game → Start → <i>JOIN SERVER</i> → "
+                 "<i>SEARCH</i> (3 s, lista serwerów) albo adres IP (przez VPN i między sieciami "
+                 "trzeba go wpisać) → <i>Your name</i> → <i>CONNECT</i>; gra zaczyna się sama."))
+    st.append(LI("<b>W grze:</b> wszystko, co gracz robi (budowa, drogi, ustawienia, atak, pauza, "
+                 "tempo), działa u obu po ok. 0,2 s. Linia LAN w rogu: nazwa, czas odpowiedzi, "
+                 "„same &lt;krok&gt;”, WAITING (wolna sieć), na czerwono OUT OF STEP (rozjazd – "
+                 "błąd). Ekran najwyżej 640×480. Wyjście jednego gracza kończy grę u obu. "
+                 "Koniec gry: każdy widzi zwycięstwo albo porażkę ze swojej strony."))
+    st.append(LI("<b>Zapis i dalsza gra:</b> zwykłe okno Save (pliki <i>nazwa.lan.save</i>, na "
+                 "liście żółte LAN). Load game z takim zapisem (albo dwuklik) otwiera okno "
+                 "serwera; zapis idzie do drugiej Amigi i obie grają dalej."))
+
+    st.append(P("Jak to działa", "h3"))
+    st.append(table(
+        ["Część", "Rozwiązanie"],
+        [["Sieć", "osobny proces „Settlers LAN” (priorytet 1, czeka w WaitSelect – 0% CPU "
+                  "bez pakietów); gra nie wywołuje sieci, czyta tylko pierścień w pamięci"],
+         ["Szukanie", "UDP 255.255.255.255:6810 co 1 s, tylko przy RUN SERVER"],
+         ["Gra", "TCP 6810 z TCP_NODELAY; ramka: długość, typ, dane; HELLO z wersją, PING"],
+         ["Start", "SETUP ~100 B (mapa, gracze, ziarno liczb losowych, opóźnienie, piasek, "
+                   "skały) – mapę generują obie Amigy; albo cały zapis gry (kawałki 240 B)"],
+         ["Lockstep", "tury po 4 kroki (80 ms); polecenie z tury t na obu w turze t + "
+                      "opóźnienie (2–8 tur wg czasu odpowiedzi); polecenie 18–30 B"],
+         ["Zgodność", "co 5 s suma: krok, liczby losowe gry i kolejny pas ~4096 pól mapy"]],
+        [28, 152]))
+
+    st.append(P("Pomiary", "h3"))
+    st.append(table(
+        ["Co", "Wynik"],
+        [["Dane w czasie gry", "ok. 100 B/s w każdą stronę (z nagłówkami TCP/IP ~0,7 KB/s)"],
+         ["Koszt procesu sieciowego", "34 ms w 25 s (Amiga 2), 96 ms w 30 s przy ~7 ramkach/s "
+                                      "(Amiga 1) – 0,1–0,3% CPU 68060"],
+         ["Czas odpowiedzi", "Amiga 1 przez VPN: średnio 23,5 ms (najgorszy 48); Amiga 2 na "
+                             "słabym WiFi: 29–157 ms, skoki do 780 ms"],
+         ["Suma kontrolna", "cała mapa: 15 ms (mapa 4) … 231 ms (8) … 0,9 s (10) – szarpnięcie "
+                            "co 5 s; pasami: 3,2 ms na każdej mapie (0.92)"],
+         ["Przesłanie zapisu", "131 KB w 0,3 s (WinUAE → PC); odbiór szybkiej dostawy bez strat "
+                               "po poprawce 0.78"],
+         ["Zgodność", "lansim -l (dwie gry, zamki, tartaki, drogi, ustawienia): Amiga 1, Amiga 2 "
+                      "i WinUAE – te same sumy co do bitu, 10/10 poleceń"]],
+        [44, 136]))
+
+    st.append(P("Dodatki z tej gałęzi (Options → Advanced → VIDEO)", "h3"))
+    for t in [
+        "<b>Sand / Rocks on new maps</b>: pustynie i brązowe skały nowych map od None do Normal "
+        "(oryginał), co 10%; reszta mapy bez zmian, przy Normal mapa identyczna z oryginałem.",
+        "<b>More kinds of trees</b>: odbite drzewa i brzozy (własny rysunek), wg miejsca na "
+        "mapie – w LAN u obu tak samo; bez kosztu przy rysowaniu.",
+        "<b>Wild boars</b>: rzadkie ciemnobrązowe dziki wśród drzew, niższy głos świni.",
+        "Tempo gry ×0,5 (klawisz −); usuwanie zapisów (DELETE z pytaniem), dwuklik wczytuje, "
+        "lista zapisów z paskiem przewijania; poprawione pole kliknięcia Quit w oknie startu.",
+    ]:
+        st.append(LI(t))
+
+
 def main():
     tmp = tempfile.mkdtemp()
     chart = os.path.join(tmp, "fps.png")
@@ -355,9 +429,13 @@ def main():
     ]:
         st.append(LI(t))
 
+    lan_chapter(st)
+
     st.append(P("Co dalej", "h2"))
     for t in [
-        "Gra sieciowa dla dwóch graczy (okno „Online”, lockstep przez TCP) – osobny etap.",
+        "Gra LAN: scalenie gałęzi lan-game z amiga-port i nowy kandydat do wydania "
+        "(koniec gry dwóch ludzi i łączenie dróg w LAN zrobione w 0.93–0.96).",
+        "Raspberry Pi 400 z Amiberry (ten sam program, konfiguracja w tools/pi/).",
         "Opcjonalnie AHI (warp.audio).",
     ]:
         st.append(LI(t))

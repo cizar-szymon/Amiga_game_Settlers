@@ -1,7 +1,7 @@
 From 35d8af3bcbe9a7bd494bffef0534bd08886eec49 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Mon, 26 Oct 2026 22:34:43 +0100
-Subject: [PATCH 29/35] Saves of LAN games marked (.lan.save, LAN in the list),
+Subject: [PATCH 29/39] Saves of LAN games marked (.lan.save, LAN in the list),
  Load LAN game; the saves list sorted, with a scroll bar
 
 ---

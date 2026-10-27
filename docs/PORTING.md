@@ -26,9 +26,10 @@ z oryginalnych danych z wersji na Amigę. Ogólne zasady: `C:\Workprojects\Amiga
 | F5 Dźwięk | ✅ | efekty i muzyka bez spadku fps poniżej celu | 0.22: Paula 22 kHz, efekty i muzyka potwierdzone odsłuchem; ~43 fps; AHI – opcja na później |
 | F6 Wydanie | ✅ | czysta instalacja z archiwum `Settlers-0.32.lha` na Amidze 2 | 0.32 beta, 25.10.2026 |
 
-**Kandydat do wydania: 0.61** (decyzja użytkownika: zawsze najnowsza sprawdzona wersja; 0.61
-potwierdzona przez użytkownika 26.10.2026), znacznik `v0.61-rc`, archiwum
-`releases/amiga/Settlers-0.61.lha`. Wcześniejsi: 0.56, 0.54, 0.53, 0.52, 0.48, 0.41 (`v0.xx-rc`).
+**Kandydat do wydania: 0.96** (decyzja użytkownika: zawsze najnowsza sprawdzona wersja; 0.96 z grą
+LAN, sprawdzona przez użytkownika 27.10.2026; gałąź `lan-game` scalona z `amiga-port`, wersja LAN
+zastępuje zwykłą), znacznik `v0.96-rc`, archiwum `releases/amiga/Settlers-0.96.lha`.
+Wcześniejsi: 0.61, 0.56, 0.54, 0.53, 0.52, 0.48, 0.41 (`v0.xx-rc`).
 
 ## Decyzje
 
@@ -843,7 +844,9 @@ Testy (26.10.2026, Amiga 2 + PC, `port/lantest.c` z tym samym procesem co gra,
   jest w SETUP (wersja 2). Bez TURN drugiej strony krok czeka (`Interface::update` wraca), po
   300 ms w linii LAN „WAITING”. Po rozłączeniu gra idzie dalej sama.
 - Celowo inaczej w LAN: łączenie nowej drogi z istniejącą drogą specjalnym kliknięciem wyłączone
-  (flaga powstałaby turę później); koniec gry bez automatycznej pauzy (zależałaby od okien
+  (flaga powstałaby turę później) – od 0.96 jako jedno polecenie `TypeBuildRoad` z flagą na końcu
+  (flaga na starej drodze, która ją dzieli, potem nowa droga – ta sama kolejność co bez LAN;
+  sprawdzone w grze 27.10.2026: „działa”); koniec gry bez automatycznej pauzy (zależałaby od okien
   otwartych u jednego gracza). Lokalne zostają: wiadomości i timery (tylko komunikaty dla
   gracza), podgląd ataku (pola liczone przy wykonaniu od nowa).
 - `lansim -l`: dwie gry w lockstepie (serwer i dołączający), każdy gracz stawia zamek, tartak,
@@ -965,6 +968,8 @@ z Advanced, które ma znowu 5 wierszy, 312×152). Audio: na razie puste („Noth
   92 zajmowały wszystkie 4 kanały. Teraz numer 61 (wolny, obok świni 60) i chrząkanie częściej
   (8/1024 na klatkę widocznego dzika w strefie słyszenia). Użytkownik: słychać.
   0.90 (prośba: jeszcze niżej): okres 760 (2,1× świni, ok. 0,48 wysokości), czas 101.
+  0.94 (użytkownik: dzik został przy stawianym budynku): nie ma go, gdy przez jego pole idzie
+  droga albo na sąsiednim polu jest budynek (także w budowie), flaga albo droga.
 
 **Quit w oknie startu (0.91, łatka `0034`, zgłoszenie użytkownika: „często nie da się wybrać za
 pierwszym razem”).** Przycisk rysowany w (308, 224) okna (`draw_box_icon(36, 208)` dodaje 16), a pole
@@ -979,6 +984,21 @@ gry (gry, które się rozeszły, wołają je inaczej i szybko tu się różnią)
 – przy każdym porównaniu kolejny (numer porównania wybiera pas), skrót słowami 32-bit zamiast
 bajtami. Czas: **3,2 ms na mapach 4, 6, 8 i 10**. `lansim -l` dalej zgodne (CRC całego zapisu jak
 przedtem).
+
+**Koniec gry LAN (0.93, łatka `0036`).** Przegląd: zwycięzcę wyznacza `Game::update_winner` (suma
+punktów budynków ≥ 50, prowadzenie i w ziemi, i w wojsku) – liczone w logice, więc u obu w tym
+samym kroku. Okno końca gry: obrazek wyniku, napis „THE <KOLOR> SETTLERS HAVE GAINED THE
+SUPERIORITY”, potem pytanie o wyjście; w LAN bez pauzy (0.69), wyjście kończy grę u obu (0.71).
+Błąd: obrazek wyniku był z punktu widzenia gracza 1 (zwycięstwo tylko przy `winner == 0`), więc
+wygrywający SLAVE widział porażkę. Teraz w grze LAN: zwycięstwo, gdy zwycięzcą jest gracz tego
+komputera, inaczej porażka. Typ gry zostaje `GameTypeOnePlayer` (Freeserf używa
+`GameTypeTwoPlayers` tylko do obrazka w grze dwóch graczy na jednej Amidze).
+Test (0.95, łatka `0038`): opcja `LANTEST` (Shell / Tool Type) – w grze LAN Ctrl+Shift+W wysyła
+polecenie `TypeTestWin`: na obu Amigach w tej samej turze `Game::set_winner(gracz)` (zwycięzca
+i koniec gry). Bez `LANTEST` klawisz nic nie robi.
+Test w grze (27.10.2026, Amiga 1 + WinUAE, wygrana raz jednej, raz drugiej strony): obrazki
+zwycięstwa i porażki po właściwych stronach, napis z kolorem zwycięzcy, wyjście kończy grę u obu –
+użytkownik: „wszystko było ok”.
 
 **Raspberry Pi 400 z Amiberry** (prośba użytkownika, 26.10.2026): ten sam program Amigi w emulatorze –
 gra LAN Amiga ↔ Pi bez rozjazdów, jak z WinUAE. Pliki w `tools/pi/`: konfiguracja Amiberry

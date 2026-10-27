@@ -1,0 +1,101 @@
+From 290dbce11fb1671cc8107acbfc4a96161fcb14c6 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Tue, 27 Oct 2026 01:06:20 +0100
+Subject: [PATCH 38/39] LANTEST: Ctrl+Shift+W in a LAN game - this player wins
+ at once on both computers (a test of the end)
+
+---
+ src/game.h         | 6 ++++++
+ src/interface.cc   | 7 +++++++
+ src/interface.h    | 3 +++
+ src/lan-command.cc | 3 +++
+ src/lan-command.h  | 3 ++-
+ 5 files changed, 21 insertions(+), 1 deletion(-)
+
+diff --git a/src/game.h b/src/game.h
+index c790858..d8781d6 100644
+--- a/src/game.h
++++ b/src/game.h
+@@ -144,6 +144,12 @@ class Game {
+   void set_game_type(int type, int level);
+   /* The winner once the game is decided, -1 before. */
+   int get_winning_player() const { return winning_player; }
++  /* The game ends now, this player won (a test of the end of a LAN
++     game, LanCommand::TypeTestWin). */
++  void set_winner(int player) {
++    winning_player = player;
++    game_end_pending = true;
++  }
+   bool is_game_end_pending() const { return game_end_pending; }
+   void clear_game_end_pending() { game_end_pending = false; }
+   unsigned int get_const_tick() const { return const_tick; }
+diff --git a/src/interface.cc b/src/interface.cc
+index ca5b608..3e64209 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -324,6 +324,7 @@ int Interface::platform_box_width = 0;
+ int Interface::platform_box_height = 0;
+ std::function<void(int)> Interface::zoom_hook;
+ LanLink *Interface::lan_link = nullptr;
++bool Interface::lan_test_keys = false;
+ 
+ void
+ Interface::open_platform_box() {
+@@ -1631,6 +1632,12 @@ Interface::handle_key_pressed(char key, int modifier) {
+       command(LanCommand::TypePause);
+       break;
+     }
++    case 'w':
++    case 'W':
++      if (lan_test_keys && lan_game && (modifier & 3) == 3) {
++        command(LanCommand::TypeTestWin);
++      }
++      break;
+     case 'i': {
+       /* The keys of the game (also the "I" button of the settings box). */
+       open_keys_box();
+diff --git a/src/interface.h b/src/interface.h
+index 19b291e..ae0f4cc 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -281,6 +281,9 @@ class Interface : public GuiObject, public GameManager::Handler {
+   void open_lan_box_with_save(PGameInfo mission, const std::string &path);
+   /* The network of a LAN game, given by the platform; none: nullptr. */
+   static LanLink *lan_link;
++  /* LANTEST (the port's option): Ctrl+Shift+W in a LAN game - this
++     player wins at once, on both computers (a test of the end). */
++  static bool lan_test_keys;
+   /* Both computers start the same game from SETUP (the LAN box: the
+      server when START GAME is pressed, the other one when SETUP comes);
+      the one who joined plays player 2. false: a bad SETUP. */
+diff --git a/src/lan-command.cc b/src/lan-command.cc
+index fb12c9c..e606fba 100644
+--- a/src/lan-command.cc
++++ b/src/lan-command.cc
+@@ -205,6 +205,9 @@ LanCommand::apply(Game *game) const {
+         game->speed_reset();
+       }
+       return true;
++    case TypeTestWin:
++      game->set_winner(player);
++      return true;
+     case TypeSetting:
+       break;
+     default:
+diff --git a/src/lan-command.h b/src/lan-command.h
+index ce82d16..f68ffd5 100644
+--- a/src/lan-command.h
++++ b/src/lan-command.h
+@@ -50,7 +50,8 @@ class LanCommand {
+     TypeSetting,            /* a: Setting, b, c */
+     TypeAttack,             /* pos of the building, a: knights */
+     TypePause,
+-    TypeSpeed               /* a: +1, -1, 0 = normal */
++    TypeSpeed,              /* a: +1, -1, 0 = normal */
++    TypeTestWin             /* LANTEST: the player wins now (a test) */
+   } Type;
+ 
+   /* The settings boxes of a player (TypeSetting). */
+-- 
+2.45.2.windows.1
+

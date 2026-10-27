@@ -1,7 +1,7 @@
 From 54e0159b0781aefd2392c2f1de41917b0575c458 Mon Sep 17 00:00:00 2001
 From: cizar-szymon <szymon@cs-lab.eu>
 Date: Mon, 26 Oct 2026 09:17:16 +0100
-Subject: [PATCH 21/35] A platform box opened from the options box
+Subject: [PATCH 21/39] A platform box opened from the options box
 
 Next to Advanced the options box shows a button for a box of the
 platform when Interface::platform_box_factory is set (with the box's

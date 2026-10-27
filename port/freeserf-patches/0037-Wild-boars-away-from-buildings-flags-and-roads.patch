@@ -1,0 +1,41 @@
+From d508bd68706d16e9ab76f57c9fad0129bff5b6c6 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Tue, 27 Oct 2026 01:00:36 +0100
+Subject: [PATCH 37/39] Wild boars away from buildings, flags and roads
+
+---
+ src/viewport.cc | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/src/viewport.cc b/src/viewport.cc
+index b5b4113..1cc0717 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -1362,14 +1362,22 @@ Viewport::draw_flag_and_res(MapPos pos, int lx, int ly) {
+ 
+ /* A wild boar stands here: few places (one free place in 24, by the
+    place - the same on both computers of a LAN game), among trees - at
+-   least three of the six neighbours. Only a picture. */
++   least three of the six neighbours - and away from buildings, flags and
++   roads. Only a picture. */
+ bool
+ Viewport::boar_at(MapPos pos) const {
+   uint32_t h = static_cast<uint32_t>(pos) * 2246822519u;
+   if (((h >> 16) % 24) != 0) return false;
++  /* Not where people are at work: no road through it, and no building
++     (also one being built), flag or road next to it. */
++  if (map->paths(pos) != 0) return false;
+   int trees = 0;
+   for (int d = 0; d < 6; d++) {
+-    Map::Object o = map->get_obj(map->move(pos, static_cast<Direction>(d)));
++    MapPos n = map->move(pos, static_cast<Direction>(d));
++    Map::Object o = map->get_obj(n);
++    if ((o != Map::ObjectNone && o < Map::ObjectTree0) || map->paths(n) != 0) {
++      return false;
++    }
+     if (o >= Map::ObjectTree0 && o <= Map::ObjectPine7) trees++;
+   }
+   return trees >= 3;
+-- 
+2.45.2.windows.1
+

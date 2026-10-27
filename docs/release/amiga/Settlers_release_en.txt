@@ -6,6 +6,34 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.96 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- LAN game: joining a new road to an existing road with a special click
+  works as in a game on one Amiga.
+
+
+0.95 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- For a test of the end of a LAN game: the option LANTEST, in the game
+  Ctrl+Shift+W - the player who pressed it wins (on both Amigas).
+
+
+0.94 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- A wild boar goes when a building (also one being built), a flag or a
+  road comes next to it.
+
+
+0.93 (27.10.2026, LAN branch - test build)
+-------------------------------------------
+
+- End of a LAN game: each player sees the picture of a win or a loss
+  from their own side (a winning player 2 saw a loss before).
+
+
 0.92 (27.10.2026, LAN branch - test build)
 -------------------------------------------
 

@@ -6,6 +6,34 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.96 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Gra LAN: laczenie nowej drogi z istniejaca droga specjalnym
+  kliknieciem dziala jak w grze na jednej Amidze.
+
+
+0.95 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Do testu konca gry LAN: opcja LANTEST, w grze Ctrl+Shift+W - wygrywa
+  gracz, ktory nacisnal (na obu Amigach).
+
+
+0.94 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Dzik znika, gdy obok niego stanie budynek (takze w budowie), flaga
+  albo droga.
+
+
+0.93 (27.10.2026, galaz LAN - wersja testowa)
+-----------------------------------------------
+
+- Koniec gry LAN: kazdy gracz widzi obrazek zwyciestwa albo porazki ze
+  swojej strony (wygrywajacy gracz 2 widzial wczesniej porazke).
+
+
 0.92 (27.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 
