@@ -6,6 +6,13 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.110 (29.10.2026, test build)
+-------------------------------
+
+- LAN game: on an Amiga with the warpSOCKET stack the server window shows
+  its address (the Server address field was empty).
+
+
 0.109 (29.10.2026, test build)
 -------------------------------
 

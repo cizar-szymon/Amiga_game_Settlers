@@ -6,6 +6,13 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.110 (29.10.2026, wersja testowa)
+-----------------------------------
+
+- Gra LAN: na Amidze ze stosem warpSOCKET okno serwera pokazuje jej adres
+  (dotad pole Server address bylo puste).
+
+
 0.109 (29.10.2026, wersja testowa)
 -----------------------------------
 
