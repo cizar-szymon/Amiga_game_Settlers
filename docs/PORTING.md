@@ -1005,6 +1005,15 @@ Błąd: obrazek wyniku był z punktu widzenia gracza 1 (zwycięstwo tylko przy `
 wygrywający SLAVE widział porażkę. Teraz w grze LAN: zwycięstwo, gdy zwycięzcą jest gracz tego
 komputera, inaczej porażka. Typ gry zostaje `GameTypeOnePlayer` (Freeserf używa
 `GameTypeTwoPlayers` tylko do obrazka w grze dwóch graczy na jednej Amidze).
+**0.109–0.110 (29.10.2026): warpSOCKET na Amidze 2.** Stos sieciowy Amigi 2 to warpSOCKET (CS-Lab,
+bsdsocket.library 30.66), nie Roadshow: `WaitSelect` nie zgłasza Ctrl-C (wyjście z gry LAN
+zawieszało całą Amigę – proces sieciowy kręcił się dalej; 0.109: flaga `quit_request`), a
+`getsockname()` gniazda UDP daje 0.0.0.0 (pusty adres serwera; 0.110: adres z `SIOCGIFCONF`).
+Znalezione w porcie OpenDUNE (`OpenDUNE/tools/amiga/netaddr.c`). Test w grze 29.10: Amiga 2
+(MASTER, 0.110) + WinUAE (SLAVE) – adres 192.168.9.187 w oknie serwera, SEARCH, CONNECT, START,
+zamek (sumy „same” do kroku 9251), czat, pauza, wyjście z gry na Amidze 2 bez zawieszenia,
+WinUAE wraca do menu.
+
 Test (0.95, łatka `0038`): opcja `LANTEST` (Shell / Tool Type) – w grze LAN Ctrl+Shift+W wysyła
 polecenie `TypeTestWin`: na obu Amigach w tej samej turze `Game::set_winner(gracz)` (zwycięzca
 i koniec gry). Bez `LANTEST` klawisz nic nie robi.
