@@ -110,6 +110,11 @@ static volatile ULONG wake_mask = 0;
 static struct Task *parent_task = NULL;
 static BYTE parent_signal = -1;
 static volatile int start_failed = 0;
+/* net_quit asks the process to end. Not only by Ctrl-C: warpSOCKET (the stack
+   of Amiga 2) returned from WaitSelect with no signals while the Ctrl-C was
+   sent - the process went on, the game waited for it for ever and the Amiga
+   stood (found in the OpenDUNE port, 29.10.2026). */
+static volatile int quit_request = 0;
 static char net_version[16];
 
 static volatile ULONG count_eclocks, count_frames_out, count_frames_in;
@@ -704,7 +709,7 @@ static void net_main(void)
     WaitSelect(top + 1, &rd, &wr, NULL, timed ? &tv : NULL, &sigs);
 
     start = amiga_eclock();
-    if (sigs & SIGBREAKF_CTRL_C) quit = 1;
+    if ((sigs & SIGBREAKF_CTRL_C) || quit_request) quit = 1;
 
     for (;;) {
       /* A frame of the game waits in the ring until it fits into out_buf
@@ -785,6 +790,7 @@ int net_start(const char *version)
   parent_signal = AllocSignal(-1);
   if (parent_signal < 0) return 0;
   start_failed = 0;
+  quit_request = 0;
   SetSignal(0, 1UL << parent_signal);
   if (CreateNewProcTags(NP_Entry, (ULONG)net_main,
                         NP_Name, (ULONG)"Settlers LAN",
@@ -807,6 +813,7 @@ int net_start(const char *version)
 void net_quit(void)
 {
   if (net_task == NULL) return;
+  quit_request = 1;
   Signal((struct Task *)net_task, SIGBREAKF_CTRL_C);
   Wait(1UL << parent_signal);
   FreeSignal(parent_signal);

@@ -6,6 +6,14 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.109 (29.10.2026, wersja testowa)
+-----------------------------------
+
+- Gra LAN: wyjscie z gry na Amidze ze stosem warpSOCKET (np. A4000 z
+  Warp4070) nie zawiesza juz calej Amigi - proces sieciowy konczy sie
+  takze wtedy, gdy WaitSelect nie zglasza sygnalu Ctrl-C.
+
+
 0.108 (27.10.2026, wersja testowa)
 -----------------------------------
 

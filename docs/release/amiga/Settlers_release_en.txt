@@ -6,6 +6,14 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.109 (29.10.2026, test build)
+-------------------------------
+
+- LAN game: quitting the game on an Amiga with the warpSOCKET stack (e.g.
+  an A4000 with a Warp4070) no longer freezes the whole Amiga - the network
+  process also ends when WaitSelect does not report the Ctrl-C signal.
+
+
 0.108 (27.10.2026, test build)
 ------------------------------
 
