@@ -130,10 +130,12 @@ During the game:
 - Both Amigas run the same game. Everything you do (building, roads,
   settings, attacks, pause P, speed + - 0) happens on both after about
   0.2 s (longer on a slow WiFi).
-- A LAN line in the top left corner: the other player's name, the
-  response time, "same <step>" - both games agree. WAITING: the game
-  waits for the other side (a slow network). "OUT OF STEP" in red: the
-  games went apart - please report it.
+- The LAN line in the top left corner shows only when something is not
+  right: WAITING - the game waits for the other side (a slow network);
+  "OUT OF STEP" in red - the games went apart (please report it); also
+  while a save is sent and when a player has gone. The option LANINFO
+  shows it always: the other player's name, the response time,
+  "same <step>" - both games agree.
 - A screen larger than 640x480 becomes 640x480 for a LAN game
   (960x540: 640x360).
 - Chat: Tab opens and closes the chat box (Esc closes it too), Return
@@ -165,6 +167,8 @@ are off - remove the brackets to switch them on.
                  320x200 area around the centre, as in the original);
                  SFXAREA=480x300 - a larger one
   NOSOUND        no sound
+  LANINFO        in a LAN game the LAN line always (player, response time,
+                 games agreeing); without it only WAITING / OUT OF STEP
   DATA=path      another drawer with the game data (default PROGDIR:data)
 
 Program stack in the icon: 1000000 (the game needs a large stack).

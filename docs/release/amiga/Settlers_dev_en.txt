@@ -35,6 +35,8 @@ OPTIONS (Shell and Tool Types)
                    (default 320x200) or from all of it
                    (Viewport::hear_width/height)
   FPS              Freeserf's frame counter (also Options -> Advanced)
+  LANINFO          the LAN line always (LanGame::show_info); without it
+                   only WAITING, OUT OF STEP, sending a save, player gone
   STATS            every second: numbers to RAM:Settlers-stats.txt, FPS on
                    the screen
   STATS=FULL       plus E-clock probes (they slow the game down!; the VIEW

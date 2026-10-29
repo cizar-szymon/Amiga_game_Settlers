@@ -34,6 +34,8 @@ OPCJE (Shell i Tool Types)
   SFXAREA=WxH|ALL  dzwieki mapy z obszaru WxH wokol srodka widoku (domyslnie
                    320x200) albo z calego (Viewport::hear_width/height)
   FPS              licznik klatek Freeserf (tez Options -> Advanced)
+  LANINFO          linia LAN zawsze (LanGame::show_info); bez niej tylko
+                   WAITING, OUT OF STEP, wysylanie zapisu, gracz odszedl
   STATS            co 1 s: liczby do RAM:Settlers-stats.txt i FPS na ekranie
   STATS=FULL       do tego sondy E-clock (spowalniaja!; linia VIEW: ms/s
                    czesci widoku mapy) i zapis muzyki do

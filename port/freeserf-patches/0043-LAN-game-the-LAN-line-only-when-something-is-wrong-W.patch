@@ -1,0 +1,70 @@
+From c60c448c1d3915582ac546a8d4d44ce8bcf210e4 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Thu, 29 Oct 2026 12:16:18 +0100
+Subject: [PATCH] LAN game: the LAN line only when something is wrong (WAITING,
+ OUT OF STEP, sending, player gone); always with LanGame::show_info
+
+---
+ src/lan-game.cc | 20 +++++++++++++++-----
+ src/lan-game.h  |  4 ++++
+ 2 files changed, 19 insertions(+), 5 deletions(-)
+
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index 4b5377a..ea22aec 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -367,9 +367,17 @@ LanGame::compare() {
+   }
+ }
+ 
++bool LanGame::show_info = false;
++
+ void
+ LanGame::draw(Frame *frame) {
+   std::string text = "LAN ";
++  bool waiting = waiting_since != 0 &&
++                 EventLoop::get_instance().get_ticks() - waiting_since >
++                   kShowWaitingMs;
++  /* the line only when something is not as it should be, or asked for */
++  bool line = show_info || link == nullptr || gone || out_of_step ||
++              !save_out.empty() || waiting;
+   if (link == nullptr) {
+     text += "-";
+   } else if (gone) {
+@@ -392,11 +400,13 @@ LanGame::draw(Frame *frame) {
+   } else if (last_checked != 0) {
+     text += " same " + std::to_string(last_checked);
+   }
+-  int w = 8 * static_cast<int>(text.size()) + 4;
+-  frame->fill_rect(0, 12, w, 11, Color::black);
+-  frame->draw_string(2, 14, text,
+-                     out_of_step ? Color(0xff, 0x40, 0x40) : Color::green,
+-                     Color::transparent);
++  if (line) {
++    int w = 8 * static_cast<int>(text.size()) + 4;
++    frame->fill_rect(0, 12, w, 11, Color::black);
++    frame->draw_string(2, 14, text,
++                       out_of_step ? Color(0xff, 0x40, 0x40) : Color::green,
++                       Color::transparent);
++  }
+ 
+   if (!notice.empty() &&
+       static_cast<int>(EventLoop::get_instance().get_ticks() - notice_until)
+diff --git a/src/lan-game.h b/src/lan-game.h
+index 3a44b15..b1ef1db 100644
+--- a/src/lan-game.h
++++ b/src/lan-game.h
+@@ -72,6 +72,10 @@ class LanGame {
+   /* The chat: letters of a line, lines kept and shown. */
+   static const unsigned int kChatLength = 32;
+   static const unsigned int kChatLines = 8;
++  /* The LAN line under the FPS (peer, ping, "same <step>") also when all is
++     well; else only WAITING, OUT OF STEP, sending, a player gone (option
++     LANINFO of the Amiga port). */
++  static bool show_info;
+ 
+  protected:
+   typedef struct Turn {
+-- 
+2.45.2.windows.1
+

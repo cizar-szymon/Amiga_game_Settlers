@@ -115,6 +115,8 @@ parse_option(const char *a) {
     VideoAmiga::render_vram = strcasecmp(v, "FAST") != 0;
   } else if (strcasecmp(a, "LANTEST") == 0) {
     Interface::lan_test_keys = true;
+  } else if (strcasecmp(a, "LANINFO") == 0) {
+    LanGame::show_info = true;
   } else if (strcasecmp(a, "NOSOUND") == 0) {
     AudioAmiga::disabled = true;
   } else if ((v = option_value(a, "LOCK")) != nullptr) {

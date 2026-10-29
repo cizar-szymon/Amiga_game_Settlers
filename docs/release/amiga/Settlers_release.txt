@@ -6,6 +6,15 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.111 (29.10.2026, wersja testowa)
+-----------------------------------
+
+- Gra LAN: linia LAN pod licznikiem FPS (gracz, czas odpowiedzi, "same")
+  domyslnie ukryta - pokazuje sie tylko przy WAITING, OUT OF STEP,
+  wysylaniu zapisu i odejsciu gracza. Zawsze: opcja LANINFO (Tool Type
+  ikony albo w Shellu).
+
+
 0.110 (29.10.2026, wersja testowa)
 -----------------------------------
 

@@ -6,6 +6,15 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.111 (29.10.2026, test build)
+-------------------------------
+
+- LAN game: the LAN line under the FPS counter (player, response time,
+  "same") is hidden by default - it shows only with WAITING, OUT OF STEP,
+  while a save is sent and when a player has gone. Always: the option
+  LANINFO (icon Tool Type or in the Shell).
+
+
 0.110 (29.10.2026, test build)
 -------------------------------
 
