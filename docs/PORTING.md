@@ -26,7 +26,14 @@ z oryginalnych danych z wersji na Amigę. Ogólne zasady: `C:\Workprojects\Amiga
 | F5 Dźwięk | ✅ | efekty i muzyka bez spadku fps poniżej celu | 0.22: Paula 22 kHz, efekty i muzyka potwierdzone odsłuchem; ~43 fps; AHI – opcja na później |
 | F6 Wydanie | ✅ | czysta instalacja z archiwum `Settlers-0.32.lha` na Amidze 2 | 0.32 beta, 25.10.2026 |
 
-**Kandydat do wydania: 0.96** (decyzja użytkownika: zawsze najnowsza sprawdzona wersja; 0.96 z grą
+**Wydanie 0.111 beta (30.10.2026)** – pierwsze publiczne na GitHubie (decyzja użytkownika):
+`main` = `amiga-port`, archiwum **ZIP** zamiast LHA (`releases/amiga/Settlers-0.111.zip`, prawa Unix
+755 dla programu, rozpakowanie `UnZip`), robione `tools/make_release.sh` (+ `tools/make_zip.py`);
+pełna paczka z danymi gry `private/Settlers-0.111-full.zip` tylko lokalnie (`private/` poza gitem);
+`COPYING` (GPL-3.0) też w katalogu głównym repo; wersja oficjalna bez napisu TEST
+(`SETTLERS_LABEL ""`). Znacznik `v0.111`.
+
+Wcześniej: **kandydat do wydania 0.96** (decyzja użytkownika: zawsze najnowsza sprawdzona wersja; 0.96 z grą
 LAN, sprawdzona przez użytkownika 27.10.2026; gałąź `lan-game` scalona z `amiga-port`, wersja LAN
 zastępuje zwykłą), znacznik `v0.96-rc`, archiwum `releases/amiga/Settlers-0.96.lha`.
 Wcześniejsi: 0.61, 0.56, 0.54, 0.53, 0.52, 0.48, 0.41 (`v0.xx-rc`).

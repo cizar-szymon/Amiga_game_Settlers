@@ -1,10 +1,11 @@
 THE SETTLERS - Freeserf na Amige z karta graficzna
 ==================================================
 
-Wersja 0.96 (beta), 26.10.2026
+Wersja 0.111 (beta), 30.10.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) na Amige z karta graficzna
-(Picasso96) i procesorem 68040/68060, w rozdzielczosci do 800x600.
+(Picasso96) i procesorem 68040/68060, w rozdzielczosci do 800x600
+(4:3) albo 960x540 (16:9).
 Podstawa jest Freeserf - otwarta wersja gry (GPL-3.0). Grafika, dzwieki
 i muzyka pochodza z oryginalnych dyskietek gry na Amige, ktore trzeba miec.
 
@@ -40,12 +41,13 @@ STEROWANIE
   mysz                     wszystko w grze (jak w oryginale)
   prawy przycisk + ruch    przewijanie mapy
   strzalki                 przewijanie mapy
-  Z, rolka myszy           powiekszenie mapy: x2 (powyzej 400x300), x3 (800x600);
+  Z, rolka myszy           powiekszenie mapy: x2 (powyzej 400x300), x3 (800x600
+                           i 960x540); w 640x360 bez powiekszenia;
                            rolka w gore/w dol o stopien, Z po kolei
   P                        pauza (drugi raz: dalej), na ekranie napis PAUSE
   1 ... 5                  przyciski panelu
   B                        miejsca pod budowe
-  Tab                      nastepna wiadomosc
+  Tab                      nastepna wiadomosc; w grze LAN: okno czatu
   +                        tempo gry: x1,5 / x2 / x2,5 / x3
   -                        wolniej, najnizej x0,5
   0                        normalne tempo (x1)
@@ -65,9 +67,13 @@ USTAWIENIA W GRZE
 -----------------
 
 Options:
-  Screen     rozdzielczosc: strzalki obok zmieniaja ja od razu
-             (400x300, 640x400, 640x480, 800x600); wybor jest
-             zapamietany na nastepny raz
+  Messages   ile wiadomosci (None, Few, Most, All)
+  Aspect     proporcje ekranu 4:3 albo 16:9 (klikniecie zmienia; zawsze
+             zaczyna od najmniejszej rozdzielczosci: 400x300 / 640x360)
+  Screen     rozdzielczosc: strzalki obok zmieniaja ja od razu, w ramach
+             wybranych proporcji - 4:3: 400x300, 640x400, 640x480,
+             800x600; 16:9: 640x360, 960x540; wybor jest zapamietany
+             na nastepny raz
 Options -> Amiga:
   dane Amigi; z akceleratorem Warp zegar CPU: MC68060 50-100 MHz co 10 MHz
   (podnoszenie tylko dla rev. 6 - podkrecanie, moze zawiesic system),
@@ -121,10 +127,18 @@ W czasie gry:
 - Obie Amigi licza te sama gre. Wszystko, co robisz (budowa, drogi,
   ustawienia, atak, pauza P, tempo + - 0), dziala u obu po ok. 0,2 s
   (przy wolnym WiFi dluzej).
-- W lewym gornym rogu linia LAN: nazwa drugiego gracza, czas odpowiedzi,
-  "same <krok>" - obie gry zgodne. WAITING: gra czeka na druga strone
-  (wolna siec). "OUT OF STEP" na czerwono: gry sie rozeszly - zglos blad.
-- Ekran wiekszy niz 640x480 przechodzi na czas gry LAN na 640x480.
+- Linia LAN w lewym gornym rogu pojawia sie tylko, gdy cos jest nie tak:
+  WAITING - gra czeka na druga strone (wolna siec); "OUT OF STEP" na
+  czerwono - gry sie rozeszly (zglos blad); takze przy wysylaniu zapisu
+  i po odejsciu gracza. Opcja LANINFO pokazuje ja zawsze: nazwa drugiego
+  gracza, czas odpowiedzi, "same <krok>" - obie gry zgodne.
+- Ekran wiekszy niz 640x480 przechodzi na czas gry LAN na 640x480
+  (960x540 na 640x360).
+- Czat: Tab otwiera i zamyka okno czatu (Esc tez zamyka), Return wysyla
+  wpis - do 32 znakow (litery, cyfry, spacja, - . : ? %). Nazwa pisza-
+  cego ma kolor jego gracza. Gdy okno jest zamkniete, nowy wpis widac
+  przez 10 s, z dzwiekiem wiadomosci. Przy otwartym czacie litery
+  i cyfry nie dzialaja jako klawisze gry.
 - Gdy jeden gracz wyjdzie z gry (albo zerwie sie polaczenie), drugi
   widzi komunikat i po 4 s wraca do menu startowego.
 
@@ -148,6 +162,8 @@ sa wylaczone - usun nawiasy, zeby wlaczyc.
   SFXAREA=ALL    efekty z calego ekranu (domyslnie tylko z obszaru 320x200
                  wokol srodka, jak w oryginale); SFXAREA=480x300 - wiekszy
   NOSOUND        bez dzwieku
+  LANINFO        w grze LAN zawsze linia LAN (gracz, czas odpowiedzi,
+                 zgodnosc gier); bez niej tylko WAITING / OUT OF STEP
   DATA=sciezka   inna szuflada z danymi gry (domyslnie PROGDIR:data)
 
 Stos programu w ikonie: 1000000 (gra potrzebuje duzego stosu).

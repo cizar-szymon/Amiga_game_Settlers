@@ -1,10 +1,11 @@
 THE SETTLERS - Freeserf for the Amiga with a graphics card
 ==========================================================
 
-Version 0.96 (beta), 26.10.2026
+Version 0.111 (beta), 30.10.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) on an Amiga with a graphics
-card (Picasso96) and a 68040/68060, at up to 800x600. It is based on
+card (Picasso96) and a 68040/68060, at up to 800x600 (4:3) or 960x540
+(16:9). It is based on
 Freeserf, the open source version of the game (GPL-3.0). The graphics,
 sounds and music come from the original Amiga disks, which you need.
 
@@ -40,12 +41,13 @@ CONTROLS
   mouse                    everything in the game (as in the original)
   right button + move      scroll the map
   cursor keys              scroll the map
-  Z, mouse wheel           the map magnified: x2 (above 400x300), x3 (800x600);
+  Z, mouse wheel           the map magnified: x2 (above 400x300), x3 (800x600
+                           and 960x540); none on 640x360;
                            the wheel up/down by a step, Z in turn
   P                        pause (again: continue), PAUSE on the screen
   1 ... 5                  panel buttons
   B                        building sites
-  Tab                      next message
+  Tab                      next message; in a LAN game: the chat box
   +                        game speed: x1.5 / x2 / x2.5 / x3
   -                        slower, down to x0.5
   0                        normal speed (x1)
@@ -66,9 +68,14 @@ SETTINGS IN THE GAME
 --------------------
 
 Options:
-  Screen     resolution: the arrows next to it change it at once
-             (400x300, 640x400, 640x480, 800x600); it is kept for the
-             next start
+  Messages   how many messages (None, Few, Most, All)
+  Aspect     the shape of the screen, 4:3 or 16:9 (a click changes it;
+             it always starts at the smallest resolution: 400x300 /
+             640x360)
+  Screen     resolution: the arrows next to it change it at once, within
+             the chosen aspect - 4:3: 400x300, 640x400, 640x480,
+             800x600; 16:9: 640x360, 960x540; it is kept for the next
+             start
 Options -> Amiga:
   about the Amiga; with a Warp accelerator the CPU clock: MC68060 50-100
   MHz in steps of 10 (raising only on a rev. 6 - overclocking, may hang
@@ -123,11 +130,19 @@ During the game:
 - Both Amigas run the same game. Everything you do (building, roads,
   settings, attacks, pause P, speed + - 0) happens on both after about
   0.2 s (longer on a slow WiFi).
-- A LAN line in the top left corner: the other player's name, the
-  response time, "same <step>" - both games agree. WAITING: the game
-  waits for the other side (a slow network). "OUT OF STEP" in red: the
-  games went apart - please report it.
-- A screen larger than 640x480 becomes 640x480 for a LAN game.
+- The LAN line in the top left corner shows only when something is not
+  right: WAITING - the game waits for the other side (a slow network);
+  "OUT OF STEP" in red - the games went apart (please report it); also
+  while a save is sent and when a player has gone. The option LANINFO
+  shows it always: the other player's name, the response time,
+  "same <step>" - both games agree.
+- A screen larger than 640x480 becomes 640x480 for a LAN game
+  (960x540: 640x360).
+- Chat: Tab opens and closes the chat box (Esc closes it too), Return
+  sends a line - up to 32 characters (letters, digits, space, - . : ? %).
+  The name of the writer is in the colour of the writer's player. With
+  the box closed a new line shows for 10 s, with the message sound.
+  While the chat is open, letters and digits are not keys of the game.
 - When one player leaves the game (or the link breaks), the other sees a
   notice and goes back to the start menu after 4 s.
 
@@ -152,6 +167,8 @@ are off - remove the brackets to switch them on.
                  320x200 area around the centre, as in the original);
                  SFXAREA=480x300 - a larger one
   NOSOUND        no sound
+  LANINFO        in a LAN game the LAN line always (player, response time,
+                 games agreeing); without it only WAITING / OUT OF STEP
   DATA=path      another drawer with the game data (default PROGDIR:data)
 
 Program stack in the icon: 1000000 (the game needs a large stack).

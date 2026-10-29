@@ -1,7 +1,7 @@
 THE SETTLERS (Freeserf) na Amige - opis dla programistow
 ========================================================
 
-Wersja 0.96. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
+Wersja 0.111. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
 w repozytorium Settlers.
 
 
@@ -23,13 +23,19 @@ latki z port/freeserf-patches/).
 OPCJE (Shell i Tool Types)
 --------------------------
 
-  MODE=WxH         400x300, 640x400, 640x480, 800x600 (tryby 8-bit karty)
+  MODE=WxH         400x300, 640x400, 640x480, 800x600, 640x360, 960x540
+                   (tryby 8-bit karty; 1280x720 tylko do pomiarow)
+  ZOOMGAP=n        (test) powiekszony widok: zmienione kawalki wiersza
+                   blizej niz n pikseli wysylane razem (domyslnie 16;
+                   100000 = caly odcinek wiersza jak przed 0.104)
   DATA=sciezka     szuflada z danymi (szuka podszuflady amiga)
   LOAD=plik        wczytanie zapisu Freeserf
   NOSOUND          bez dzwieku
   SFXAREA=WxH|ALL  dzwieki mapy z obszaru WxH wokol srodka widoku (domyslnie
                    320x200) albo z calego (Viewport::hear_width/height)
   FPS              licznik klatek Freeserf (tez Options -> Advanced)
+  LANINFO          linia LAN zawsze (LanGame::show_info); bez niej tylko
+                   WAITING, OUT OF STEP, wysylanie zapisu, gracz odszedl
   STATS            co 1 s: liczby do RAM:Settlers-stats.txt i FPS na ekranie
   STATS=FULL       do tego sondy E-clock (spowalniaja!; linia VIEW: ms/s
                    czesci widoku mapy) i zapis muzyki do

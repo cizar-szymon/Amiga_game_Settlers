@@ -6,6 +6,63 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.111 (30.10.2026, beta release)
+--------------------------------
+
+- LAN game: the LAN line under the FPS counter (player, response time,
+  "same") is hidden by default - it shows only with WAITING, OUT OF STEP,
+  while a save is sent and when a player has gone. Always: the option
+  LANINFO (icon Tool Type or in the Shell).
+
+
+0.110 (29.10.2026, test build)
+-------------------------------
+
+- LAN game: on an Amiga with the warpSOCKET stack the server window shows
+  its address (the Server address field was empty).
+
+
+0.109 (29.10.2026, test build)
+-------------------------------
+
+- LAN game: quitting the game on an Amiga with the warpSOCKET stack (e.g.
+  an A4000 with a Warp4070) no longer freezes the whole Amiga - the network
+  process also ends when WaitSelect does not report the Ctrl-C signal.
+
+
+0.108 (27.10.2026, test build)
+------------------------------
+
+- A test build shows TEST and its build number in the top left corner
+  (e.g. TEST 0.108), where the FPS counter is; with Show FPS on, the
+  counter is shown instead.
+
+
+0.107 (27.10.2026, test build)
+------------------------------
+
+- Scrolling the map with the right button: on the release the cursor no
+  longer jumps elsewhere and no box opens of a building that happened to
+  be there.
+
+
+0.106 (27.10.2026, test build)
+------------------------------
+
+- Chat in a LAN game: Tab opens the box (frame and background as the
+  game's boxes), Return sends a line of up to 32 characters, the name in
+  the player's colour; with the box closed a new line shows for 10 s
+  with the message sound.
+- Wide screens 16:9: 640x360 and 960x540.
+- Options: instead of "Fullscreen video" (the game always has its own
+  screen) Aspect 4:3 / 16:9 - it chooses the resolutions of Screen; a
+  change starts at the smallest one. Messages moved under Volume.
+- The magnified map (Z, wheel) faster on large screens: only the changed
+  pieces of the picture go to the card. On 960x540 x2 and x3, on
+  640x360 no magnification.
+- A LAN game goes from a 960x540 screen to 640x360.
+
+
 0.96 (27.10.2026, LAN branch - test build)
 -------------------------------------------
 

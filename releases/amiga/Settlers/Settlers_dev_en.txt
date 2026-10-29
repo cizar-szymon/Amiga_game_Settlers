@@ -1,7 +1,7 @@
 THE SETTLERS (Freeserf) for the Amiga - notes for developers
 ============================================================
 
-Version 0.96. The full description of the port, decisions and
+Version 0.111. The full description of the port, decisions and
 measurements: docs/PORTING.md in the Settlers repository (Polish).
 
 
@@ -23,7 +23,11 @@ the patches in port/freeserf-patches/).
 OPTIONS (Shell and Tool Types)
 ------------------------------
 
-  MODE=WxH         400x300, 640x400, 640x480, 800x600 (the card's 8-bit modes)
+  MODE=WxH         400x300, 640x400, 640x480, 800x600, 640x360, 960x540
+                   (the card's 8-bit modes; 1280x720 only for measurements)
+  ZOOMGAP=n        (a test) the magnified view: changed pieces of a row
+                   closer than n pixels are sent as one (default 16;
+                   100000 = the whole part of a row as before 0.104)
   DATA=path        drawer with the data (it looks in its amiga subdrawer)
   LOAD=file        load a Freeserf save
   NOSOUND          no sound
@@ -31,6 +35,8 @@ OPTIONS (Shell and Tool Types)
                    (default 320x200) or from all of it
                    (Viewport::hear_width/height)
   FPS              Freeserf's frame counter (also Options -> Advanced)
+  LANINFO          the LAN line always (LanGame::show_info); without it
+                   only WAITING, OUT OF STEP, sending a save, player gone
   STATS            every second: numbers to RAM:Settlers-stats.txt, FPS on
                    the screen
   STATS=FULL       plus E-clock probes (they slow the game down!; the VIEW

@@ -6,3 +6,5 @@ AmigaSettlersADF/
 # Freeserf: osobne repozytorium (upstream), przypiety commit w docs/PORTING.md,
 # nasze latki w port/freeserf-patches/
 /freeserf/
+# The full release with the game data - only on this PC (tools/make_release.sh)
+/private/

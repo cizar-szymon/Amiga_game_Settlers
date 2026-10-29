@@ -6,6 +6,62 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.111 (30.10.2026, wydanie beta)
+--------------------------------
+
+- Gra LAN: linia LAN pod licznikiem FPS (gracz, czas odpowiedzi, "same")
+  domyslnie ukryta - pokazuje sie tylko przy WAITING, OUT OF STEP,
+  wysylaniu zapisu i odejsciu gracza. Zawsze: opcja LANINFO (Tool Type
+  ikony albo w Shellu).
+
+
+0.110 (29.10.2026, wersja testowa)
+-----------------------------------
+
+- Gra LAN: na Amidze ze stosem warpSOCKET okno serwera pokazuje jej adres
+  (dotad pole Server address bylo puste).
+
+
+0.109 (29.10.2026, wersja testowa)
+-----------------------------------
+
+- Gra LAN: wyjscie z gry na Amidze ze stosem warpSOCKET (np. A4000 z
+  Warp4070) nie zawiesza juz calej Amigi - proces sieciowy konczy sie
+  takze wtedy, gdy WaitSelect nie zglasza sygnalu Ctrl-C.
+
+
+0.108 (27.10.2026, wersja testowa)
+-----------------------------------
+
+- Wersja testowa ma w lewym gornym rogu napis TEST i numer kompilacji
+  (np. TEST 0.108) - w miejscu licznika FPS; przy wlaczonym Show FPS
+  widac licznik zamiast napisu.
+
+
+0.107 (27.10.2026, wersja testowa)
+-----------------------------------
+
+- Przesuwanie mapy prawym przyciskiem: po puszczeniu przycisku znacznik
+  nie skacze juz w inne miejsce i nie otwiera sie okno budynku, ktory
+  sie tam akurat znalazl.
+
+
+0.106 (27.10.2026, wersja testowa)
+-----------------------------------
+
+- Czat w grze LAN: Tab otwiera okno (ramka i tlo jak w oknach gry),
+  Return wysyla wpis do 32 znakow, nazwa w kolorze gracza; zamkniete
+  okno pokazuje nowy wpis przez 10 s z dzwiekiem wiadomosci.
+- Ekrany panoramiczne 16:9: 640x360 i 960x540.
+- Options: zamiast "Fullscreen video" (gra ma zawsze wlasny ekran)
+  Aspect 4:3 / 16:9 - wybiera, ktore rozdzielczosci sa pod Screen;
+  zmiana zaczyna od najmniejszej. Messages przeniesione pod Volume.
+- Powiekszenie mapy (Z, rolka) szybsze na duzych ekranach: do karty
+  ida tylko zmienione kawalki obrazu. W 960x540 x2 i x3, w 640x360 bez
+  powiekszenia.
+- Gra LAN z ekranu 960x540 przechodzi na 640x360.
+
+
 0.96 (27.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 

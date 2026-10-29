@@ -6,8 +6,9 @@ card and a 68040/68060, at up to 800×600. It is a port of
 game (GPL-3.0), with a native Amiga backend (no SDL): an 8-bit Picasso96 screen,
 Paula sound, the game's own music module and the original Amiga graphics.
 
-**Current version: 0.56 (beta, release candidate)** – the archive is
-[`releases/amiga/Settlers-0.56.lha`](releases/amiga/Settlers-0.56.lha).
+**Current version: 0.111 (beta, 30.10.2026)** – the archive is
+[`releases/amiga/Settlers-0.111.zip`](releases/amiga/Settlers-0.111.zip)
+(the same files unpacked: [`releases/amiga/Settlers`](releases/amiga/Settlers)).
 
 ![The game at 640×480 on a 68060](docs/shots/v1.png)
 
@@ -20,7 +21,7 @@ Paula sound, the game's own music module and the original Amiga graphics.
 
 ## Getting started
 
-1. Unpack `Settlers-0.56.lha` to your hard disk.
+1. Unpack the archive to your hard disk, e.g. `UnZip Settlers-0.111.zip -d Work:Games`.
 2. Copy from the original disks to `Settlers/data/amiga`:
    from disk 3 `gfxheader`, `gfxfast`, `gfxchip`, `sounds`, `extro`;
    from disk 2 `gfxpics`, `music`.
@@ -77,7 +78,7 @@ developers: [`docs/release/amiga/Settlers_dev_en.txt`](docs/release/amiga/Settle
 
 ## Licence and credits
 
-- Freeserf and this port: **GPL-3.0** (`COPYING` in the archive).
+- Freeserf and this port: **GPL-3.0** ([`COPYING`](COPYING), also in the archive).
 - Music player [micromod](https://github.com/martincameron/micromod) by Martin
   Cameron: BSD 3-Clause.
 - The Settlers © Blue Byte. The game data (graphics, sounds, music) comes from

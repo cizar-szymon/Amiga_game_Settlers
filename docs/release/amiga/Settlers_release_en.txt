@@ -6,8 +6,8 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
-0.111 (29.10.2026, test build)
--------------------------------
+0.111 (30.10.2026, beta release)
+--------------------------------
 
 - LAN game: the LAN line under the FPS counter (player, response time,
   "same") is hidden by default - it shows only with WAITING, OUT OF STEP,
