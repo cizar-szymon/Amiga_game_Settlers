@@ -13,8 +13,14 @@ i muzyka pochodza z oryginalnych dyskietek gry na Amige, ktore trzeba miec.
 WYMAGANIA
 ---------
 
-- AmigaOS 3.x, karta graficzna z Picasso96 (tryby 8-bit), np. Warp
-- 68040 albo 68060 (testowane na Warp7060 i Warp1260), ok. 32 MB Fast RAM
+- Amiga 500 / 1200 / 3000 / 4000 z akceleratorem Warp (Warp560, Warp1240,
+  Warp1260, Warp1260 Extreme, Warp7060): port powstal i jest testowany na
+  tych kartach, a szybka grafika Warpa daje rozdzielczosci i liczby
+  klatek podane w tym opisie. Inne Amigi z 68040/68060 i karta Picasso96
+  uruchomia gre, ale wolniej.
+- testowane na: A1200 + Warp1260 Extreme (68060, 100 MHz) oraz
+  A4000 + Warp7060 (68060)
+- AmigaOS 3.x, Picasso96 z trybami ekranu 8-bit, ok. 32 MB Fast RAM
 - oryginalne dyskietki The Settlers na Amige (3 dyskietki)
 
 

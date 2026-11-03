@@ -18,16 +18,15 @@ the F10 key when the bug happens.
 0.110 (29.10.2026, test build)
 -------------------------------
 
-- LAN game: on an Amiga with the warpSOCKET stack the server window shows
-  its address (the Server address field was empty).
+- LAN game with the warpSOCKET stack: the server window shows the
+  address of this Amiga.
 
 
 0.109 (29.10.2026, test build)
 -------------------------------
 
-- LAN game: quitting the game on an Amiga with the warpSOCKET stack (e.g.
-  an A4000 with a Warp4070) no longer freezes the whole Amiga - the network
-  process also ends when WaitSelect does not report the Ctrl-C signal.
+- LAN game with the warpSOCKET stack (e.g. an A4000 with a Warp7060):
+  quitting the game ends the network process cleanly.
 
 
 0.108 (27.10.2026, test build)
@@ -41,9 +40,8 @@ the F10 key when the bug happens.
 0.107 (27.10.2026, test build)
 ------------------------------
 
-- Scrolling the map with the right button: on the release the cursor no
-  longer jumps elsewhere and no box opens of a building that happened to
-  be there.
+- Scrolling the map with the right button: the cursor stays where the
+  scrolling ended, and releasing the button opens no box.
 
 
 0.106 (27.10.2026, test build)
@@ -54,9 +52,8 @@ the F10 key when the bug happens.
   the player's colour; with the box closed a new line shows for 10 s
   with the message sound.
 - Wide screens 16:9: 640x360 and 960x540.
-- Options: instead of "Fullscreen video" (the game always has its own
-  screen) Aspect 4:3 / 16:9 - it chooses the resolutions of Screen; a
-  change starts at the smallest one. Messages moved under Volume.
+- Options: Aspect 4:3 / 16:9 - it chooses the resolutions of Screen; a
+  change starts at the smallest one. Messages under Volume.
 - The magnified map (Z, wheel) faster on large screens: only the changed
   pieces of the picture go to the card. On 960x540 x2 and x3, on
   640x360 no magnification.
@@ -88,21 +85,20 @@ the F10 key when the bug happens.
 -------------------------------------------
 
 - End of a LAN game: each player sees the picture of a win or a loss
-  from their own side (a winning player 2 saw a loss before).
+  from their own side.
 
 
 0.92 (27.10.2026, LAN branch - test build)
 -------------------------------------------
 
-- A LAN game on large maps without a jolt every 5 s (checking that both
-  games agree took up to 0.9 s, now about 3 ms).
+- A LAN game on large maps runs smoothly: checking that both games
+  agree takes about 3 ms.
 
 
 0.91 (27.10.2026, LAN branch - test build)
 -------------------------------------------
 
-- Fix: the Quit button of the start box answered only in its upper
-  half - now on all of it.
+- The Quit button of the start box answers on all its area.
 
 
 0.90 (27.10.2026, LAN branch - test build)
@@ -114,7 +110,7 @@ the F10 key when the bug happens.
 0.89 (27.10.2026, LAN branch - test build)
 -------------------------------------------
 
-- Fix: the wild boar could not be heard (other sounds held the channels).
+- The wild boar's grunt gets a sound channel of its own.
 
 
 0.88 (27.10.2026, LAN branch - test build)
@@ -126,13 +122,13 @@ the F10 key when the bug happens.
 0.87 (26.10.2026, LAN branch - test build)
 -------------------------------------------
 
-- More wild boars in the woods (they were too rare).
+- More wild boars in the woods.
 
 
 0.86 (26.10.2026, LAN branch - test build)
 -------------------------------------------
 
-- Wild boars: now and then, where trees stand around, a dark brown boar
+- Wild boars: from time to time, where trees stand around, a dark brown boar
   walks and grunts (Options -> Advanced -> VIDEO "Wild boars").
 - Smaller letters on the VIDEO and AUDIO buttons.
 
@@ -141,21 +137,21 @@ the F10 key when the bug happens.
 -------------------------------------------
 
 - The Advanced box: VIDEO and AUDIO next to EXIT. VIDEO opens a "Video"
-  box with the sand, rocks and kinds of trees (moved from Advanced);
+  box with the sand, rocks and kinds of trees;
   AUDIO an "Audio" box, empty for now.
 
 
 0.84 (26.10.2026, LAN branch - test build)
 -------------------------------------------
 
-- Birch: the trunk no longer shows through the swaying crown (flicker).
+- Birch: the swaying crown covers the trunk without flicker.
 
 
 0.83 (26.10.2026, LAN branch - test build)
 -------------------------------------------
 
-- A new birch: a white trunk with black marks and an oval crown (own
-  drawing in the style of the game's trees) instead of a recoloured tree.
+- The birch: a white trunk with black marks and an oval crown (own
+  drawing in the style of the game's trees).
 
 
 0.82 (26.10.2026, LAN branch - test build)
@@ -192,8 +188,8 @@ the F10 key when the bug happens.
 0.78 (26.10.2026, LAN branch - test build)
 -------------------------------------------
 
-- Fix: a saved LAN game came broken ("The saved game came broken") when
-  it arrived faster than the game took it.
+- A saved LAN game arrives whole on the other Amiga, also over a fast
+  network.
 
 
 0.77 (26.10.2026, LAN branch - test build)
@@ -322,7 +318,7 @@ the F10 key when the bug happens.
 0.61 (26.10.2026)
 -----------------
 
-- Fix: a saved game can be given any name - the letters (Z, I, P,
+- A saved game can be given any name - the letters (Z, I, P,
   digits, + - 0 ...) go to the name field and not to the game's keys.
   The name field is active as soon as the save box opens; Backspace
   works at the full length too; Esc closes the box.
@@ -332,14 +328,14 @@ the F10 key when the bug happens.
 -----------------
 
 - The Amiga box: a MC68040 clock 20-50 MHz in steps of 1 MHz (no
-  revision - a 68040 does not tell it); a MC68060 as before, 50-100 MHz
-  in steps of 10 MHz.
+  revision - a 68040 does not tell it); a MC68060 50-100 MHz in steps of
+  10 MHz.
 
 
 0.59 (26.10.2026)
 -----------------
 
-- The AMIGA button shorter (just its word), no longer up to EXIT.
+- The AMIGA button just as wide as its word.
 - The Warp firmware with its dot (3.054).
 
 
@@ -367,31 +363,29 @@ the F10 key when the bug happens.
 0.55 (26.10.2026)
 -----------------
 
-- The settings box: the button says QUIT again (it still goes back to
-  the start menu); a new "I" button between SAVE and EXIT shows the keys
-  of the game. The I key shows the same box.
+- The settings box: the QUIT button goes back to the start menu; an "I"
+  button between SAVE and EXIT shows the keys of the game. The I key shows the same box.
 
 
 0.54 (26.10.2026)
 -----------------
 
-- No jerk when the magnification changes (the land is no longer drawn
-  again, it took about 0.3 s).
+- The magnification changes without a jerk (the land is not drawn
+  again).
 
 
 0.53 (26.10.2026)
 -----------------
 
 - Options -> Advanced -> Invert scrolling inverts scrolling with the mouse
-  both ways (it was only up and down). The cursor keys always scroll the
-  way they point.
+  both ways. The cursor keys always scroll the way they point.
 
 
 0.52 (26.10.2026)
 -----------------
 
 - A faster magnified map: only what changed goes to the card. 800x600:
-  x2 30 -> 41 frames/s, x3 44 -> 50 frames/s.
+  x2 41 frames/s, x3 50 frames/s.
 
 
 0.51 (25.10.2026)
@@ -415,7 +409,7 @@ the F10 key when the bug happens.
 0.48 (25.10.2026)
 -----------------
 
-- Fix: after "Making the map" the map preview did not appear.
+- After "Making the map" the map preview appears.
 
 
 0.47 (25.10.2026)
@@ -423,10 +417,9 @@ the F10 key when the bug happens.
 
 - The start menu: the map preview is made only when you stop clicking
   (MAPSIZE, mission, game type) - clicking MAPSIZE from 3 to 8 makes one
-  map instead of five (about 5 s instead of 12 s). Meanwhile the preview
-  area says "Making the map".
-- Making a map about 20% faster (MAPSIZE 8: 6.4 -> 5.3 s on a 68060), the
-  same maps as before.
+  map (about 5 s). Meanwhile the preview area says "Making the map".
+- Making a map: MAPSIZE 8 in about 5.3 s on a 68060, the same maps as
+  the original.
 
 
 0.46 (25.10.2026)
@@ -439,19 +432,17 @@ the F10 key when the bug happens.
 0.45 (25.10.2026)
 -----------------
 
-- The settings box in the game: its EXIT button (was QUIT) goes back to
-  the start menu after the question instead of closing the game.
-- The start menu: the QUIT button in the bottom right corner (was a small
-  EXIT that only hid the menu) asks "Do you want to quit Settlers?" and
+- The settings box in the game: its EXIT button goes back to the start
+  menu after a question.
+- The start menu: the QUIT button in the bottom right corner asks "Do you want to quit Settlers?" and
   Yes closes the game.
 
 
 0.42 (25.10.2026)
 -----------------
 
-- Faster drawing of the landscape: the game starts in about 1.4 s instead
-  of 3 s (the first picture of the map), a smaller jerk when scrolling to
-  a new part of the map (about 58 instead of 75 ms per piece of land).
+- Faster drawing of the landscape: the first picture of the map in about
+  1.4 s, about 58 ms per new piece of land when scrolling.
 
 
 0.41 (25.10.2026)
@@ -466,9 +457,8 @@ the F10 key when the bug happens.
 -----------------
 
 - Game speed keys: + speeds up to x1.5, x2, x2.5 and x3, - slows down but
-  not below the normal speed, 0 goes back to normal. Before, + had no
-  limit (up to x20) and - stopped the game. In a pause (P) + and - set the
-  speed the game goes on with.
+  not below the normal speed, 0 goes back to normal. In a pause (P) + and
+  - set the speed the game goes on with.
 
 
 0.39 (25.10.2026)
@@ -476,50 +466,48 @@ the F10 key when the bug happens.
 
 - The start picture stays for at least 4 seconds, with the music when it
   is on in the game.
-- Fix: with the music off it played for a moment at the start. Now it
-  does not start at all; switched on later (M, Options) it plays.
+- With the music off the game starts in silence; switched on later (M,
+  Options) the music plays.
 
 
 0.38 (25.10.2026)
 -----------------
 
-- Fix: buzzing, "overdriven" sound effects (hammer blows, digging,
-  sawing, smithing). The sounds of serfs and buildings are started by the
-  drawing and at a high frame rate started several times in one animation
-  phase, cutting each other short. Now once per phase, as in the original.
+- Clean sound effects at any frame rate (hammer blows, digging, sawing,
+  smithing): each sound of serfs and buildings starts once per animation
+  phase, as in the original.
 
 
 0.37 (25.10.2026)
 -----------------
 
 - Paths and borders drawn once into the landscape tiles (again only when
-  they change), not into every frame: a game with many roads 31 -> 44
-  frames/s (640x400, 68060). Roads at the bottom edge of the screen are
-  no longer cut off.
+  they change), not into every frame: a game with many roads 44
+  frames/s (640x400, 68060). Roads are drawn whole up to the bottom edge
+  of the screen.
 
 
 0.36 (25.10.2026)
 -----------------
 
 - Faster drawing of a map with many serfs: a game with some buildings and
-  many carriers 14 -> 32 frames/s (640x400, 68060), the test scene
-  43 -> 50 frames/s. The head of every serf is no longer decoded from the
-  data in every frame.
+  many carriers 32 frames/s (640x400, 68060), the test scene 50
+  frames/s.
 
 
 0.35 (25.10.2026)
 -----------------
 
 - Sound effects only from around the centre of the map (a 320x200 area,
-  the original's screen): at high resolutions many sounds no longer
-  overlap. Tool Type SFXAREA=ALL - as before, from the whole screen;
+  the original's screen), so at high resolutions the sounds do not pile
+  up. Tool Type SFXAREA=ALL - from the whole screen;
   SFXAREA=WxH - another area. No effect on the speed.
 
 
 0.34 (25.10.2026)
 -----------------
 
-- A start picture instead of a grey screen for the first seconds: the file
+- A start picture for the first seconds: the file
   data/start.iff (IFF ILBM), when it is there; without it the screen is
   black.
 
@@ -527,9 +515,8 @@ the F10 key when the bug happens.
 0.33 (25.10.2026)
 -----------------
 
-- Faster loading and saving: loading about 4 times faster (2.2 -> 0.6 s),
-  saving about 7 times faster (3.4 -> 0.5 s) on a 68060. This also
-  helps the autosave, the quick save (Ctrl+Z) and F10.
+- Fast loading and saving: loading about 0.6 s, saving about 0.5 s on a
+  68060 - also the autosave, the quick save (Ctrl+Z) and F10.
 
 
 0.32 (25.10.2026) - first beta

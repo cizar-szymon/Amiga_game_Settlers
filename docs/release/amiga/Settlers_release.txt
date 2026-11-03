@@ -18,16 +18,14 @@ zapisane klawiszem F10 w chwili bledu.
 0.110 (29.10.2026, wersja testowa)
 -----------------------------------
 
-- Gra LAN: na Amidze ze stosem warpSOCKET okno serwera pokazuje jej adres
-  (dotad pole Server address bylo puste).
+- Gra LAN ze stosem warpSOCKET: okno serwera pokazuje adres tej Amigi.
 
 
 0.109 (29.10.2026, wersja testowa)
 -----------------------------------
 
-- Gra LAN: wyjscie z gry na Amidze ze stosem warpSOCKET (np. A4000 z
-  Warp4070) nie zawiesza juz calej Amigi - proces sieciowy konczy sie
-  takze wtedy, gdy WaitSelect nie zglasza sygnalu Ctrl-C.
+- Gra LAN ze stosem warpSOCKET (np. A4000 z Warp7060): przy wyjsciu z
+  gry proces sieciowy konczy sie poprawnie.
 
 
 0.108 (27.10.2026, wersja testowa)
@@ -42,8 +40,8 @@ zapisane klawiszem F10 w chwili bledu.
 -----------------------------------
 
 - Przesuwanie mapy prawym przyciskiem: po puszczeniu przycisku znacznik
-  nie skacze juz w inne miejsce i nie otwiera sie okno budynku, ktory
-  sie tam akurat znalazl.
+  zostaje tam, gdzie skonczylo sie przesuwanie, i nie otwiera sie zadne
+  okno.
 
 
 0.106 (27.10.2026, wersja testowa)
@@ -53,9 +51,8 @@ zapisane klawiszem F10 w chwili bledu.
   Return wysyla wpis do 32 znakow, nazwa w kolorze gracza; zamkniete
   okno pokazuje nowy wpis przez 10 s z dzwiekiem wiadomosci.
 - Ekrany panoramiczne 16:9: 640x360 i 960x540.
-- Options: zamiast "Fullscreen video" (gra ma zawsze wlasny ekran)
-  Aspect 4:3 / 16:9 - wybiera, ktore rozdzielczosci sa pod Screen;
-  zmiana zaczyna od najmniejszej. Messages przeniesione pod Volume.
+- Options: Aspect 4:3 / 16:9 - wybiera, ktore rozdzielczosci sa pod
+  Screen; zmiana zaczyna od najmniejszej. Messages pod Volume.
 - Powiekszenie mapy (Z, rolka) szybsze na duzych ekranach: do karty
   ida tylko zmienione kawalki obrazu. W 960x540 x2 i x3, w 640x360 bez
   powiekszenia.
@@ -87,21 +84,20 @@ zapisane klawiszem F10 w chwili bledu.
 -----------------------------------------------
 
 - Koniec gry LAN: kazdy gracz widzi obrazek zwyciestwa albo porazki ze
-  swojej strony (wygrywajacy gracz 2 widzial wczesniej porazke).
+  swojej strony.
 
 
 0.92 (27.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 
-- Gra LAN na duzych mapach bez szarpniecia co 5 s (sprawdzanie
-  zgodnosci obu gier trwalo do 0,9 s, teraz ok. 3 ms).
+- Gra LAN na duzych mapach dziala plynnie: sprawdzanie zgodnosci obu
+  gier trwa ok. 3 ms.
 
 
 0.91 (27.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 
-- Poprawka: przycisk Quit w oknie startu reagowal tylko w gornej
-  polowie - teraz na calej powierzchni.
+- Przycisk Quit w oknie startu reaguje na calej powierzchni.
 
 
 0.90 (27.10.2026, galaz LAN - wersja testowa)
@@ -113,7 +109,7 @@ zapisane klawiszem F10 w chwili bledu.
 0.89 (27.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 
-- Poprawka: glosu dzika nie bylo slychac (inne odglosy zajmowaly kanaly).
+- Glos dzika ma wlasne miejsce wsrod kanalow dzwieku.
 
 
 0.88 (27.10.2026, galaz LAN - wersja testowa)
@@ -125,7 +121,7 @@ zapisane klawiszem F10 w chwili bledu.
 0.87 (26.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 
-- Wiecej dzikow w lasach (byly za rzadko).
+- Wiecej dzikow w lasach.
 
 
 0.86 (26.10.2026, galaz LAN - wersja testowa)
@@ -140,21 +136,21 @@ zapisane klawiszem F10 w chwili bledu.
 -----------------------------------------------
 
 - Okno Advanced: obok EXIT przyciski VIDEO i AUDIO. VIDEO otwiera okno
-  "Video" z ustawieniami piasku, skal i rodzajow drzew (przeniesione z
-  Advanced); AUDIO - okno "Audio", na razie puste.
+  "Video" z ustawieniami piasku, skal i rodzajow drzew; AUDIO - okno
+  "Audio", na razie puste.
 
 
 0.84 (26.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 
-- Brzoza: pien nie przeswituje juz przez kolyszaca sie korone (miganie).
+- Brzoza: kolyszaca sie korona zaslania pien bez migania.
 
 
 0.83 (26.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 
-- Nowa brzoza: bialy pien w czarne plamy i owalna korona (wlasny
-  rysunek w stylu drzew gry) zamiast przebarwionego drzewa.
+- Brzoza: bialy pien w czarne plamy i owalna korona (wlasny rysunek
+  w stylu drzew gry).
 
 
 0.82 (26.10.2026, galaz LAN - wersja testowa)
@@ -192,8 +188,8 @@ zapisane klawiszem F10 w chwili bledu.
 0.78 (26.10.2026, galaz LAN - wersja testowa)
 -----------------------------------------------
 
-- Poprawka: przesylany zapis gry LAN docieral uszkodzony ("The saved
-  game came broken"), gdy przychodzil szybciej, niz gra go odbierala.
+- Przesylany zapis gry LAN dociera do drugiej Amigi w calosci, takze
+  przez szybka siec.
 
 
 0.77 (26.10.2026, galaz LAN - wersja testowa)
@@ -320,7 +316,7 @@ zapisane klawiszem F10 w chwili bledu.
 0.61 (26.10.2026)
 -----------------
 
-- Poprawka: przy zapisie gry nazwe mozna wpisac dowolna - litery (Z, I,
+- Przy zapisie gry nazwe mozna wpisac dowolna - litery (Z, I,
   P, cyfry, + - 0 ...) trafiaja do pola nazwy, a nie do skrotow gry.
   Pole nazwy jest od razu aktywne po otwarciu okna zapisu; Backspace
   dziala takze przy pelnej dlugosci nazwy; Esc zamyka okno.
@@ -330,14 +326,13 @@ zapisane klawiszem F10 w chwili bledu.
 -----------------
 
 - Okno Amiga: dla MC68040 zegar 20-50 MHz co 1 MHz (bez rewizji -
-  na 68040 nie da sie jej odczytac); MC68060 jak dotad 50-100 MHz co
-  10 MHz.
+  na 68040 nie da sie jej odczytac); MC68060 50-100 MHz co 10 MHz.
 
 
 0.59 (26.10.2026)
 -----------------
 
-- Przycisk AMIGA krotszy (tylko napis), nie siega juz do EXIT.
+- Przycisk AMIGA tak szeroki jak jego napis.
 - Firmware Warpa z kropka (3.054).
 
 
@@ -364,31 +359,29 @@ zapisane klawiszem F10 w chwili bledu.
 0.55 (26.10.2026)
 -----------------
 
-- Okno ustawien: przycisk znow z napisem QUIT (dzialanie bez zmian:
-  wyjscie do menu startowego); nowy przycisk "I" miedzy SAVE i EXIT -
-  okienko z klawiszami gry. To samo okienko pod klawiszem I.
+- Okno ustawien: przycisk QUIT wraca do menu startowego; przycisk "I"
+  miedzy SAVE i EXIT - okienko z klawiszami gry. To samo okienko pod klawiszem I.
 
 
 0.54 (26.10.2026)
 -----------------
 
-- Bez przyciecia przy zmianie powiekszenia (teren nie jest juz rysowany
-  od nowa, bylo ok. 0,3 s).
+- Zmiana powiekszenia bez przyciecia (teren nie jest rysowany od nowa).
 
 
 0.53 (26.10.2026)
 -----------------
 
 - Options -> Advanced -> Invert scrolling odwraca przewijanie mysza
-  w obu kierunkach (bylo tylko w pionie). Strzalki przewijaja zawsze
-  w kierunku, ktory wskazuja.
+  w obu kierunkach. Strzalki przewijaja zawsze w kierunku, ktory
+  wskazuja.
 
 
 0.52 (26.10.2026)
 -----------------
 
 - Szybsze powiekszenie: na karte idzie tylko to, co sie zmienilo.
-  800x600: x2 30 -> 41 klatek/s, x3 44 -> 50 klatek/s.
+  800x600: x2 41 klatek/s, x3 50 klatek/s.
 
 
 0.51 (25.10.2026)
@@ -411,7 +404,7 @@ zapisane klawiszem F10 w chwili bledu.
 0.48 (25.10.2026)
 -----------------
 
-- Poprawka: po "Making the map" nie pojawial sie podglad mapy.
+- Po "Making the map" pojawia sie podglad mapy.
 
 
 0.47 (25.10.2026)
@@ -419,10 +412,9 @@ zapisane klawiszem F10 w chwili bledu.
 
 - Menu startowe: podglad mapy robi sie dopiero, gdy przestaniesz klikac
   (MAPSIZE, misja, typ gry) - klikanie MAPSIZE z 3 do 8 to jedna mapa
-  zamiast pieciu (ok. 5 s zamiast 12 s). W tym czasie w miejscu podgladu
-  jest napis "Making the map".
-- Generowanie mapy ok. 20% szybsze (MAPSIZE 8: 6,4 -> 5,3 s na 68060),
-  mapy takie same jak wczesniej.
+  (ok. 5 s). W tym czasie w miejscu podgladu jest napis "Making the map".
+- Generowanie mapy: MAPSIZE 8 ok. 5,3 s na 68060, mapy takie same jak
+  w oryginale.
 
 
 0.46 (25.10.2026)
@@ -434,19 +426,17 @@ zapisane klawiszem F10 w chwili bledu.
 0.45 (25.10.2026)
 -----------------
 
-- Okno ustawien w grze: przycisk EXIT (dawniej QUIT) po potwierdzeniu
-  wraca do menu startowego zamiast zamykac gre.
-- Menu startowe: przycisk QUIT w prawym dolnym rogu (dawniej maly EXIT,
-  ktory tylko chowal menu) pyta "Do you want to quit Settlers?" i po Yes
+- Okno ustawien w grze: przycisk EXIT po potwierdzeniu wraca do menu
+  startowego.
+- Menu startowe: przycisk QUIT w prawym dolnym rogu pyta "Do you want to quit Settlers?" i po Yes
   zamyka gre.
 
 
 0.42 (25.10.2026)
 -----------------
 
-- Szybsze rysowanie terenu: start gry ok. 1,4 s zamiast 3 s (pierwszy
-  obraz mapy), mniejsze szarpniecie przy przewijaniu na nowy obszar mapy
-  (ok. 58 zamiast 75 ms na kawalek terenu).
+- Szybsze rysowanie terenu: pierwszy obraz mapy po ok. 1,4 s, przy
+  przewijaniu ok. 58 ms na nowy kawalek terenu.
 
 
 0.41 (25.10.2026)
@@ -460,9 +450,8 @@ zapisane klawiszem F10 w chwili bledu.
 -----------------
 
 - Tempo gry klawiszami: + przyspiesza do x1,5, x2, x2,5 i x3, - zwalnia,
-  ale nie ponizej normalnego, 0 wraca do normalnego. Wczesniej + nie mialo
-  granicy (do x20), a - zatrzymywalo gre. W pauzie (P) + i - zmieniaja
-  tempo, z ktorym gra ruszy.
+  ale nie ponizej normalnego, 0 wraca do normalnego. W pauzie (P) + i -
+  zmieniaja tempo, z ktorym gra ruszy.
 
 
 0.39 (25.10.2026)
@@ -470,60 +459,55 @@ zapisane klawiszem F10 w chwili bledu.
 
 - Obraz startowy zostaje co najmniej 4 sekundy, z muzyka w tle, jesli
   muzyka jest wlaczona w grze.
-- Poprawka: przy wylaczonej muzyce grala przez chwile na starcie. Teraz
-  w ogole sie nie wlacza; wlaczona pozniej (M, Options) gra normalnie.
+- Przy wylaczonej muzyce gra startuje w ciszy; wlaczona pozniej (M,
+  Options) muzyka gra normalnie.
 
 
 0.38 (25.10.2026)
 -----------------
 
-- Poprawka: brzeczace, "przesterowane" efekty (uderzenia mlotkiem,
-  kopanie, pilowanie, kucie). Dzwieki postaci i budynkow sa uruchamiane
-  przez rysowanie i przy wysokiej liczbie klatek startowaly kilka razy
-  w jednej fazie animacji, ucinajac sie nawzajem. Teraz raz na faze, jak
-  w oryginale.
+- Czyste efekty dzwiekowe przy kazdej liczbie klatek (uderzenia
+  mlotkiem, kopanie, pilowanie, kucie): kazdy dzwiek postaci i budynkow
+  startuje raz na faze animacji, jak w oryginale.
 
 
 0.37 (25.10.2026)
 -----------------
 
 - Drogi i granice rysowane raz w kafelkach terenu (od nowa tylko po
-  zmianie), a nie w kazdej klatce: gra z wieloma drogami 31 -> 44
-  klatek/s (640x400, 68060). Drogi przy dolnej krawedzi ekranu nie sa
-  juz uciete.
+  zmianie), a nie w kazdej klatce: gra z wieloma drogami 44 klatek/s
+  (640x400, 68060). Drogi sa rysowane w calosci az do dolnej krawedzi
+  ekranu.
 
 
 0.36 (25.10.2026)
 -----------------
 
 - Szybsze rysowanie mapy z wieloma postaciami: gra z kilkoma budynkami
-  i wieloma tragarzami 14 -> 32 klatek/s (640x400, 68060), scena testowa
-  43 -> 50 klatek/s. Glowa kazdej postaci nie jest juz dekodowana z danych
-  w kazdej klatce.
+  i wieloma tragarzami 32 klatek/s (640x400, 68060), scena testowa
+  50 klatek/s.
 
 
 0.35 (25.10.2026)
 -----------------
 
 - Efekty dzwiekowe tylko z okolic srodka mapy (obszar 320x200 jak ekran
-  oryginalu): w duzych rozdzielczosciach nie naklada sie juz wiele
-  dzwiekow naraz. Tool Type SFXAREA=ALL - jak wczesniej, z calego
-  ekranu; SFXAREA=SxW - inny obszar. Bez wplywu na szybkosc.
+  oryginalu), wiec w duzych rozdzielczosciach dzwieki sie nie
+  nakladaja. Tool Type SFXAREA=ALL - z calego ekranu; SFXAREA=SxW - inny obszar. Bez wplywu na szybkosc.
 
 
 0.34 (25.10.2026)
 -----------------
 
-- Obraz startowy zamiast szarego ekranu przez pierwsze sekundy: plik
+- Obraz startowy przez pierwsze sekundy: plik
   data/start.iff (IFF ILBM), jesli jest; bez niego ekran jest czarny.
 
 
 0.33 (25.10.2026)
 -----------------
 
-- Szybsze wczytywanie i zapisywanie gry: wczytanie ok. 4 razy szybciej
-  (2,2 -> 0,6 s), zapis ok. 7 razy szybciej (3,4 -> 0,5 s) na 68060.
-  Dotyczy tez autozapisu, szybkiego zapisu (Ctrl+Z) i F10.
+- Szybkie wczytywanie i zapisywanie gry: wczytanie ok. 0,6 s, zapis
+  ok. 0,5 s na 68060 - takze autozapis, szybki zapis (Ctrl+Z) i F10.
 
 
 0.32 (25.10.2026) - pierwsza wersja beta

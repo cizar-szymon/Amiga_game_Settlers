@@ -6,7 +6,7 @@ z oryginalnych danych z wersji na Amigę. Ogólne zasady: `C:\Workprojects\Amiga
 
 ## Cel
 
-- AmigaOS 3.2, Picasso96, **68060 i 68040** (Warp1260 w A1200, Warp4070 w A4000), Fast RAM.
+- AmigaOS 3.2, Picasso96, **68060 i 68040** (Warp1260 w A1200, Warp7060 w A4000), Fast RAM.
 - Własny ekran P96 **8-bit CLUT**, rozdzielczość z opcji: **640×480** (domyślnie) lub **640×400**; 800×600 do sprawdzenia pomiarem. Opcjonalnie okno na Workbenchu 16-bit.
 - Dane z oryginalnej gry na Amigę (gfxheader, gfxfast, gfxchip, gfxpics, sounds, music).
 - Pełne tempo logiki, **≥ 25 kl./s przy przewijaniu mapy** na Warp1260 / Warp7060 (mierzone na sprzęcie).
@@ -33,6 +33,18 @@ pełna paczka z danymi gry `private/Settlers-0.111-full.zip` tylko lokalnie (`pr
 `COPYING` (GPL-3.0) też w katalogu głównym repo; wersja oficjalna bez napisu TEST
 (`SETTLERS_LABEL ""`). Znacznik `v0.111`.
 
+**Paczka 0.111 według zasad publikacji z `PORTING_PLAN.md` (3.11.2026, ten sam program 0.111):**
+README zaczyna się od docelowego sprzętu (Warp560/1240/1260/1260 Extreme/7060; testowane A1200 +
+Warp1260 Extreme i A4000 + Warp7060 – poprawna nazwa karty Amigi 2 to **Warp7060**, nie 4070);
+te same wymagania w `Settlers.txt` / `_en`. Historia wydań (`Settlers_release*.txt`) opisuje tylko
+obecne działanie (bez „poprawka”, „już nie”, „wcześniej”; stare brzmienie w gicie, commit 8b653e2).
+Nowe w paczce: `Install.txt` / `Install.pdf` (EN/PL/DE, źródło `docs/release/amiga/Install_src.txt`,
+`tools/make_install.py` z OpenDUNE), ikony tekstów otwierające MultiView i ikona szuflady
+`releases/amiga/Settlers.info` (`tools/make_doc_icon.py` + `tools/icon/*.png` z OpenDUNE), ikona gry
+na stałym miejscu 8,4. Sprawdzone na Amidze 1 (Amiga 2 nie odpowiadała): `UnZip` w `RAM:`, bit E
+programu, `Version` 0.111, rozkład ikon w szufladzie, start gry z ikony (ARexx Workbencha
+`ICON ... OPEN`), `Install.txt` w MultiView, zamknięcie przez `breaktask`.
+
 Wcześniej: **kandydat do wydania 0.96** (decyzja użytkownika: zawsze najnowsza sprawdzona wersja; 0.96 z grą
 LAN, sprawdzona przez użytkownika 27.10.2026; gałąź `lan-game` scalona z `amiga-port`, wersja LAN
 zastępuje zwykłą), znacznik `v0.96-rc`, archiwum `releases/amiga/Settlers-0.96.lha`.
@@ -57,7 +69,7 @@ Amiga 2 (27.10.2026): `Settlers` 0.96 z opisami (wcześniej 0.61 i `Settlers-LAN
 | D5 | Obraz: ekran P96 **8-bit CLUT**, `MODE=640x480` (domyślnie), `640x400`, ewentualnie `800x600` (decyzja po pomiarze F4), paleta z danych Amigi. Opcja `SCREEN=WINDOW`: okno na WB 16-bit, konwersja indeks → R5G6B5 przy wysyłce | dane mają 32 kolory; 8-bit to najmniej danych do VRAM; w 8/16-bit blit robi sprzęt Warpa |
 | D6 | Renderer według `Warp RTG Developer notes.pdf`: składanie w Fast RAM (indeksy 8-bit), do VRAM tylko zapis zmienionych prostokątów (MOVE16 przy wyrównaniu do 16 B, inaczej `CopyMemQuick`), przewijanie przez `BltBitMap` w VRAM plus dosyłanie pasków. **Nigdy nie czytamy VRAM.** Korzystamy z doświadczeń AmiXcom (diff-copy, pomijanie niezmienionych klatek) | BltBitMap 514 MB/s, kopia przez CPU w VRAM 5,5 MB/s; odczyt po zapisie kosztuje 0,6 µs |
 | D7 | Dźwięk: Paula (`audio.device`, bufory w Chip RAM). Opcje `SOUND=PAULA\|AHI`, `NOSOUND`. Format pliku `music` rozpoznamy w F5 | Paula najmniej obciąża CPU; AHI przez `warp.audio` jako opcja |
-| D8 | **Bez procesora ARM** (rozszerzenia STM32 nie używamy) | decyzja użytkownika 25.10.2026; Warp1260/4070 i tak ich nie obsługują |
+| D8 | **Bez procesora ARM** (rozszerzenia STM32 nie używamy) | decyzja użytkownika 25.10.2026; Warp1260/7060 i tak ich nie obsługują |
 | D9 | Testy: build PC (SDL3) jako wzorzec, WinUAE (`*_net.uae` z woluminem `WOW:`), prawdziwe A1200 i A4000 przez AmiAgent, katalog `WorkSD:Settlers`. Pomiary wydajności tylko na sprzęcie | WinUAE zaniża koszty VRAM i CIA |
 
 ### Sterowanie
@@ -327,7 +339,7 @@ Wszystkie jako commity w `freeserf/` (gałąź `settlers-pin`) i pliki `port/fre
 - Każda szybka ścieżka ma tryb porównania z wzorcową (`VERIFY`, `--check-render`).
 - **Weryfikacja:** cel fps na A1200; wiersze w tabeli wydajności niżej.
 
-#### Postęp F4 (25.10.2026, Amiga 2: A4000 Warp4070, Workbench zgłasza MC68060)
+#### Postęp F4 (25.10.2026, Amiga 2: A4000 Warp7060, Workbench zgłasza MC68060)
 
 Amiga 1 niedostępna, pomiary na Amidze 2 (`C:/amiga-dev/amiagent-2.cfg`, ten sam układ
 `WorkSD:Settlers`). Według użytkownika (projektanta kart) Warp7060 i Warp1260 mają w praktyce

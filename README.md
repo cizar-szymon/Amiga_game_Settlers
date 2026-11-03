@@ -1,5 +1,12 @@
 # The Settlers for the Amiga with a graphics card
 
+**Made for an Amiga 500 / 1200 / 3000 / 4000 with a Warp accelerator** (Warp560,
+Warp1240, Warp1260, Warp1260 Extreme, Warp7060). The port is developed and tested
+on these cards, and the Warp's fast graphics card is what gives it the resolutions
+(up to 800×600 and 960×540) and the frame rates below. Other Amigas with a
+68040/68060 and a Picasso96 card run the game, but slower.
+Tested on: **A1200 + Warp1260 Extreme** (68060, 100 MHz) and **A4000 + Warp7060** (68060).
+
 The Settlers (Die Siedler, Blue Byte 1993) on an Amiga with a Picasso96 graphics
 card and a 68040/68060, at up to 800×600. It is a port of
 [Freeserf](https://github.com/freeserf/freeserf), the open source version of the
@@ -14,8 +21,9 @@ Paula sound, the game's own music module and the original Amiga graphics.
 
 ## Requirements
 
-- AmigaOS 3.x (3.2 for the mouse wheel), a Picasso96 card with 8-bit modes (e.g. Warp)
-- 68040 or 68060 (tested on Warp1260 and Warp7060), about 32 MB Fast RAM
+- an Amiga with a Warp accelerator (see above), or another 68040/68060 Amiga with
+  a Picasso96 card with 8-bit modes (slower)
+- AmigaOS 3.x (3.2 for the mouse wheel), about 32 MB Fast RAM
 - **the original The Settlers Amiga disks** – the game data is not part of this
   repository or of the archive
 
@@ -27,6 +35,8 @@ Paula sound, the game's own music module and the original Amiga graphics.
    from disk 2 `gfxpics`, `music`.
 3. Double-click the Settlers icon.
 
+The same step by step, in English, Polish and German: `Install.txt` / `Install.pdf`
+in the archive ([`docs/release/amiga/Install_src.txt`](docs/release/amiga/Install_src.txt)).
 The full description for players, the keys and the icon settings (Tool Types):
 [`docs/release/amiga/Settlers_en.txt`](docs/release/amiga/Settlers_en.txt);
 the changes of each version:

@@ -1,0 +1,278 @@
+The Settlers for the Amiga - Install / Instalacja / Installation
+
+  English ............ first
+  Polski ............. dalej (po angielskim)
+  Deutsch ............ am Ende
+
+
+########################################################################
+
+
+THE SETTLERS - INSTALLATION STEP BY STEP
+========================================
+
+What you need: an Amiga with a Warp accelerator (Warp560, Warp1240,
+Warp1260, Warp1260 Extreme, Warp7060) - or another Amiga with a 68040
+or 68060 and a Picasso96 graphics card with 8-bit modes (slower) -
+about 32 MB Fast RAM, AmigaOS 3.x, and the original The Settlers Amiga
+disks (3 disks).
+
+
+STEP 1 - unpack the archive
+---------------------------
+
+Open a Shell and type (Work:Games is only an example):
+
+  UnZip Settlers-0.xx.zip -d Work:Games
+
+This makes the drawer Work:Games/Settlers with the program, its icon,
+the descriptions, this text and the empty drawer data/amiga.
+(UnZip is on Aminet: util/arc/UnZip.)
+
+
+STEP 2 - copy the game data from the original disks
+---------------------------------------------------
+
+The graphics, sounds and music are not in the archive - they come from
+your own disks. Copy these files into Work:Games/Settlers/data/amiga
+(on the Workbench: open the disk with Show all files, drag the files;
+or in a Shell, with the disk in DF0:):
+
+  disk 3:  gfxheader  gfxfast  gfxchip  sounds  extro
+  disk 2:  gfxpics  music
+
+In a Shell, for each file of disk 3, e.g.:
+
+  Copy DF0:gfxheader Work:Games/Settlers/data/amiga
+
+and the same for gfxfast, gfxchip, sounds and extro; then disk 2 in
+DF0: and gfxpics and music.
+
+Disk 1 (the intro) is not needed.
+
+
+STEP 3 - start the game
+-----------------------
+
+Double-click the Settlers icon. The game opens its own screen and
+the start menu. The first time:
+
+- Options -> Aspect: the shape of the screen, 4:3 or 16:9.
+- Options -> Screen: the resolution (4:3: 400x300 up to 800x600,
+  16:9: 640x360 and 960x540), kept for the next start.
+
+Settings are kept in Settlers.ini, saved games in the drawer freeserf
+next to the game.
+
+
+STEP 4 - a game on the network (optional)
+-----------------------------------------
+
+Both Amigas need their own installation (steps 1-3), the same release of
+the program and a TCP/IP stack (e.g. Roadshow); port 6810 (TCP and UDP)
+open between them.
+
+1. One player: in the start box the game type "LAN game" -> Start ->
+   START SERVER, type a name, RUN SERVER.
+2. The other: "LAN game" -> Start -> JOIN SERVER -> SEARCH (or type
+   the server's address), type a name, CONNECT.
+3. The server: START GAME.
+
+
+IF SOMETHING GOES WRONG
+-----------------------
+
+- The game ends at once or says files are missing: the files of step 2
+  are not in Settlers/data/amiga (or DATA= in the icon's Tool Types
+  points elsewhere).
+- No picture / wrong screen: a Picasso96 card with 8-bit (256 colour)
+  screen modes is needed.
+- The game crashes when started from a Shell: it needs a large stack
+  (Stack 1000000); the icon has it already.
+- An error in the game: press F10, then send RAM:Settlers-state.save and
+  RAM:Settlers-state.txt with the release number (start screen, or
+  "Version Settlers" in a Shell).
+
+More: Settlers_en.txt (all options and keys).
+
+
+########################################################################
+
+
+THE SETTLERS - INSTALACJA KROK PO KROKU
+=======================================
+
+Potrzebne: Amiga z akceleratorem Warp (Warp560, Warp1240, Warp1260,
+Warp1260 Extreme, Warp7060) - albo inna Amiga z 68040 lub 68060 i kartą
+graficzną Picasso96 z trybami 8-bit (wolniej) - ok. 32 MB Fast RAM,
+AmigaOS 3.x oraz oryginalne dyskietki The Settlers na Amigę
+(3 dyskietki).
+
+
+KROK 1 - rozpakuj archiwum
+--------------------------
+
+Otwórz Shell i wpisz (Work:Games to tylko przykład):
+
+  UnZip Settlers-0.xx.zip -d Work:Games
+
+Powstanie szuflada Work:Games/Settlers z programem, ikoną, opisami, tym
+tekstem i pustą szufladą data/amiga.
+(UnZip jest na Aminecie: util/arc/UnZip.)
+
+
+KROK 2 - skopiuj dane gry z oryginalnych dyskietek
+--------------------------------------------------
+
+Grafiki, dźwięki i muzyki nie ma w archiwum - pochodzą z Twoich
+dyskietek. Skopiuj te pliki do Work:Games/Settlers/data/amiga
+(na Workbenchu: otwórz dyskietkę z Pokaż wszystkie pliki i przeciągnij
+pliki; albo w Shellu, z dyskietką w DF0:):
+
+  dyskietka 3:  gfxheader  gfxfast  gfxchip  sounds  extro
+  dyskietka 2:  gfxpics  music
+
+W Shellu, dla każdego pliku z dyskietki 3, np.:
+
+  Copy DF0:gfxheader Work:Games/Settlers/data/amiga
+
+i tak samo gfxfast, gfxchip, sounds i extro; potem dyskietka 2 w DF0:
+i pliki gfxpics oraz music.
+
+Dyskietka 1 (intro) nie jest potrzebna.
+
+
+KROK 3 - uruchom grę
+--------------------
+
+Kliknij dwa razy ikonę Settlers. Gra otwiera własny ekran i menu
+startowe. Za pierwszym razem:
+
+- Options -> Aspect: kształt ekranu, 4:3 albo 16:9.
+- Options -> Screen: rozdzielczość (4:3: od 400x300 do 800x600,
+  16:9: 640x360 i 960x540), zapamiętana na następny start.
+
+Ustawienia są w Settlers.ini, zapisy gry w szufladzie freeserf obok gry.
+
+
+KROK 4 - gra w sieci (opcjonalnie)
+----------------------------------
+
+Obie Amigi potrzebują własnej instalacji (kroki 1-3), tego samego
+wydania programu i stosu TCP/IP (np. Roadshow); port 6810 (TCP i UDP)
+otwarty między nimi.
+
+1. Jeden gracz: w oknie startu typ gry "LAN game" -> Start ->
+   START SERVER, wpisz nazwę, RUN SERVER.
+2. Drugi: "LAN game" -> Start -> JOIN SERVER -> SEARCH (albo wpisz
+   adres serwera), wpisz nazwę, CONNECT.
+3. Serwer: START GAME.
+
+
+GDY COŚ NIE DZIAŁA
+------------------
+
+- Gra od razu się kończy albo pisze, że brakuje plików: pliki z kroku 2
+  nie leżą w Settlers/data/amiga (albo DATA= w Tool Types ikony wskazuje
+  inne miejsce).
+- Brak obrazu / zły ekran: potrzebna karta Picasso96 z trybami 8-bit
+  (256 kolorów).
+- Gra pada przy starcie z Shella: potrzebuje dużego stosu
+  (Stack 1000000); ikona ma go już ustawionego.
+- Błąd w grze: naciśnij F10, potem wyślij RAM:Settlers-state.save
+  i RAM:Settlers-state.txt z numerem wydania (ekran startowy albo
+  "Version Settlers" w Shellu).
+
+Więcej: Settlers.txt (wszystkie opcje i klawisze).
+
+
+########################################################################
+
+
+THE SETTLERS - INSTALLATION SCHRITT FÜR SCHRITT
+===============================================
+
+Was du brauchst: eine Amiga mit Warp-Beschleuniger (Warp560, Warp1240,
+Warp1260, Warp1260 Extreme, Warp7060) - oder eine andere Amiga mit 68040
+oder 68060 und einer Picasso96-Grafikkarte mit 8-Bit-Modi (langsamer) -
+etwa 32 MB Fast-RAM, AmigaOS 3.x und die originalen Disketten von
+Die Siedler / The Settlers für die Amiga (3 Disketten).
+
+
+SCHRITT 1 - das Archiv entpacken
+--------------------------------
+
+Öffne eine Shell und gib ein (Work:Games ist nur ein Beispiel):
+
+  UnZip Settlers-0.xx.zip -d Work:Games
+
+Es entsteht die Schublade Work:Games/Settlers mit dem Programm, seinem
+Icon, den Beschreibungen, dieser Anleitung und der leeren Schublade
+data/amiga. (UnZip gibt es im Aminet: util/arc/UnZip.)
+
+
+SCHRITT 2 - die Spieldaten von den Originaldisketten kopieren
+-------------------------------------------------------------
+
+Grafik, Klänge und Musik sind nicht im Archiv - sie kommen von deinen
+eigenen Disketten. Kopiere diese Dateien nach
+Work:Games/Settlers/data/amiga (auf der Workbench: die Diskette mit
+Alle Dateien zeigen öffnen und die Dateien ziehen; oder in der Shell,
+mit der Diskette in DF0:):
+
+  Diskette 3:  gfxheader  gfxfast  gfxchip  sounds  extro
+  Diskette 2:  gfxpics  music
+
+In der Shell für jede Datei von Diskette 3, z. B.:
+
+  Copy DF0:gfxheader Work:Games/Settlers/data/amiga
+
+und genauso gfxfast, gfxchip, sounds und extro; dann Diskette 2 in
+DF0: und gfxpics und music.
+
+Diskette 1 (das Intro) wird nicht gebraucht.
+
+
+SCHRITT 3 - das Spiel starten
+-----------------------------
+
+Doppelklicke das Icon Settlers. Das Spiel öffnet einen eigenen
+Bildschirm und das Startmenü. Beim ersten Mal:
+
+- Options -> Aspect: die Form des Bildschirms, 4:3 oder 16:9.
+- Options -> Screen: die Auflösung (4:3: 400x300 bis 800x600,
+  16:9: 640x360 und 960x540), gespeichert für den nächsten Start.
+
+Die Einstellungen liegen in Settlers.ini, die Spielstände in der
+Schublade freeserf neben dem Spiel.
+
+
+SCHRITT 4 - ein Spiel im Netzwerk (wahlweise)
+---------------------------------------------
+
+Beide Amigas brauchen ihre eigene Installation (Schritte 1-3), dieselbe
+Version des Programms und einen TCP/IP-Stack (z. B. Roadshow); Port 6810
+(TCP und UDP) muss zwischen ihnen offen sein.
+
+1. Ein Spieler: im Startfenster der Spieltyp "LAN game" -> Start ->
+   START SERVER, einen Namen eingeben, RUN SERVER.
+2. Der andere: "LAN game" -> Start -> JOIN SERVER -> SEARCH (oder die
+   Adresse des Servers eingeben), einen Namen eingeben, CONNECT.
+3. Der Server: START GAME.
+
+
+WENN ETWAS NICHT GEHT
+---------------------
+
+- Das Spiel endet sofort oder meldet fehlende Dateien: die Dateien aus
+  Schritt 2 liegen nicht in Settlers/data/amiga (oder DATA= in den Tool
+  Types des Icons zeigt woanders hin).
+- Kein Bild / falscher Bildschirm: eine Picasso96-Karte mit 8-Bit-Modi
+  (256 Farben) ist nötig.
+- Das Spiel stürzt beim Start aus der Shell ab: es braucht einen großen
+  Stack (Stack 1000000); das Icon hat ihn schon.
+- Ein Fehler im Spiel: F10 drücken, dann RAM:Settlers-state.save und
+  RAM:Settlers-state.txt mit der Versionsnummer schicken (Startbildschirm
+  oder "Version Settlers" in der Shell).
+
+Mehr: Settlers_en.txt (alle Optionen und Tasten, auf Englisch).

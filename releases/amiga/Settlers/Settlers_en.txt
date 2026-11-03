@@ -13,8 +13,14 @@ sounds and music come from the original Amiga disks, which you need.
 REQUIREMENTS
 ------------
 
-- AmigaOS 3.x, a Picasso96 graphics card with 8-bit modes (e.g. Warp)
-- 68040 or 68060 (tested on Warp7060 and Warp1260), about 32 MB Fast RAM
+- an Amiga 500 / 1200 / 3000 / 4000 with a Warp accelerator (Warp560,
+  Warp1240, Warp1260, Warp1260 Extreme, Warp7060): the port is made and
+  tested on these cards, and the fast graphics of the Warp give the
+  resolutions and frame rates of this text. Other Amigas with a
+  68040/68060 and a Picasso96 card run the game, but slower.
+- tested on: A1200 + Warp1260 Extreme (68060, 100 MHz) and
+  A4000 + Warp7060 (68060)
+- AmigaOS 3.x, Picasso96 with 8-bit screen modes, about 32 MB Fast RAM
 - the original The Settlers Amiga disks (3 disks)
 
 
