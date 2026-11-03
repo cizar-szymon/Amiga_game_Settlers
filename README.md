@@ -35,8 +35,8 @@ Paula sound, the game's own music module and the original Amiga graphics.
    from disk 2 `gfxpics`, `music`.
 3. Double-click the Settlers icon.
 
-The same step by step, in English, Polish and German: `Install.txt` / `Install.pdf`
-in the archive ([`docs/release/amiga/Install_src.txt`](docs/release/amiga/Install_src.txt)).
+The same step by step, in English, Polish and German: `Settlers/doc/Install.txt` /
+`Install.pdf` in the archive (all the texts of the archive are in its `doc` drawer) ([`docs/release/amiga/Install_src.txt`](docs/release/amiga/Install_src.txt)).
 The full description for players, the keys and the icon settings (Tool Types):
 [`docs/release/amiga/Settlers_en.txt`](docs/release/amiga/Settlers_en.txt);
 the changes of each version:
@@ -88,7 +88,7 @@ developers: [`docs/release/amiga/Settlers_dev_en.txt`](docs/release/amiga/Settle
 
 ## Licence and credits
 
-- Freeserf and this port: **GPL-3.0** ([`COPYING`](COPYING), also in the archive).
+- Freeserf and this port: **GPL-3.0** ([`COPYING`](COPYING), also in the archive: `Settlers/doc/COPYING`).
 - Music player [micromod](https://github.com/martincameron/micromod) by Martin
   Cameron: BSD 3-Clause.
 - The Settlers © Blue Byte. The game data (graphics, sounds, music) comes from

@@ -25,8 +25,9 @@ Open a Shell and type (Work:Games is only an example):
 
   UnZip Settlers-0.xx.zip -d Work:Games
 
-This makes the drawer Work:Games/Settlers with the program, its icon,
-the descriptions, this text and the empty drawer data/amiga.
+This makes the drawer Work:Games/Settlers with the program and its
+icon, the drawer doc (this text, the descriptions, the licences) and the
+empty drawer data/amiga.
 (UnZip is on Aminet: util/arc/UnZip.)
 
 
@@ -93,7 +94,7 @@ IF SOMETHING GOES WRONG
   RAM:Settlers-state.txt with the release number (start screen, or
   "Version Settlers" in a Shell).
 
-More: Settlers_en.txt (all options and keys).
+More: doc/Settlers_en.txt (all options and keys).
 
 
 ########################################################################
@@ -116,8 +117,8 @@ Otworz Shell i wpisz (Work:Games to tylko przyklad):
 
   UnZip Settlers-0.xx.zip -d Work:Games
 
-Powstanie szuflada Work:Games/Settlers z programem, ikona, opisami, tym
-tekstem i pusta szuflada data/amiga.
+Powstanie szuflada Work:Games/Settlers z programem i jego ikona,
+szuflada doc (ten tekst, opisy, licencje) i pusta szuflada data/amiga.
 (UnZip jest na Aminecie: util/arc/UnZip.)
 
 
@@ -183,7 +184,7 @@ GDY COS NIE DZIALA
   i RAM:Settlers-state.txt z numerem wydania (ekran startowy albo
   "Version Settlers" w Shellu).
 
-Wiecej: Settlers.txt (wszystkie opcje i klawisze).
+Wiecej: doc/Settlers.txt (wszystkie opcje i klawisze).
 
 
 ########################################################################
@@ -206,9 +207,9 @@ SCHRITT 1 - das Archiv entpacken
 
   UnZip Settlers-0.xx.zip -d Work:Games
 
-Es entsteht die Schublade Work:Games/Settlers mit dem Programm, seinem
-Icon, den Beschreibungen, dieser Anleitung und der leeren Schublade
-data/amiga. (UnZip gibt es im Aminet: util/arc/UnZip.)
+Es entsteht die Schublade Work:Games/Settlers mit dem Programm und
+seinem Icon, der Schublade doc (diese Anleitung, die Beschreibungen, die
+Lizenzen) und der leeren Schublade data/amiga. (UnZip gibt es im Aminet: util/arc/UnZip.)
 
 
 SCHRITT 2 - die Spieldaten von den Originaldisketten kopieren
@@ -275,4 +276,4 @@ WENN ETWAS NICHT GEHT
   RAM:Settlers-state.txt mit der Versionsnummer schicken (Startbildschirm
   oder "Version Settlers" in der Shell).
 
-Mehr: Settlers_en.txt (alle Optionen und Tasten, auf Englisch).
+Mehr: doc/Settlers_en.txt (alle Optionen und Tasten, auf Englisch).

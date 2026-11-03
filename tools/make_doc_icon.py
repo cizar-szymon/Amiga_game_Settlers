@@ -112,13 +112,13 @@ def tool_types(types):
     return out
 
 
-def drawer_data():
+def drawer_data(win=(430, 330)):
     """OldDrawerData (the drawer's window: NewWindow + current x, y), placed after the DiskObject"""
-    return struct.pack(">hhhhBBIIIIIIIhhHHHii", 50, 50, 430, 330, 0xFF, 0xFF, 0, 0, 0, 0, 0, 0, 0,
+    return struct.pack(">hhhhBBIIIIIIIhhHHHii", 50, 50, win[0], win[1], 0xFF, 0xFF, 0, 0, 0, 0, 0, 0, 0,
                        90, 40, 0xFFFF, 0xFFFF, 1, 0, 0)
 
 
-def disk_object(rgb, w, h, types, selected=None, drawer=False, project=None, pos=None):
+def disk_object(rgb, w, h, types, selected=None, drawer=False, project=None, pos=None, win=(430, 330)):
     """selected: the image shown when the icon is selected (else the colours inverted);
     drawer: a drawer's icon (WBDRAWER, the window's data) instead of a tool's"""
     flags = 0x0006 if selected else 0x0004	# GADGIMAGE | GADGHIMAGE (two images)
@@ -127,7 +127,7 @@ def disk_object(rgb, w, h, types, selected=None, drawer=False, project=None, pos
     px, py = pos if pos else (-0x80000000, -0x80000000)	# the place in the drawer's window (or none)
     if drawer:
         head = struct.pack(">HH", 0xE310, 1) + gadget + struct.pack(
-            ">BBIIiiIII", 2, 0, 0, 0, px, py, 1, 0, 0) + drawer_data()
+            ">BBIIiiIII", 2, 0, 0, 0, px, py, 1, 0, 0) + drawer_data(win)
         types = []
     elif project:
         # a project (a text): double-click opens it with its default tool
@@ -182,13 +182,14 @@ def main():
     ap.add_argument("--drawer", action="store_true", help="a drawer's icon (the game's directory) instead of the program's")
     ap.add_argument("--project", metavar="TOOL", help="a project's icon (a text) opened by TOOL, e.g. SYS:Utilities/MultiView")
     ap.add_argument("--pos", nargs=2, type=int, metavar=("X", "Y"), help="the icon's place in its drawer's window")
+    ap.add_argument("--window", nargs=2, type=int, default=[430, 330], metavar=("W", "H"), help="a drawer: the size of its window")
     ap.add_argument("--transparent", action="store_true", help="magenta (255,0,255) pixels transparent, the selected image darker")
     args = ap.parse_args()
     x, y, w, h = args.crop
     img = Image.open(args.frame).convert("RGB").crop((x, y, x + w, y + h))
     rgb = list(img.getdata())
     selected = lit_frame(rgb, w, h) if args.lit_frame else dark(rgb) if args.transparent else None
-    open(args.out, "wb").write(disk_object(rgb, w, h, args.tooltypes, selected, args.drawer, args.project, args.pos))
+    open(args.out, "wb").write(disk_object(rgb, w, h, args.tooltypes, selected, args.drawer, args.project, args.pos, tuple(args.window)))
     if args.preview:
         img.resize((w * 6, h * 6), Image.NEAREST).save(args.preview)
         if selected:
