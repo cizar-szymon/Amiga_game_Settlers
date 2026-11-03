@@ -7,7 +7,7 @@
 #   [MODES="800x600 1280x720"] [GAPS="100000 16"] [EXTRA=VERIFY]
 #   sh tools/zoombench.sh [config] [save on the Amiga]
 CFG=${1:-C:/amiga-dev/amiagent-2.cfg}
-SAVE=${2:-WorkSD:Settlers/freeserf/saves/aaazii.save}
+SAVE=${2:-WorkSD:Games/Settlers/freeserf/saves/aaazii.save}
 R="python tools/amiga_remote.py --config $CFG"
 TMP=$(mktemp)
 
@@ -32,7 +32,7 @@ $R run "Copy \"$SAVE\" RAM:zoom.save" >/dev/null || exit 1
 for mode in ${MODES:-800x600 1280x720}; do
   for gap in ${GAPS:-100000 16}; do
     sh tools/amiga_free.sh "$CFG" || exit 1
-    printf 'Stack 1000000\nDelete RAM:Settlers-stats.txt QUIET\nCD WorkSD:Settlers\nWorkSD:Settlers/Settlers LOAD=RAM:zoom.save MODE=%s STATS ZOOMGAP=%s %s\n' $mode $gap "$EXTRA" > $TMP
+    printf 'Stack 1000000\nDelete RAM:Settlers-stats.txt QUIET\nCD WorkSD:Games/Settlers\nWorkSD:Games/Settlers/Settlers LOAD=RAM:zoom.save MODE=%s STATS ZOOMGAP=%s %s\n' $mode $gap "$EXTRA" > $TMP
     $R put $TMP RAM:run-zoom >/dev/null
     $R start "Execute RAM:run-zoom" >/dev/null
     sleep 15

@@ -1,4 +1,4 @@
-Scripts for WorkSD:Settlers on the Amiga (Execute WorkSD:Settlers/<name>):
+Scripts for WorkSD:Games/Settlers on the Amiga (Execute WorkSD:Games/Settlers/<name>):
   run-game     the game from the Shell with STATS (menu)
   run-fps      the measuring scene (scene1.save) with STATS
   run-scene    the scene with STATS=FULL (probes)

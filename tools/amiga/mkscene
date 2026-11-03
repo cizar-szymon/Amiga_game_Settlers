@@ -1,3 +1,3 @@
 Stack 1000000
-WorkSD:Settlers/simtest -m 0 -c -n 6000 -k 6000 -s WorkSD:Settlers/scene1.save >RAM:scene.txt
+WorkSD:Games/Settlers/simtest -m 0 -c -n 6000 -k 6000 -s WorkSD:Games/Settlers/scene1.save >RAM:scene.txt
 Echo >RAM:scene-done.txt done

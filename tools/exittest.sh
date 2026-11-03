@@ -11,7 +11,7 @@ R="python tools/amiga_remote.py --config $CFG"
 sh tools/amiga_free.sh "$CFG" || exit 1
 i=1
 while [ $i -le $RUNS ]; do
-  $R start "Execute WorkSD:Settlers/$SCRIPT" >/dev/null
+  $R start "Execute WorkSD:Games/Settlers/$SCRIPT" >/dev/null
   sleep "$SECS"
   $R stop "$PROG" >/dev/null
   sleep 6

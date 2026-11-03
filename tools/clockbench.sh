@@ -17,9 +17,9 @@ clk=$($R run "WarpTool Diag" | grep -a "clk freq" | sed 's/.*: //; s/\x1b\[[0-9;
 echo "clock set: $clk"
 
 # The logic: 6000 steps of mission 0 with the castle (10 minutes of play).
-printf 'Stack 1000000\nWorkSD:Settlers/simtest -m 0 -c -n 6000 -k 6000 >RAM:simclk.txt\n' > $TMP
-$R put $TMP WorkSD:Settlers/simclk >/dev/null
-$R run "Execute WorkSD:Settlers/simclk" >/dev/null
+printf 'Stack 1000000\nWorkSD:Games/Settlers/simtest -m 0 -c -n 6000 -k 6000 >RAM:simclk.txt\n' > $TMP
+$R put $TMP WorkSD:Games/Settlers/simclk >/dev/null
+$R run "Execute WorkSD:Games/Settlers/simclk" >/dev/null
 logic=$($R run "Type RAM:simclk.txt" | sed -n 's/^done: 6000 steps in \([0-9]*\) ms.*/\1/p')
 echo "$MHZ,logic,6000 steps ms,$logic" >> $OUT
 echo "logic: $logic ms"
@@ -49,9 +49,9 @@ wait_gone() {
 for scene in scene1 scene2; do
   for mode in 400x300 640x400 640x480 800x600; do
     sh tools/amiga_free.sh "$CFG" || exit 1
-    printf 'Stack 1000000\nDelete RAM:Settlers-stats.txt QUIET\nCD WorkSD:Settlers\nWorkSD:Settlers/Settlers LOAD=WorkSD:Settlers/%s.save MODE=%s STATS\n' $scene $mode > $TMP
-    $R put $TMP WorkSD:Settlers/run-clk >/dev/null
-    $R start "Execute WorkSD:Settlers/run-clk" >/dev/null
+    printf 'Stack 1000000\nDelete RAM:Settlers-stats.txt QUIET\nCD WorkSD:Games/Settlers\nWorkSD:Games/Settlers/Settlers LOAD=WorkSD:Games/Settlers/%s.save MODE=%s STATS\n' $scene $mode > $TMP
+    $R put $TMP WorkSD:Games/Settlers/run-clk >/dev/null
+    $R start "Execute WorkSD:Games/Settlers/run-clk" >/dev/null
     sleep 25
     f=$(fps_avg); g=$(gaps)
     echo "$MHZ,$scene,$mode,$f,gaps $g" >> $OUT

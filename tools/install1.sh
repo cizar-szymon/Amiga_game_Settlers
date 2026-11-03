@@ -1,5 +1,5 @@
 #!/bin/sh
-# Puts the whole Settlers setup into WorkSD:Settlers on another Amiga: the
+# Puts the whole Settlers setup into WorkSD:Games/Settlers on another Amiga: the
 # release drawer, the start picture, the test programs, the run scripts and
 # the measuring scene of the user (scene2). scene1 is made there by mkscene.
 # The game data (data/amiga) must already be there.
@@ -7,7 +7,7 @@
 CFG=${1:-C:/amiga-dev/amiagent.cfg}
 SCENE2=$2
 R="python tools/amiga_remote.py --config $CFG"
-D=WorkSD:Settlers
+D=WorkSD:Games/Settlers
 set -e
 $R run "MakeDir $D/data/amiga ALL" >/dev/null || true
 for f in Settlers Settlers.info Settlers.txt Settlers_en.txt Settlers_dev.txt \

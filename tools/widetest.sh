@@ -4,9 +4,9 @@
 # (since 0.103 none on 16:9: Z three times and the wheel up and down must
 # leave the mode as it is).
 #   [MODES="640x360 ..."] [GAME=SETTLERS:] sh tools/widetest.sh [config] [save] [out dir]
-# GAME: the drawer of the game (WorkSD:Settlers, WinUAE SETTLERS:).
+# GAME: the drawer of the game (WorkSD:Games/Settlers, WinUAE SETTLERS:).
 CFG=${1:-C:/amiga-dev/amiagent-2.cfg}
-GAME=${GAME:-WorkSD:Settlers}
+GAME=${GAME:-WorkSD:Games/Settlers}
 case "$GAME" in *:) P=$GAME ;; *) P=$GAME/ ;; esac
 SAVE=${2:-${P}freeserf/saves/aaazii.save}
 OUT=${3:-.}

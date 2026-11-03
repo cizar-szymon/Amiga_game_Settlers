@@ -1,4 +1,4 @@
 Stack 1000000
 Delete RAM:Settlers-stats.txt RAM:Settlers-heap.txt QUIET
-CD WorkSD:Settlers
-WorkSD:Settlers/Settlers-hg LOAD=WorkSD:Settlers/scene1.save STATS
+CD WorkSD:Games/Settlers
+WorkSD:Games/Settlers/Settlers-hg LOAD=WorkSD:Games/Settlers/scene1.save STATS

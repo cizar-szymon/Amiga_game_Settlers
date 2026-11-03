@@ -7,17 +7,17 @@ and the command line (--host, --port, --password). The config file has lines
 "host = 192.168.1.50", "port = 6800", "password = ...".
 
   python tools/amiga_remote.py ping
-  python tools/amiga_remote.py put build/amiga/Settlers WorkSD:Settlers/Settlers
+  python tools/amiga_remote.py put build/amiga/Settlers WorkSD:Games/Settlers/Settlers
   python tools/amiga_remote.py get S:User-Startup user-startup.txt
-  python tools/amiga_remote.py run "List WorkSD:Settlers"
-  python tools/amiga_remote.py start "WorkSD:Settlers/Settlers STATS"
+  python tools/amiga_remote.py run "List WorkSD:Games/Settlers"
+  python tools/amiga_remote.py start "WorkSD:Games/Settlers/Settlers STATS"
   python tools/amiga_remote.py stop Settlers
   python tools/amiga_remote.py titles
   python tools/amiga_remote.py shot screen.png [x y w h]
   python tools/amiga_remote.py key ctrl [ms]          (or a raw key code: key 0x63)
       activates the game window first (title "Settlers"); --window '' to skip
   python tools/amiga_remote.py activate "Settlers"      activate a window by the start of its title
-  python tools/amiga_remote.py deploy [--remote-dir WorkSD:Settlers] [--args "STATS"]
+  python tools/amiga_remote.py deploy [--remote-dir WorkSD:Games/Settlers] [--args "STATS"]
       stop the running game, upload build/amiga/Settlers, start it again
   python tools/amiga_remote.py stats [--wait 5]       the "Settlers ... fps" window title
 """

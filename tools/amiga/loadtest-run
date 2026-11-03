@@ -1,7 +1,7 @@
 Stack 1000000
-WorkSD:Settlers/loadtest WorkSD:Settlers/scene1.save 2 >RAM:lt.txt
-WorkSD:Settlers/loadtest-fm WorkSD:Settlers/scene1.save 2 >>RAM:lt.txt
-WorkSD:Settlers/simtest -m 0 -c -n 30000 -k 30000 -s WorkSD:Settlers/scene3.save >RAM:sc3.txt
-WorkSD:Settlers/loadtest WorkSD:Settlers/scene3.save 1 >>RAM:lt.txt
-WorkSD:Settlers/loadtest-fm WorkSD:Settlers/scene3.save 1 >>RAM:lt.txt
+WorkSD:Games/Settlers/loadtest WorkSD:Games/Settlers/scene1.save 2 >RAM:lt.txt
+WorkSD:Games/Settlers/loadtest-fm WorkSD:Games/Settlers/scene1.save 2 >>RAM:lt.txt
+WorkSD:Games/Settlers/simtest -m 0 -c -n 30000 -k 30000 -s WorkSD:Games/Settlers/scene3.save >RAM:sc3.txt
+WorkSD:Games/Settlers/loadtest WorkSD:Games/Settlers/scene3.save 1 >>RAM:lt.txt
+WorkSD:Games/Settlers/loadtest-fm WorkSD:Games/Settlers/scene3.save 1 >>RAM:lt.txt
 Echo >RAM:lt-done.txt done
