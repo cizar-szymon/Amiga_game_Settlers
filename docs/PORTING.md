@@ -1368,3 +1368,26 @@ Szczegóły w `docs/INTRO.md`, rozdz. 13. Krótko:
   bez różnic.
 - Amiga 2 (Warp 7060): całe intro gra do końca, potem gra startuje normalnie; pominięcie
   klawiszem (AmiAgent `key`) i kliknięciem (użytkownik, `mouse click`) działa; `NOINTRO` działa.
+
+## Pomysł: serwer pośredniczący (RELAY) dla gry przez internet (5.11.2026, odłożone)
+
+Gra przez internet działa dziś, gdy MASTER ma zewnętrzne IP i przekierowany port TCP (sprawdzone
+Polska–Irlandia, 0.117). Dla graczy bez zewnętrznego IP (CGNAT, internet mobilny) plan użytkownika:
+**publiczny serwer pośredniczący u niego w domu, na Raspberry Pi 4** (stały, z kablem Ethernet;
+na próbę Pi400). Czeka, aż użytkownik postawi serwerek.
+
+- **Serwer:** Python asyncio, usługa systemd, zwykły użytkownik bez uprawnień. Przyjmuje połączenia
+  TCP na jednym porcie (przekierowanym na routerze), łączy w pary dwie Amigi z tym samym kodem pokoju
+  i tylko przekazuje bajty. Limity: maks. pokoi (np. 100), połączeń z jednego adresu, rozłączanie
+  bezczynnych, tylko połączenia zaczynające się powitaniem Settlers; „serwer pełny” jako komunikat w grze.
+  Opcjonalnie lista otwartych pokoi (jak SEARCH w LAN).
+- **Gra:** trzeci sposób połączenia „RELAY” w oknie LAN: adres serwera (domyślnie serwer użytkownika,
+  do zmiany) i kod pokoju; MASTER tworzy pokój, SLAVE podaje kod. Po połączeniu wszystko jak dziś
+  (ten sam protokół TCP: synchronizacja, zapisy, czat).
+- **Obciążenie (z pomiarów LAN):** ok. 100 B/s danych, z nagłówkami ok. 0,7 KB/s na Amigę w każdą
+  stronę → 100 gier (200 Amig) ≈ 140 KB/s ≈ 1,1 Mbit/s w każdą stronę, 2–3 tys. małych pakietów/s.
+  RPi 4 z Ethernetem z zapasem; Pi Pico się nie nadaje.
+- **Do ustalenia przy starcie:** port na routerze, nazwa DDNS zamiast zmiennego IP (np. DuckDNS lub
+  DDNS routera), zgoda użytkownika, że nazwa/adres domu będzie publiczny (w grze i na GitHubie).
+- Odrzucone: VPN typu ZeroTier/Tailscale (brak na Amidze OS 3), hole punching (zawodne przy CGNAT
+  i TCP), IPv6 (stosy TCP/IP Amigi go nie obsługują).
