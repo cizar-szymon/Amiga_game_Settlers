@@ -1244,3 +1244,11 @@ włączonej opcji góra/dół były odwrócone). Sprawdził użytkownik (mysz).
 - **Freeserf F10** (nowa gra) zastąpiony standardowym F10 (zapis stanu); menu nowej gry: Ctrl+N.
 - Bez tłumaczeń i bez czcionki `settlers.ttf` – teksty czcionką z danych gry, po angielsku.
 - Liczby wydajności z Amigi 2 (Warp7060); Warp1260 w A1200 jest wydajnościowo równoważny.
+
+## Intro z Amigi – rozpoznanie (4.11.2026)
+
+Faza 0 własnego odtwarzacza oryginalnego intro (Blue Byte 1993): formaty, sceny, plan i pytania
+w `docs/INTRO.md`, narzędzia w `tools/intro/` (wynik w `build/intro/`, poza gitem). Kodu portu
+jeszcze nie zmieniano. Choreografia nagrana z oryginalnego kodu w emulatorze (`emu.py`) jako
+skrypt operacji; odtwarzacz wzorcowy `player_ref.py` daje obraz identyczny we wszystkich 7127
+ramkach i film `build/intro/intro_ref.mp4`.
