@@ -7,6 +7,7 @@
 #                                          micromod licence; the texts with MultiView icons
 #   releases/amiga/Settlers/doc.info       the doc drawer's icon
 #   releases/amiga/Settlers/data/amiga/    empty, a ReadMe: which files of the disks go there
+#   releases/amiga/Settlers/data/intro/    empty, a ReadMe: the intro files of disks 1 and 2
 #   releases/amiga/Settlers.info           the game drawer's icon
 #   releases/amiga/Settlers-<v>.zip        the same as an archive - no game data (in git)
 #   private/Settlers-<v>-full.zip          the same + the game data (data/amiga from
@@ -27,10 +28,11 @@ grep -q '^#define SETTLERS_LABEL ""' port/settlers_version.h || echo "warning: S
 
 # the public tree, made again
 rm -rf "$G"
-mkdir -p "$G/doc" "$G/data/amiga"
+mkdir -p "$G/doc" "$G/data/amiga" "$G/data/intro"
 cp build/amiga/Settlers "$G/Settlers"
 cp "$D/Settlers.info" "$G/Settlers.info"	# the game's icon (Tool Types, stack), at 8,4
 cp "$D/data_ReadMe.txt" "$G/data/amiga/ReadMe.txt"
+cp "$D/data_intro_ReadMe.txt" "$G/data/intro/ReadMe.txt"
 python tools/make_install.py >/dev/null	# Install.txt and Install.pdf (EN, PL, DE) from Install_src.txt
 for f in Settlers.txt Settlers_en.txt Settlers_dev.txt Settlers_dev_en.txt \
          Settlers_release.txt Settlers_release_en.txt Install.txt Install.pdf; do

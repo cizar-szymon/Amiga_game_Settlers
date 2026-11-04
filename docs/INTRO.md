@@ -376,3 +376,27 @@ Kolejność: `emu.py` → `player_ref.py --check` → `make_script.py`, `choreo.
    coppera, bez grafiki i dźwięku) może być częścią wydania? Bez niego odtwarzacz w C++ wymaga
    ręcznego przepisania scen.
 2. Czy przed pisaniem C++ porównać emulator z WinUAE (nagranie prawdziwego intro)?
+
+## 13. Odtwarzacz w porcie (C++, 4.11.2026)
+
+| Plik | Co robi |
+|---|---|
+| `port/intro-player.h/.cc` | wczytanie `intro.script` i sprawdzenie, że są wszystkie pliki (brak → bez intro); wszystkie bloki w jednej arenie (2,7 MB, przydział raz); pliki intro czytane z dysku od razu przy starcie (1,4 MB, bez rozpakowania – wczytanie w środku sceny trwało do 120 ms); operacje; blitter (strumieniowo, przez bufor tylko gdy D nachodzi na źródło inaczej niż w miejscu – także w miejscu z ujemnym modulo); mikser SD00; c2p tylko linii, których dane płaszczyzn się zmieniły; przewijanie pasa o całe linie (scena 1) wykrywane ze wskaźników płaszczyzn – linie tylko przesuwane |
+| `port/intro-amiga.h/.cc` | ekran 640×512 (Warp go ma), inaczej 640×480 z obcięciem 8 linii; podwajanie i zapis tylko zmienionych linii, przewinięcie ekranu blitterem karty (`amiga_screen_move`), tylko zmienione kolory palety; muzyka micromod (gain 64), efekty 8000 Hz w kolejce (≤ 3 ramki) do lewego kanału; pętla 50 Hz z E-clock, obraz pomijany przy spóźnieniu (maks. 4 pod rząd); dowolny klawisz / przycisk myszy kończy intro, Ctrl-C kończy program; priorytet zadania 5 na czas intro; `STATS` → `RAM:Settlers-intro.txt` (czasy na scenę) |
+| `port/introtest.cc`, `tools/intro/check_player.py` | test na PC (MSYS2 g++): CRC każdej ramki i strumień efektów porównane z `player_ref.py`; wynik 7127/7127, 0 różnych próbek |
+| `tools/intro/make_intro_dir.py` | zbiera z `data/disk1`/`disk2` 30 plików + `intro.script` do `build/intro/files` (to, co trafia do `data/intro`) |
+
+Pliki w `data/intro`: FHRS GA00 GA01 GA02 GAB2 GAC2 MUSI PIB1 PIC0 PIC2 SML2 SMP0 SMP2 SPR1
+US00 US02 (dysk 1), GA03 GA04 KMSK KPIC PIB5 PIC3 PIC4 PIC6 SMP3 SMP4 SMP5 US03 US04 US06
+(dysk 2) i `intro.script`. ReadMe dla szuflady: `docs/release/amiga/data_intro_ReadMe.txt`
+(`make_release.sh` robi z niego `data/intro/ReadMe.txt`). Czy `intro.script` może być w
+wydaniu – nadal otwarte (rozdz. 12).
+
+**Pomiary na Amidze 2 (Warp 7060, `STATS`)** – pełny przebieg przed wykrywaniem przewijania:
+143 840 ms na 7192 ramki (dokładnie 50 Hz, logika i dźwięk bez opóźnień), CPU 27,5 % czasu
+ramek; scena 1 (przewijane niebo) 52 %, pozostałe 16–33 %. Pominiętych obrazów ok. 330 z
+7127 (głównie scena 1 i 3), bo pełna zmiana ekranu (256 linii c2p + 512 wierszy na kartę)
+kosztowała ~26 ms. Po dodaniu przewijania blitterem (krótki przebieg 310 ramek sceny 1):
+klatka z przewinięciem ~4,5–11 ms zamiast ~26 ms, CPU sceny 1 27 %, 2 obrazy pominięte.
+Zostają pojedyncze ramki 30–60 ms (operacje sceny 3: wielkie blity, nieznana przyczyna części
+skoków ~17/33 ms także w `LoadRGB32` / oczekiwaniu) – pełny pomiar nowej wersji do zrobienia.

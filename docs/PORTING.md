@@ -1252,3 +1252,16 @@ w `docs/INTRO.md`, narzędzia w `tools/intro/` (wynik w `build/intro/`, poza git
 jeszcze nie zmieniano. Choreografia nagrana z oryginalnego kodu w emulatorze (`emu.py`) jako
 skrypt operacji; odtwarzacz wzorcowy `player_ref.py` daje obraz identyczny we wszystkich 7127
 ramkach i film `build/intro/intro_ref.mp4`.
+
+## Intro z Amigi – odtwarzacz w porcie (0.112 TEST, 4.11.2026)
+
+Szczegóły w `docs/INTRO.md`, rozdz. 13. Krótko:
+- `port/intro-player.*` (rdzeń bez AmigaOS: skrypt, bloki, blitter, mikser efektów, c2p) i
+  `port/intro-amiga.*` (ekran 640×512 lub 640×480 z obcięciem, Paula przez `amiga_audio`,
+  micromod dla MUSI, pętla 50 Hz z E-clock). Wywołanie w `main-amiga.cc` przed wczytaniem
+  danych gry; opcja / Tool Type `NOINTRO`; pliki w `PROGDIR:data/intro` (brak → gra od razu).
+- PC: `introtest` + `tools/intro/check_player.py` – 7127/7127 ramek i wszystkie próbki efektów
+  identyczne z `player_ref.py`; symulacja aktualizacji ekranu (przewijanie + zmienione linie)
+  bez różnic.
+- Amiga 2 (Warp 7060): całe intro gra do końca, potem gra startuje normalnie; pominięcie
+  klawiszem (AmiAgent `key`) i kliknięciem (użytkownik, `mouse click`) działa; `NOINTRO` działa.
