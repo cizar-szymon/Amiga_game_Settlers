@@ -1114,6 +1114,33 @@ Testy (Amiga 1, A1200 + Warp 1260, przez VPN, 4.11.2026; PC 192.168.5.238):
   użytkownika.
 - Znalezione przy okazji (stare, bez zmian): po kliknięciu JOIN SERVER pole adresu nie ma fokusu
   (kliknięcie w okno zdejmuje fokus po obsłudze, `GuiObject::handle_event`), trzeba kliknąć pole.
+- Użytkownik sprawdził pole portu i adres w internecie: działa (4.11.2026).
+
+### Linia LAN tylko przy problemie, na żółto (0.116, 4.11.2026)
+
+Prośba użytkownika: w czasie gry LAN żadnych statystyk połączenia, tylko problem.
+- `LanGame::problem_text()` (pierwszy pasujący): brak łącza „LAN: NO CONNECTION”, „LAN: PLAYER
+  GONE”, „LAN: OUT OF STEP <krok>”, „LAN: SENDING THE GAME <n>%”, „LAN: WAITING FOR <nazwa>” (gra
+  czeka na turę drugiej strony dłużej niż `kShowWaitingMs` = 300 ms – istniejący próg; obejmuje
+  też gracza, który przestał odpowiadać), „LAN: SLOW CONNECTION <ms> MS” (ostatni PING dłuższy
+  niż opóźnienie poleceń `delay × 80 ms`, zwykle 160 ms – wtedy polecenia przychodzą za późno
+  i gra zaraz zacznie czekać; osobnego progu w kodzie nie było).
+- Rysowane na żółto (0xffdd00) na czarnym pasku w miejscu FPS (y 0, ta sama czcionka); gdy FPS
+  albo napis wersji testowej są na ekranie – zaraz pod nimi (y 12). Gdy wszystko w porządku –
+  nic. Okno czatu (y 26) bez zmian.
+- `LANINFO`: cała dawna linia (gracz, PING, `same <krok>`, WAITING, OUT OF STEP na czerwono) pod
+  FPS, jak dotąd; wtedy bez osobnego żółtego napisu.
+- `tools/lan_peer.py connect … --turns` gra jako druga strona (puste tury co 80 ms, 6 do
+  przodu); `--stall AT:FOR` wstrzymuje tury, `--slow-pongs AT:FOR:MS` opóźnia odpowiedzi na PING.
+
+Test (Amiga 1, A1200 + Warp 1260, przez VPN; 0.116 jako `Settlers-test`, MASTER w grze,
+`lan_peer.py --turns --echo-sums` jako SLAVE, zrzuty F9):
+- gra idzie – lewy górny róg pusty; `--stall 20:6` → „LAN: WAITING FOR PCPEER” na żółto; po
+  wznowieniu pusto; `--slow-pongs 36:8:400` → „LAN: SLOW CONNECTION 437 MS”; potem pusto;
+- z opcją `FPS`: „FPS 50”, pod nim żółte WAITING;
+- z `LANINFO`: „LAN PCPEER 21 MS SAME 501”, po odejściu PC „LAN PLAYER GONE SAME 751”;
+- żółtego „PLAYER GONE” bez LANINFO nie złapałem na zrzucie (komunikat trwa 4 s do powrotu do
+  menu); ta sama ścieżka co WAITING.
 
 ## Ekrany panoramiczne 640×360, 960×540 i 1280×720 (0.99–0.100)
 

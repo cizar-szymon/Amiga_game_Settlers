@@ -10,6 +10,11 @@
       --pings N send N pings of our own and print the times there and back;
       --echo-sums sends the server's checksums back (a test of the LAN line
       in the game without a second Amiga)
+      --turns: after the SETUP an empty turn (no commands) every 80 ms, a
+      few ahead, so the server's game goes on as with a real player;
+      --stall AT:FOR stops the turns at AT s after the SETUP for FOR s (the
+      server shows WAITING), --slow-pongs AT:FOR:MS answers PINGs MS late
+      (SLOW CONNECTION); several of each, comma separated
 
 Frames on TCP 6810: length (1 byte: type + data) | type | data.
 --port N (before the mode) uses another port than 6810, TCP and UDP.
@@ -61,14 +66,39 @@ def connect(args):
     print(f"connected in {(time.time() - t0) * 1000:.1f} ms", flush=True)
     hello = bytes([1]) + args.version.encode() + b"\0" + args.name.encode() + b"\0"
     s.sendall(frame(F_HELLO, hello))
-    s.settimeout(0.05)
+    s.settimeout(0.02)
     buf = b""
+    setup_at = None
+    next_turn = 0
+    late_pongs = []
+
+    def windows(spec, parts):
+        out = []
+        for one in (spec or "").split(","):
+            if one:
+                out.append([float(x) for x in one.split(":")][:parts])
+        return out
+
+    stalls = windows(args.stall, 2)
+    slows = windows(args.slow_pongs, 3)
     end = time.time() + args.seconds
     pings_left = args.pings
     sent_at = {}
     times = []
     seq = 0
     while time.time() < end:
+        now = time.time()
+        if setup_at is not None and args.turns:
+            t = now - setup_at
+            stalled = any(a <= t < a + d for a, d in stalls)
+            if not stalled:
+                target = int(t / 0.08) + 6
+                while next_turn <= target:
+                    s.sendall(frame(16 + 2, struct.pack(">I", next_turn) + b"\0"))
+                    next_turn += 1
+        for item in [x for x in late_pongs if x[0] <= now]:
+            s.sendall(frame(F_PONG, item[1]))
+            late_pongs.remove(item)
         if pings_left > 0 and not sent_at:
             seq += 1
             sent_at[seq] = time.perf_counter()
@@ -91,7 +121,16 @@ def connect(args):
                 print(f"HELLO from {name.decode()} version {version.decode()}",
                       flush=True)
             elif ftype == F_PING:
-                s.sendall(frame(F_PONG, data))
+                late = 0
+                if setup_at is not None:
+                    t = time.time() - setup_at
+                    for a, d, ms in slows:
+                        if a <= t < a + d:
+                            late = ms / 1000
+                if late:
+                    late_pongs.append((time.time() + late, data))
+                else:
+                    s.sendall(frame(F_PONG, data))
             elif ftype == F_PONG:
                 n = struct.unpack(">I", data)[0]
                 if n in sent_at:
@@ -99,7 +138,12 @@ def connect(args):
             elif ftype == F_BYE:
                 print(f"BYE: {data.decode('latin-1')}")
                 end = 0
+            elif ftype == 16 + 2:
+                pass  # the server's turns
             else:
+                if ftype == 16 and setup_at is None:
+                    setup_at = time.time()
+                    print(f"{time.strftime('%H:%M:%S')} SETUP", flush=True)
                 print(f"game frame {ftype - 16}: {data.decode('latin-1')}",
                       flush=True)
                 # SUM (game frame 1) back: the server sees its own
@@ -132,6 +176,9 @@ def main():
     pc.add_argument("--seconds", type=float, default=20)
     pc.add_argument("--pings", type=int, default=0)
     pc.add_argument("--echo-sums", action="store_true")
+    pc.add_argument("--turns", action="store_true")
+    pc.add_argument("--stall", default="")
+    pc.add_argument("--slow-pongs", default="")
     args = p.parse_args()
     PORT = args.port
     if args.mode == "listen":

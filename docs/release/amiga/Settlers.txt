@@ -149,11 +149,19 @@ W czasie gry:
 - Obie Amigi licza te sama gre. Wszystko, co robisz (budowa, drogi,
   ustawienia, atak, pauza P, tempo + - 0), dziala u obu po ok. 0,2 s
   (przy wolnym WiFi dluzej).
-- Linia LAN w lewym gornym rogu pojawia sie tylko, gdy cos jest nie tak:
-  WAITING - gra czeka na druga strone (wolna siec); "OUT OF STEP" na
-  czerwono - gry sie rozeszly (zglos blad); takze przy wysylaniu zapisu
-  i po odejsciu gracza. Opcja LANINFO pokazuje ja zawsze: nazwa drugiego
-  gracza, czas odpowiedzi, "same <krok>" - obie gry zgodne.
+- Gdy polaczenie dziala dobrze, na ekranie nie ma o nim nic. Problem
+  pokazuje sie na zolto w lewym gornym rogu (tam, gdzie licznik FPS;
+  przy wlaczonym FPS pod nim):
+    LAN: WAITING FOR <gracz>     gra czeka na druga strone (dluzej niz
+                                 0,3 s - wolna siec albo gracz nie
+                                 odpowiada)
+    LAN: SLOW CONNECTION <n> MS  czas odpowiedzi dluzszy niz opoznienie
+                                 polecen gry (zwykle 160 ms)
+    LAN: OUT OF STEP <krok>      gry sie rozeszly (zglos blad)
+    LAN: SENDING THE GAME <n>%   wysylanie zapisu drugiemu graczowi
+    LAN: PLAYER GONE             drugi gracz odszedl
+  Opcja LANINFO pokazuje zawsze cala linie LAN: nazwa drugiego gracza,
+  czas odpowiedzi, "same <krok>" - obie gry zgodne.
 - Ekran wiekszy niz 640x480 przechodzi na czas gry LAN na 640x480
   (960x540 na 640x360).
 - Czat: Tab otwiera i zamyka okno czatu (Esc tez zamyka), Return wysyla
@@ -185,7 +193,7 @@ sa wylaczone - usun nawiasy, zeby wlaczyc.
                  wokol srodka, jak w oryginale); SFXAREA=480x300 - wiekszy
   NOSOUND        bez dzwieku
   LANINFO        w grze LAN zawsze linia LAN (gracz, czas odpowiedzi,
-                 zgodnosc gier); bez niej tylko WAITING / OUT OF STEP
+                 zgodnosc gier); bez niej tylko problemy na zolto
   DATA=sciezka   inna szuflada z danymi gry (domyslnie PROGDIR:data)
 
 Stos programu w ikonie: 1000000 (gra potrzebuje duzego stosu).

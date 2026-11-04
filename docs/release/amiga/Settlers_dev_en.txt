@@ -36,7 +36,10 @@ OPTIONS (Shell and Tool Types)
                    (Viewport::hear_width/height)
   FPS              Freeserf's frame counter (also Options -> Advanced)
   LANINFO          the LAN line always (LanGame::show_info); without it
-                   only WAITING, OUT OF STEP, sending a save, player gone
+                   only a problem, in yellow where the FPS are
+                   (LanGame::problem_text: player gone, OUT OF STEP,
+                   sending a save, waiting > 300 ms, ping > the delay of
+                   the commands)
   STATS            every second: numbers to RAM:Settlers-stats.txt, FPS on
                    the screen
   STATS=FULL       plus E-clock probes (they slow the game down!; the VIEW

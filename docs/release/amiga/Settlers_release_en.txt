@@ -6,6 +6,15 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.116 (4.11.2026, beta release)
+-------------------------------
+
+- LAN game: while the connection is fine, nothing about it is on the
+  screen. A problem (WAITING FOR, SLOW CONNECTION, OUT OF STEP, SENDING
+  THE GAME, PLAYER GONE) shows in yellow in the top left corner, where
+  the FPS counter is. The whole LAN line: the option LANINFO.
+
+
 0.115 (4.11.2026, beta release)
 -------------------------------
 

@@ -1,0 +1,109 @@
+From 5930588a52fa8664ec666e8161bdb2c9f2099ce0 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Wed, 4 Nov 2026 23:22:15 +0100
+Subject: [PATCH] LAN game: no connection statistics on the screen; a problem
+ only, in yellow where the FPS are (LANINFO: the whole line)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7U35SbB3A5NzJn2rdyq7E
+---
+ src/lan-game.cc | 52 +++++++++++++++++++++++++++++++++++++++++++------
+ src/lan-game.h  |  9 ++++++---
+ 2 files changed, 52 insertions(+), 9 deletions(-)
+
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index ea22aec..2776ae0 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -369,15 +369,55 @@ LanGame::compare() {
+ 
+ bool LanGame::show_info = false;
+ 
+-void
+-LanGame::draw(Frame *frame) {
+-  std::string text = "LAN ";
++/* What is wrong with the connection, "" when all is well:
++   the other player gone, the games out of step, the saved game still
++   being sent, the game waiting for the other side's turn longer than
++   kShowWaitingMs, or a ping longer than the delay of the commands (they
++   come too late: the game is about to wait). */
++std::string
++LanGame::problem_text() {
+   bool waiting = waiting_since != 0 &&
+                  EventLoop::get_instance().get_ticks() - waiting_since >
+                    kShowWaitingMs;
+-  /* the line only when something is not as it should be, or asked for */
+-  bool line = show_info || link == nullptr || gone || out_of_step ||
+-              !save_out.empty() || waiting;
++  if (link == nullptr) return "LAN: NO CONNECTION";
++  if (gone) return "LAN: PLAYER GONE";
++  if (out_of_step) {
++    return "LAN: OUT OF STEP " + std::to_string(out_of_step_at);
++  }
++  if (!save_out.empty()) {
++    return "LAN: SENDING THE GAME " +
++           std::to_string(save_sent * 100 / save_out.size()) + "%";
++  }
++  if (waiting) {
++    std::string name = link->get_peer_name();
++    return "LAN: WAITING FOR " + (name.empty() ? std::string("PLAYER")
++                                               : name);
++  }
++  int ms = link->get_ping_ms();
++  if (ms > static_cast<int>(delay * kTurnSteps * 20)) {
++    return "LAN: SLOW CONNECTION " + std::to_string(ms) + " MS";
++  }
++  return std::string();
++}
++
++void
++LanGame::draw(Frame *frame) {
++  if (!show_info) {
++    /* Only a problem, in yellow, where the FPS are (under them while
++       they or the build label show). */
++    std::string problem = problem_text();
++    if (!problem.empty()) {
++      int y = (interface->get_show_fps() || !Interface::build_label.empty())
++              ? 12 : 0;
++      int w = 8 * static_cast<int>(problem.size()) + 4;
++      frame->fill_rect(0, y, w, 11, Color::black);
++      frame->draw_string(2, y + 2, problem, Color(0xff, 0xdd, 0x00),
++                         Color::transparent);
++    }
++  }
++  std::string text = "LAN ";
++  /* LANINFO: the whole line (peer, ping, checksums) always. */
++  bool line = show_info;
+   if (link == nullptr) {
+     text += "-";
+   } else if (gone) {
+diff --git a/src/lan-game.h b/src/lan-game.h
+index b1ef1db..2bb2136 100644
+--- a/src/lan-game.h
++++ b/src/lan-game.h
+@@ -72,9 +72,10 @@ class LanGame {
+   /* The chat: letters of a line, lines kept and shown. */
+   static const unsigned int kChatLength = 32;
+   static const unsigned int kChatLines = 8;
+-  /* The LAN line under the FPS (peer, ping, "same <step>") also when all is
+-     well; else only WAITING, OUT OF STEP, sending, a player gone (option
+-     LANINFO of the Amiga port). */
++  /* The LAN line under the FPS (peer, ping, "same <step>", WAITING, OUT OF
++     STEP) always (option LANINFO of the Amiga port); else only a problem
++     of the connection, in yellow where the FPS are, and nothing while all
++     is well. */
+   static bool show_info;
+ 
+  protected:
+@@ -152,6 +153,8 @@ class LanGame {
+   void after_step();
+   /* The state of the link in the top left corner of the game. */
+   void draw(Frame *frame);
++  /* What is wrong with the connection now, "" if nothing. */
++  std::string problem_text();
+   bool is_server() const { return server; }
+   /* A key for the chat: Tab opens and closes it, while open it takes the
+      letters (Return sends the line). false: the key is not for it. */
+-- 
+2.45.2.windows.1
+

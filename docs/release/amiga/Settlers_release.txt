@@ -6,6 +6,15 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.116 (4.11.2026, wydanie beta)
+-------------------------------
+
+- Gra LAN: gdy polaczenie dziala dobrze, na ekranie nie ma informacji
+  o nim. Problem (WAITING FOR, SLOW CONNECTION, OUT OF STEP, SENDING THE
+  GAME, PLAYER GONE) pokazuje sie na zolto w lewym gornym rogu, tam
+  gdzie licznik FPS. Cala linia LAN: opcja LANINFO.
+
+
 0.115 (4.11.2026, wydanie beta)
 -------------------------------
 
