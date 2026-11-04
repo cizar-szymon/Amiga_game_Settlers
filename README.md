@@ -25,7 +25,10 @@ Paula sound, the game's own music module and the original Amiga graphics.
   magnified x2 / x3
 - game speed x0.5 … x3, quick save, the keys box
 - a LAN game for two players on two Amigas (plus up to two computer players),
-  with a chat; also over the internet with a forwarded port
+  with a chat; also over the internet with a forwarded port – played between
+  Poland and Ireland (5.11.2026): the server's router forwards the TCP port
+  (6810, set in the game) to its Amiga, the other player types the server's
+  internet address, shown in the server box
 - the original intro of the Amiga game before the game (optional: from the
   files of your own disks 1 and 2)
 
