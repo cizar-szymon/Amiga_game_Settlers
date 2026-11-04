@@ -9,12 +9,18 @@
  * to it through two rings in memory: commands go in with the net_*
  * calls below, events come out with net_event(). None of them waits.
  *
- * On the wire (TCP port 6810, TCP_NODELAY) a frame is
+ * On the wire (TCP, port 6810 unless the players choose another one,
+ * TCP_NODELAY) a frame is
  *   length (1 byte: type + data) | type (1 byte) | data
  * HELLO, BYE, PING and PONG are handled by the process; the frames of the
  * game (types from NET_MSG_GAME) come out as NEV_MSG. A running server
- * announces itself on UDP port 6810 once a second:
+ * announces itself on UDP (the same port) once a second:
  *   "SETTLERS-LAN <protocol> <version> <name>"
+ * A search listens on its port, so it finds only servers on the same one.
+ *
+ * The internet address of this side (for a game over the internet: the
+ * other player types it in) comes from a process of its own, once a run:
+ * an HTTP GET to api.ipify.org (amiga_extip.c).
  */
 
 #ifndef PORT_AMIGA_NET_H_
@@ -24,6 +30,7 @@
 extern "C" {
 #endif
 
+/* The default port, TCP and UDP. */
 #define NET_PORT 6810
 #define NET_PROTOCOL 1
 /* The first type of a frame of the game; smaller ones are the link's. */
@@ -63,10 +70,10 @@ int net_start(const char *version);
 /* Ends the process and closes everything. */
 void net_quit(void);
 
-/* Each replaces what the process did before: */
-void net_serve(const char *name);   /* RUN SERVER */
-void net_search(int ms);            /* listen for servers for ms */
-void net_connect(const char *address, const char *name);
+/* Each replaces what the process did before (port: 1..65535): */
+void net_serve(const char *name, int port);   /* RUN SERVER */
+void net_search(int ms, int port);            /* listen for servers for ms */
+void net_connect(const char *address, const char *name, int port);
 void net_stop(void);                /* back to nothing */
 
 /* TCP_NODELAY on the connections made from now on (default on); off only
@@ -84,6 +91,16 @@ int net_event(NetEvent *event);
 void net_counters(unsigned long *eclocks, unsigned long *frames_out,
                   unsigned long *frames_in, unsigned long *bytes_out,
                   unsigned long *bytes_in);
+
+/* The internet address of this side (amiga_extip.c). The first call of
+   net_external_lookup starts the question, later ones do nothing.
+   net_external_address: 0 while it is not asked or goes on; 1 when done,
+   text is then the address or "" (no internet, no answer in time, not an
+   address). Neither waits. net_external_quit (at the end of the program)
+   waits for the process if it still runs. */
+void net_external_lookup(void);
+int net_external_address(char *text, int size);
+void net_external_quit(void);
 
 #ifdef __cplusplus
 }

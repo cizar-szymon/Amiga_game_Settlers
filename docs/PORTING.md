@@ -1066,6 +1066,55 @@ gracza (do 10 znaków), 8 ostatnich wpisów, linia pisania. Obraz okna rysowany 
 nadejściu, z dźwiękiem wiadomości. Klawisze z Ctrl idą do gry; przy otwartym czacie litery i cyfry
 nie. Sprawdzone przez użytkownika w grze Amiga 2 ↔ WinUAE (0.98).
 
+### Port gry i adres w internecie (0.115, 4.11.2026)
+
+Prośba użytkownika: gra przez internet (przekierowanie portu w routerze) i wybór portu.
+- **Pole Port** w oknie serwera (MASTER, wiersz pod adresami) i w oknie dołączania (SLAVE, pod
+  Server address): tylko cyfry, 1–65535; zła wartość wraca do bieżącej przy utracie fokusu i przed
+  użyciem (RUN SERVER, SEARCH, CONNECT). Jedna wartość dla obu okien, w `Settlers.ini`
+  (`[lan] port`, domyślnie 6810), zapisywana przy zamknięciu okna jak nazwy. Uruchomiony serwer
+  pokazuje port tekstem (pole wraca po STOP SERVER); widok „Connected” ma wiersz Port.
+- Serwer słucha TCP na swoim porcie i rozgłasza się UDP na ten sam port; SEARCH słucha na porcie
+  z pola, więc znajduje tylko serwery z tym samym portem; CONNECT łączy się z adresem i portem
+  z pola. Obie strony muszą mieć ten sam port.
+- `amiga_net`: port w poleceniach C_SERVE / C_SEARCH / C_CONNECT (2 bajty na początku),
+  `net_serve/net_search/net_connect(..., port)`; `LanLink::start_server/search/connect` z portem,
+  `LanLink::kDefaultPort = 6810`. Komunikaty błędów z numerem portu („TCP port 6811 failed”).
+- **Internet address** w oknie serwera (pod Server address): osobny proces „Settlers IP”
+  (`port/amiga_extip.c`, własna baza `bsdsocket.library` przez `#define SocketBase
+  ExtIpSocketBase`), uruchamiany raz na uruchomienie gry przy pierwszym otwarciu okna serwera:
+  `gethostbyname("api.ipify.org")`, gniazdo nieblokujące, `GET / HTTP/1.0` na port 80, odpowiedź
+  do 1 KB; limit 5 s na połączenie i odpowiedź (WaitSelect co 200 ms z flagą wyjścia jak
+  `quit_request`). Treść tylko po „HTTP/1.x 200”, sprawdzona jako IPv4 (4 liczby 0–255) albo
+  IPv6 (cyfry szesnastkowe i dwukropki). W oknie „...” w trakcie, „none” bez odpowiedzi. Gra nie
+  czeka; `LanLinkAmiga::poll` zgłasza zmianę, gdy wynik jest. `net_external_quit` przy końcu gry
+  czeka na proces, jeśli jeszcze działa.
+- Układ okna serwera: wiersze co 9 px od y 38 (Server name, Server address, Internet address,
+  Port, –, Map size, AI players, –, Player 2, Address, Response), przyciski 140 i 159. Okno
+  dołączania: Your name 110, Server address 122, Port 134, przyciski 150. Szerokość bez zmian
+  (352, mieści się w 400×300).
+- Narzędzia: `lantest [PORT=n] serve|search|connect…`, `lantest extip`;
+  `tools/lan_peer.py --port N …`.
+
+Testy (Amiga 1, A1200 + Warp 1260, przez VPN, 4.11.2026; PC 192.168.5.238):
+- `lantest extip`: `83.12.152.135` po 162–170 ms;
+- `lantest PORT=6811 serve` + `lan_peer.py --port 6811 connect`: HELLO, PING ~20 ms; na 6810
+  połączenie odrzucone; `lantest PORT=6811 search` widzi rozgłoszenie PC na 6811, zwykły search
+  (6810) nie;
+- w grze (0.115 jako `Settlers-test`, sterowanie myszą `Diablo/tools/amiga/bin/mouse`, zrzuty
+  klawiszem F9 gry → `RAM:Settlers-shot.ppm`): okno serwera z adresem 192.168.5.115 i Internet
+  address 83.12.152.135; port 6811 → RUN SERVER → PC dołącza na 6811 (Player 2, adres, Response
+  11 ms, port tekstem), na 6810 odrzucone; 99999 wraca do 6811; 6810 → PC dołącza na domyślnym
+  porcie; okno dołączania: port 6812, CONNECT do `lantest PORT=6812 serve` na tej samej Amidze
+  („Different version: lantest” – połączenie na właściwym porcie), SEARCH na 6812 znajduje tylko
+  serwer PC rozgłaszany na 6812 (nie ten na 6810); wyjście z gry bez zawieszenia.
+- Nie sprawdzone: brak internetu („none”) i wyjście z gry w trakcie zapytania (DNS
+  `gethostbyname` blokuje proces „Settlers IP”; przy zawieszonym DNS koniec gry czeka na limit
+  stosu sieciowego). Gra przez prawdziwe przekierowanie portu w routerze – do sprawdzenia przez
+  użytkownika.
+- Znalezione przy okazji (stare, bez zmian): po kliknięciu JOIN SERVER pole adresu nie ma fokusu
+  (kliknięcie w okno zdejmuje fokus po obsłudze, `GuiObject::handle_event`), trzeba kliknąć pole.
+
 ## Ekrany panoramiczne 640×360, 960×540 i 1280×720 (0.99–0.100)
 
 Wszystkie trzy są w 8 bitach na karcie Warp (`modelist`; jest też 1360×768). Options → Screen:

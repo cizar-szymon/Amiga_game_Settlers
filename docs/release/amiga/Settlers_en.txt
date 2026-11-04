@@ -111,7 +111,10 @@ Needed:
 - the same version of the game on both (another version is turned away
   with a message),
 - port 6810 (TCP and UDP) open between the computers; on a PC with
-  WinUAE it has to be let through the Windows firewall.
+  WinUAE it has to be let through the Windows firewall. Another port can
+  be typed into the "Port" field of the server box and of the join box
+  (1-65535, kept in the settings) - both sides need the same one, also
+  for SEARCH.
 
 The one who sets up the game (MASTER):
 1. In the start box switch the game type to "LAN game" (the icon with
@@ -119,8 +122,11 @@ The one who sets up the game (MASTER):
 2. Set up the map as in New game: size, random number, computer players
    (player 1 is you, player 2 the other person). Sand and rocks of the
    map: Options -> Advanced -> VIDEO; the settings of this side count.
-3. Start -> START SERVER. Type the name of the server (MASTER) and click
-   RUN SERVER - the server announces itself in the network.
+3. Start -> START SERVER. Type the name of the server (MASTER), the port
+   if needed (Port, 6810) and click RUN SERVER - the server announces
+   itself in the network. The box shows the address of the Amiga in the
+   local network (Server address) and on the internet (Internet address,
+   "..." while it is checked, "none" without the internet).
 4. When the other player joins, their name, address and response time
    show. Click START GAME.
 
@@ -129,8 +135,20 @@ The one who joins (SLAVE):
 2. SEARCH looks for servers in the network for 3 s; click a server in
    the list or type its IP address into "Server address". Through a VPN
    and between networks the search does not work - type the address.
-3. Type your name (Your name, SLAVE) and click CONNECT.
+3. Type your name (Your name, SLAVE), the port of the server (Port,
+   6810) and click CONNECT.
 4. Wait for the server to start the game - it begins by itself.
+
+Playing over the internet:
+- The one who sets up the game forwards the port of the game (TCP, 6810
+  by default) in the router to the address of their Amiga (Server
+  address in the server box).
+- The one who joins types the internet address of the server (Internet
+  address in its server box) into "Server address", and the same port.
+  SEARCH works only in the local network.
+- The game asks for the internet address once, when the server box
+  opens: an HTTP question to api.ipify.org (port 80) - the only
+  connection to the internet in the game; nothing else is sent.
 
 During the game:
 - Both Amigas run the same game. Everything you do (building, roads,

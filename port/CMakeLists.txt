@@ -55,7 +55,7 @@ if(AMIGA_CPU)
   add_executable(loadtest-fm loadtest.cc amiga_fastmalloc.c ${PLATFORM_SRC})
   target_link_libraries(loadtest-fm fs_game fs_tools)
   # The network calls of a LAN game from the Shell.
-  add_executable(lantest lantest.c amiga_net.c amiga_time.c)
+  add_executable(lantest lantest.c amiga_net.c amiga_extip.c amiga_time.c)
   # The start of a LAN game without the network: the same game twice?
   add_executable(lansim lansim.cc ${FS}/lan-sync.cc ${FS}/lan-command.cc
                 ${FS}/pathfinder.cc ${PLATFORM_SRC})
@@ -66,7 +66,7 @@ if(AMIGA_CPU)
   # The game: Freeserf's GUI with the Amiga platform layer instead of SDL.
   add_library(fs_gui STATIC
     settings-amiga.cc video-amiga.cc event_loop-amiga.cc
-    amiga_screen.c amiga_time.c amiga_sysinfo.c amiga-box.cc lan-amiga.cc amiga_net.c
+    amiga_screen.c amiga_time.c amiga_sysinfo.c amiga-box.cc lan-amiga.cc amiga_net.c amiga_extip.c
     ${FS}/pathfinder.cc ${FS}/advanced-box.cc ${FS}/keys-box.cc ${FS}/lan-box.cc ${FS}/lan-game.cc ${FS}/lan-sync.cc ${FS}/lan-command.cc ${FS}/box-frame.cc
     ${FS}/gfx.cc ${FS}/viewport.cc ${FS}/minimap.cc ${FS}/interface.cc
     ${FS}/gui.cc ${FS}/popup.cc ${FS}/game-init.cc ${FS}/notification.cc

@@ -12,6 +12,7 @@
       in the game without a second Amiga)
 
 Frames on TCP 6810: length (1 byte: type + data) | type | data.
+--port N (before the mode) uses another port than 6810, TCP and UDP.
 """
 import argparse
 import socket
@@ -113,7 +114,9 @@ def connect(args):
 
 
 def main():
+    global PORT
     p = argparse.ArgumentParser()
+    p.add_argument("--port", type=int, default=PORT)
     sub = p.add_subparsers(dest="mode", required=True)
     pl = sub.add_parser("listen")
     pl.add_argument("seconds", nargs="?", type=float, default=15)
@@ -130,6 +133,7 @@ def main():
     pc.add_argument("--pings", type=int, default=0)
     pc.add_argument("--echo-sums", action="store_true")
     args = p.parse_args()
+    PORT = args.port
     if args.mode == "listen":
         listen(args.seconds)
     elif args.mode == "announce":

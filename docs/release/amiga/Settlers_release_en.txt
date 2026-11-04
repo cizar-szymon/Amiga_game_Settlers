@@ -6,6 +6,16 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.115 (4.11.2026, beta release)
+-------------------------------
+
+- LAN game: a Port field in the server box and in the join box (6810 by
+  default, kept in the settings). The server box also shows the internet
+  address of the Amiga - for a game over the internet with the port
+  forwarded in the router (see Settlers_en.txt, "Playing over the
+  internet").
+
+
 0.111 (30.10.2026, beta release)
 --------------------------------
 

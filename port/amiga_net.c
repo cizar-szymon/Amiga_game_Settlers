@@ -209,22 +209,36 @@ int net_event(NetEvent *ev)
   return 1;
 }
 
-void net_serve(const char *name)
+/* The commands with a port carry it first, in 2 bytes. */
+static void put_be16(UBYTE *p, int v)
 {
-  command(C_SERVE, name, (int)strlen(name), NULL, 0);
+  p[0] = (UBYTE)(v >> 8); p[1] = (UBYTE)v;
 }
 
-void net_search(int ms)
+void net_serve(const char *name, int port)
 {
-  UBYTE b[4];
-  put_be32(b, (ULONG)ms);
-  command(C_SEARCH, b, 4, NULL, 0);
+  UBYTE b[2];
+  put_be16(b, port);
+  command(C_SERVE, b, 2, name, (int)strlen(name));
 }
 
-void net_connect(const char *address, const char *name)
+void net_search(int ms, int port)
 {
-  command(C_CONNECT, address, (int)strlen(address) + 1, name,
-          (int)strlen(name) + 1);
+  UBYTE b[6];
+  put_be16(b, port);
+  put_be32(b + 2, (ULONG)ms);
+  command(C_SEARCH, b, 6, NULL, 0);
+}
+
+void net_connect(const char *address, const char *name, int port)
+{
+  UBYTE b[2 + 32];
+  int n = (int)strlen(address) + 1;
+  if (n > 32) n = 32;
+  put_be16(b, port);
+  memcpy(b + 2, address, n);
+  b[2 + n - 1] = 0;
+  command(C_CONNECT, b, 2 + n, name, (int)strlen(name) + 1);
 }
 
 void net_stop(void)
@@ -264,6 +278,8 @@ enum { F_HELLO = 1, F_BYE, F_PING, F_PONG };
 
 static long listen_fd = -1, udp_fd = -1, peer_fd = -1;
 static int searching, connecting, peer_ok, nodelay = 1;
+/* The port of the server, the search or the connection now. */
+static int net_port = NET_PORT;
 static ULONG next_announce, search_end, connect_end, next_ping;
 static char my_name[32], peer_ip[16];
 static UBYTE in_buf[4096];
@@ -428,6 +444,19 @@ static void set_nodelay(long fd)
   setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
 }
 
+static int get_be16(const UBYTE *p)
+{
+  return (p[0] << 8) | p[1];
+}
+
+/* fail() with the port: "TCP port 6810" */
+static void fail_port(const char *what)
+{
+  char text[24];
+  snprintf(text, sizeof(text), "%s port %d", what, net_port);
+  fail(text);
+}
+
 static void start_serving(const UBYTE *name, int len)
 {
   struct sockaddr_in addr;
@@ -442,11 +471,11 @@ static void start_serving(const UBYTE *name, int len)
   setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
-  addr.sin_port = htons(NET_PORT);
+  addr.sin_port = htons(net_port);
   addr.sin_addr.s_addr = htonl(INADDR_ANY);
   if (bind(listen_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0 ||
       listen(listen_fd, 2) < 0) {
-    fail("TCP port 6810");
+    fail_port("TCP");
     close_fd(&listen_fd);
     return;
   }
@@ -473,7 +502,7 @@ static void announce(void)
            net_version, my_name);
   memset(&to, 0, sizeof(to));
   to.sin_family = AF_INET;
-  to.sin_port = htons(NET_PORT);
+  to.sin_port = htons(net_port);
   to.sin_addr.s_addr = htonl(INADDR_BROADCAST);
   sendto(udp_fd, text, strlen(text), 0, (struct sockaddr *)&to, sizeof(to));
 }
@@ -488,10 +517,10 @@ static void start_search(ULONG ms)
   setsockopt(udp_fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
-  addr.sin_port = htons(NET_PORT);
+  addr.sin_port = htons(net_port);
   addr.sin_addr.s_addr = htonl(INADDR_ANY);
   if (bind(udp_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-    fail("UDP port 6810");
+    fail_port("UDP");
     close_fd(&udp_fd);
     return;
   }
@@ -530,7 +559,7 @@ static void start_connect(const UBYTE *data, int len)
   copy_text(my_name, sizeof(my_name), &p, end);
   memset(&to, 0, sizeof(to));
   to.sin_family = AF_INET;
-  to.sin_port = htons(NET_PORT);
+  to.sin_port = htons(net_port);
   to.sin_addr.s_addr = inet_addr((STRPTR)ip);
   if (to.sin_addr.s_addr == INADDR_NONE) {
     event(NEV_ERROR, 0, "Not an address.", NULL, NULL);
@@ -668,9 +697,17 @@ static void read_peer(void)
 static void do_command(int kind, const UBYTE *d, int len)
 {
   switch (kind) {
-    case C_SERVE: start_serving(d, len); break;
-    case C_SEARCH: start_search(len >= 4 ? get_be32(d) : 3000); break;
-    case C_CONNECT: start_connect(d, len); break;
+    case C_SERVE:
+    case C_SEARCH:
+    case C_CONNECT:
+      if (len < 2) break;
+      net_port = get_be16(d);
+      if (net_port <= 0) net_port = NET_PORT;
+      if (kind == C_SERVE) start_serving(d + 2, len - 2);
+      else if (kind == C_SEARCH)
+        start_search(len >= 6 ? get_be32(d + 2) : 3000);
+      else start_connect(d + 2, len - 2);
+      break;
     case C_STOP:
       if (peer_fd >= 0 && !connecting) bye("Disconnected.");
       stop_all();

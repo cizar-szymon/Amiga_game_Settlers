@@ -15,13 +15,16 @@ LanLinkAmiga::LanLinkAmiga()
   : started(false)
   , state(StateIdle)
   , server(false)
-  , ping_ms(-1) {
+  , ping_ms(-1)
+  , external_asked(false)
+  , external_seen(false) {
 }
 
 LanLinkAmiga::~LanLinkAmiga() {
   if (started) {
     net_quit();
   }
+  net_external_quit();
 }
 
 /* The process, at the first use. */
@@ -46,10 +49,17 @@ LanLinkAmiga::forget_peer() {
 
 bool
 LanLinkAmiga::poll() {
-  if (!started) {
-    return false;
-  }
   bool changed = false;
+  if (external_asked && !external_seen) {
+    char text[2];
+    if (net_external_address(text, sizeof(text))) {
+      external_seen = true;
+      changed = true;
+    }
+  }
+  if (!started) {
+    return changed;
+  }
   NetEvent ev;
   while (net_event(&ev)) {
     changed = true;
@@ -123,6 +133,20 @@ LanLinkAmiga::get_address() {
   return address;
 }
 
+bool
+LanLinkAmiga::get_external_address(std::string *address) {
+  char text[48];
+  if (!external_asked) {
+    external_asked = true;
+    net_external_lookup();
+  }
+  if (!net_external_address(text, sizeof(text))) {
+    return false;
+  }
+  *address = text;
+  return true;
+}
+
 std::string
 LanLinkAmiga::take_message() {
   std::string m = message;
@@ -131,32 +155,32 @@ LanLinkAmiga::take_message() {
 }
 
 void
-LanLinkAmiga::start_server(const std::string &name) {
+LanLinkAmiga::start_server(const std::string &name, int port) {
   if (!start()) return;
   forget_peer();
   server = true;
   state = StateServing;
-  net_serve(name.c_str());
+  net_serve(name.c_str(), port);
 }
 
 void
-LanLinkAmiga::search() {
+LanLinkAmiga::search(int port) {
   if (!start()) return;
   forget_peer();
   servers.clear();
   server = false;
   state = StateSearching;
-  net_search(kSearchMs);
+  net_search(kSearchMs, port);
 }
 
 void
-LanLinkAmiga::connect(const std::string &address,
-                      const std::string &name) {
+LanLinkAmiga::connect(const std::string &address, const std::string &name,
+                      int port) {
   if (!start()) return;
   forget_peer();
   server = false;
   state = StateConnecting;
-  net_connect(address.c_str(), name.c_str());
+  net_connect(address.c_str(), name.c_str(), port);
 }
 
 void

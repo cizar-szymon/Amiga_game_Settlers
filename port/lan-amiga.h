@@ -24,6 +24,9 @@ class LanLinkAmiga : public LanLink {
   std::string peer_name;
   std::string peer_address;
   int ping_ms;
+  /* The internet address asked for, its answer seen by poll(). */
+  bool external_asked;
+  bool external_seen;
   std::deque<std::pair<int, std::string>> received;
 
  public:
@@ -36,10 +39,13 @@ class LanLinkAmiga : public LanLink {
   virtual std::string get_address();
   virtual std::string take_message();
 
-  virtual void start_server(const std::string &name);
-  virtual void search();
+  virtual bool get_external_address(std::string *address);
+
+  virtual void start_server(const std::string &name, int port);
+  virtual void search(int port);
   virtual std::vector<Server> get_servers() { return servers; }
-  virtual void connect(const std::string &address, const std::string &name);
+  virtual void connect(const std::string &address, const std::string &name,
+                       int port);
   virtual void close();
 
   virtual std::string get_peer_name() { return peer_name; }

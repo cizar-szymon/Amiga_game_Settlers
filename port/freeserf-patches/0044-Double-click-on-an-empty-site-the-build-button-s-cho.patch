@@ -1,0 +1,73 @@
+From 8db5dcebaaf5e9d024ebabb1b3be2974104d56e3 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Wed, 4 Nov 2026 22:31:55 +0100
+Subject: [PATCH 44/46] Double click on an empty site: the build button's
+ choice at once (building window, or the castle at the start)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7U35SbB3A5NzJn2rdyq7E
+---
+ src/panel.h     |  2 ++
+ src/viewport.cc | 25 ++++++++++++++++++++++++-
+ 2 files changed, 26 insertions(+), 1 deletion(-)
+
+diff --git a/src/panel.h b/src/panel.h
+index 2687868..fb0d199 100644
+--- a/src/panel.h
++++ b/src/panel.h
+@@ -66,6 +66,8 @@ class PanelBar : public GuiObject, public Timer::Handler {
+   virtual ~PanelBar();
+ 
+   void update();
++  /* The build button, as a click on it (a double click on a site). */
++  void click_build_button() { button_click(0); }
+ 
+  protected:
+   void draw_panel_frame();
+diff --git a/src/viewport.cc b/src/viewport.cc
+index 1cc0717..7327b9e 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -35,6 +35,7 @@
+ #include "src/gfx.h"
+ #include "src/interface.h"
+ #include "src/popup.h"
++#include "src/panel.h"
+ #include "src/event_loop.h"
+ #include "src/pathfinder.h"
+ 
+@@ -2659,8 +2660,30 @@ Viewport::handle_dbl_click(int lx, int ly, Event::Button button) {
+         play_sound(Audio::TypeSfxNotAccepted);
+       }
+     }
+-  } else {
++  } else if (map->get_obj(clk_pos) != Map::ObjectNone) {
+     return open_object_box(clk_pos);
++  } else {
++    /* A double click on an empty site (not in the original): what the build
++       button of the panel offers there at once - the window to choose a
++       building (small, large, mine), or the castle at the start. */
++    interface->update_map_cursor_pos(clk_pos);
++    switch (interface->get_build_possibility()) {
++      case Interface::BuildPossibilitySmall:
++      case Interface::BuildPossibilityLarge:
++      case Interface::BuildPossibilityMine: {
++        PopupBox *popup = interface->get_popup_box();
++        if ((popup != nullptr) && popup->is_displayed()) {
++          interface->close_popup();
++        }
++        interface->get_panel_bar()->click_build_button();
++        return true;
++      }
++      case Interface::BuildPossibilityCastle:
++        interface->build_castle();
++        return true;
++      default:
++        break;
++    }
+   }
+ 
+   return false;
+-- 
+2.45.2.windows.1
+

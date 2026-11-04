@@ -108,7 +108,9 @@ Potrzebne:
 - stos TCP/IP (np. Roadshow) na obu komputerach,
 - ta sama wersja gry na obu (inna wersja jest odrzucana z komunikatem),
 - port 6810 (TCP i UDP) otwarty miedzy komputerami; na PC z WinUAE
-  trzeba go przepuscic w zaporze Windows.
+  trzeba go przepuscic w zaporze Windows. Inny port mozna wpisac w pole
+  "Port" w oknie serwera i w oknie dolaczania (1-65535, zapamietywany
+  w ustawieniach) - po obu stronach musi byc ten sam, takze do SEARCH.
 
 Zakladajacy gre (MASTER):
 1. W oknie startu zmien typ gry na "LAN game" (ikona z napisem LAN,
@@ -116,8 +118,11 @@ Zakladajacy gre (MASTER):
 2. Ustaw mape jak w New game: rozmiar, liczba losowa, gracze komputerowi
    (gracz 1 to Ty, gracz 2 - drugi czlowiek). Piasek i skaly na mapie:
    Options -> Advanced -> VIDEO; obowiazuja ustawienia zakladajacego.
-3. Start -> START SERVER. Wpisz nazwe serwera (MASTER) i kliknij
-   RUN SERVER - serwer oglasza sie w sieci.
+3. Start -> START SERVER. Wpisz nazwe serwera (MASTER), w razie
+   potrzeby port (Port, 6810) i kliknij RUN SERVER - serwer oglasza sie
+   w sieci. Okno pokazuje adres Amigi w sieci lokalnej (Server address)
+   i adres w internecie (Internet address, "..." w trakcie sprawdzania,
+   "none" bez internetu).
 4. Gdy drugi gracz dolaczy, pojawi sie jego nazwa, adres i czas
    odpowiedzi. Kliknij START GAME.
 
@@ -126,8 +131,19 @@ Dolaczajacy (SLAVE):
 2. SEARCH szuka serwerow w sieci przez 3 s; kliknij serwer na liscie
    albo wpisz jego adres IP w pole "Server address". Przez VPN i miedzy
    sieciami szukanie nie dziala - wpisz adres.
-3. Wpisz swoja nazwe (Your name, SLAVE) i kliknij CONNECT.
+3. Wpisz swoja nazwe (Your name, SLAVE), port serwera (Port, 6810)
+   i kliknij CONNECT.
 4. Czekaj, az zakladajacy wystartuje gre - gra zacznie sie sama.
+
+Gra przez internet:
+- Zakladajacy przekierowuje w routerze port gry (TCP, domyslnie 6810)
+  na adres swojej Amigi (Server address w oknie serwera).
+- Dolaczajacy wpisuje w "Server address" adres internetowy zakladajacego
+  (Internet address z jego okna serwera) i ten sam port. SEARCH dziala
+  tylko w sieci lokalnej.
+- Adres internetowy gra sprawdza raz, przy otwarciu okna serwera:
+  zapytanie HTTP do api.ipify.org (port 80) - jedyne polaczenie z
+  internetem w grze; nic poza tym nie jest wysylane.
 
 W czasie gry:
 - Obie Amigi licza te sama gre. Wszystko, co robisz (budowa, drogi,

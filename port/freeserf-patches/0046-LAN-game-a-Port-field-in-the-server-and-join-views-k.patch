@@ -1,0 +1,418 @@
+From dce6ad502274af3810f78e18bbc6041e282e456c Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Wed, 4 Nov 2026 23:12:13 +0100
+Subject: [PATCH 46/46] LAN game: a Port field in the server and join views
+ (kept in the settings), the internet address in the server view
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7U35SbB3A5NzJn2rdyq7E
+---
+ src/lan-box.cc | 179 +++++++++++++++++++++++++++++++++++++++++++------
+ src/lan-box.h  |  16 ++++-
+ src/lan-link.h |  23 +++++--
+ 3 files changed, 189 insertions(+), 29 deletions(-)
+
+diff --git a/src/lan-box.cc b/src/lan-box.cc
+index e6323bb..347d6dd 100644
+--- a/src/lan-box.cc
++++ b/src/lan-box.cc
+@@ -49,21 +49,27 @@ static const int kRightButtonX = LanBox::kWidth - 16 - kButtonWidth;
+ static const int kLabelX = 16;
+ static const int kValueX = 168;
+ static const int kFieldWidth = 132;
++static const int kPortWidth = 48;
+ 
+ /* Choose */
+ static const int kServerButtonY = 56;
+ static const int kJoinButtonY = 104;
+-/* Server: rows of 10 pixels from kRowsY, then the buttons */
++/* Server: rows of 9 pixels from kServerRowsY, then the buttons */
++static const int kServerRowsY = 38;
++static const int kServerRowStep = 9;
++static const int kServerPortRow = 3;
++static const int kRunY = 140;
++static const int kCancelY = 159;
++/* Joined: rows of 10 pixels */
+ static const int kRowsY = 40;
+-static const int kRunY = 138;
+-static const int kCancelY = 158;
+ /* Join: the list of servers, the name, the address and the buttons */
+ static const int kListX = 16, kListY = 34, kListW = 320, kListH = 50;
+ static const int kListRows = 6;
+ static const int kSearchX = 16, kSearchY = 88, kSearchW = 80;
+-static const int kJoinNameY = 112;
+-static const int kAddressY = 126;
+-static const int kJoinButtonsY = 144;
++static const int kJoinNameY = 110;
++static const int kAddressY = 122;
++static const int kJoinPortY = 134;
++static const int kJoinButtonsY = 150;
+ static const int kMessageY = 180;
+ 
+ static const char kNoNetwork[] = "No network in this version.";
+@@ -82,6 +88,61 @@ address_filter(const char key, TextInput *text_input) {
+   return (key >= '0' && key <= '9') || key == '.';
+ }
+ 
++/* Digits of a port. */
++static bool
++port_filter(const char key, TextInput *text_input) {
++  return key >= '0' && key <= '9';
++}
++
++/* 1..65535 from the text, 0 if it is not a port. */
++static int
++port_from_text(const std::string &text) {
++  if (text.empty() || text.size() > 5) {
++    return 0;
++  }
++  int value = 0;
++  for (char c : text) {
++    if (c < '0' || c > '9') {
++      return 0;
++    }
++    value = value * 10 + (c - '0');
++  }
++  return (value >= 1 && value <= 65535) ? value : 0;
++}
++
++/* The field of the port: what is typed becomes the port when it is one
++   (checked when the field loses the focus and before the port is used),
++   otherwise the field shows the port again. */
++class PortInput : public TextInput {
++ protected:
++  int *port;
++
++ public:
++  explicit PortInput(int *_port) : port(_port) {
++    set_size(kPortWidth, 10);
++    set_max_length(5);
++    set_filter(port_filter);
++    set_displayed(false);
++    show();
++  }
++
++  void show() { set_text(std::to_string(*port)); }
++
++  void check() {
++    int value = port_from_text(get_text());
++    if (value != 0) {
++      *port = value;
++    }
++    show();
++  }
++
++ protected:
++  virtual bool handle_focus_loose() {
++    check();
++    return TextInput::handle_focus_loose();
++  }
++};
++
+ /* A field for a name, kept in the settings under key. */
+ static TextInput *
+ make_name_field(const std::string &key, const char *def) {
+@@ -101,6 +162,8 @@ LanBox::LanBox(Interface *_interface, PGameInfo _mission)
+   , server_name_field(make_name_field("server_name", "MASTER"))
+   , player_name_field(make_name_field("player_name", "SLAVE"))
+   , address_field(new TextInput())
++  , port(LanLink::kDefaultPort)
++  , port_in_use(LanLink::kDefaultPort)
+   , save_list(new ListSavedFiles())
+   , save_map_size(0)
+   , save_size(0)
+@@ -117,7 +180,7 @@ LanBox::LanBox(Interface *_interface, PGameInfo _mission)
+   });
+   save_list->set_displayed(false);
+   add_float(save_list.get(), kListX, 36);
+-  add_float(server_name_field.get(), kValueX - 4, kRowsY - 1);
++  add_float(server_name_field.get(), kValueX - 4, kServerRowsY - 1);
+   add_float(player_name_field.get(), kValueX - 4, kJoinNameY - 1);
+ 
+   address_field->set_size(kFieldWidth, 10);
+@@ -127,6 +190,18 @@ LanBox::LanBox(Interface *_interface, PGameInfo _mission)
+     "lan", "server_address", std::string()));
+   address_field->set_displayed(false);
+   add_float(address_field.get(), kValueX - 4, kAddressY - 1);
++
++  int saved_port = port_from_text(Settings::get_instance().get(
++    "lan", "port", std::to_string(LanLink::kDefaultPort)));
++  if (saved_port != 0) {
++    port = saved_port;
++  }
++  port_in_use = port;
++  server_port_field.reset(new PortInput(&port));
++  join_port_field.reset(new PortInput(&port));
++  add_float(server_port_field.get(), kValueX - 4,
++            kServerRowsY + kServerPortRow * kServerRowStep - 1);
++  add_float(join_port_field.get(), kValueX - 4, kJoinPortY - 1);
+ }
+ 
+ LanBox::~LanBox() {
+@@ -142,6 +217,7 @@ LanBox::~LanBox() {
+     settings.set("lan", "player_name", player_name_field->get_text());
+   }
+   settings.set("lan", "server_address", address_field->get_text());
++  settings.set("lan", "port", std::to_string(take_port()));
+   settings.save();
+ }
+ 
+@@ -163,20 +239,56 @@ LanBox::set_view(View _view) {
+       (_view == ViewChoose || (_view == ViewJoin && view != ViewJoin))) {
+     link()->close();
+   }
++  take_port();
+   view = _view;
+   message.clear();
++  show_fields();
++  if (view == ViewServer && link() != nullptr) {
++    /* The internet address: asked once a run, from here only. */
++    std::string external;
++    link()->get_external_address(&external);
++    if (own_address.empty()) {
++      own_address = link()->get_address();
++      message = link()->take_message();
++    }
++  }
++  if (view == ViewJoin) {
++    address_field->set_focused();  /* The address is typed at once. */
++  }
++  set_redraw();
++}
++
++void
++LanBox::show_fields() {
++  LanLink::State state = link_state();
++  bool running = state == LanLink::StateServing ||
++                 state == LanLink::StateConnected;
+   save_list->set_displayed(view == ViewLoad);
+   server_name_field->set_displayed(view == ViewServer);
+   player_name_field->set_displayed(view == ViewJoin);
+   address_field->set_displayed(view == ViewJoin);
+-  if (view == ViewServer && link() != nullptr && own_address.empty()) {
+-    own_address = link()->get_address();
+-    message = link()->take_message();
++  /* The port of a running server is shown as text: it is the one in use
++     until STOP SERVER. */
++  bool server_port = view == ViewServer && !running;
++  if (server_port && !server_port_field->is_displayed()) {
++    server_port_field->show();
+   }
+-  if (view == ViewJoin) {
+-    address_field->set_focused();  /* The address is typed at once. */
++  server_port_field->set_displayed(server_port);
++  if (view == ViewJoin && !join_port_field->is_displayed()) {
++    join_port_field->show();
+   }
+-  set_redraw();
++  join_port_field->set_displayed(view == ViewJoin);
++}
++
++int
++LanBox::take_port() {
++  if (server_port_field->is_displayed()) {
++    server_port_field->check();
++  }
++  if (join_port_field->is_displayed()) {
++    join_port_field->check();
++  }
++  return port;
+ }
+ 
+ void
+@@ -195,6 +307,7 @@ LanBox::update() {
+   if (!m.empty()) {
+     message = m;
+   }
++  show_fields();
+   if (view == ViewJoin) {
+     servers = l->get_servers();
+     if (l->get_state() == LanLink::StateConnected) {
+@@ -317,11 +430,12 @@ LanBox::draw_centered(int y, const std::string &text) {
+ }
+ 
+ void
+-LanBox::draw_rows(int y, const std::string rows[][2], size_t count) {
++LanBox::draw_rows(int y, const std::string rows[][2], size_t count,
++                  int step) {
+   for (size_t i = 0; i < count; i++) {
+     frame->draw_string(kLabelX, y, rows[i][0], Color::green, Color::black);
+     frame->draw_string(kValueX, y, rows[i][1], Color::green, Color::black);
+-    y += 10;
++    y += step;
+   }
+ }
+ 
+@@ -359,12 +473,25 @@ LanBox::internal_draw() {
+         if (mission->get_player(i)->get_face() < 12) ai++;
+       }
+       /* The name (a field over the first row) is what the players who
+-         look for a server see. The player who joins appears below with
+-         their name and address; then the game can start. */
++         look for a server see. The internet address is for a game over
++         the internet: the other player types it (the router passes the
++         TCP port to this Amiga). The port is a field until the server
++         runs. The player who joins appears below with their name and
++         address; then the game can start. */
+       bool saved = !save_path.empty();
++      std::string external = "-";
++      if (link() != nullptr) {
++        if (!link()->get_external_address(&external)) {
++          external = "...";
++        } else if (external.empty()) {
++          external = "none";
++        }
++      }
+       const std::string rows[][2] = {
+         { "Server name", "" },
+         { "Server address", own_address.empty() ? "-" : own_address },
++        { "Internet address", external },
++        { "Port", running ? std::to_string(port_in_use) : "" },
+         { "", "" },
+         { saved ? "Saved game" : "Map size",
+           saved ? save_name : std::to_string(mission->get_map_size()) },
+@@ -375,7 +502,8 @@ LanBox::internal_draw() {
+         { "Address", joined ? link()->get_peer_address() : "-" },
+         { "Response", joined ? ping_text() : "-" },
+       };
+-      draw_rows(kRowsY, rows, sizeof(rows) / sizeof(rows[0]));
++      draw_rows(kServerRowsY, rows, sizeof(rows) / sizeof(rows[0]),
++                kServerRowStep);
+       draw_text_button(kLeftButtonX, kRunY, kButtonWidth,
+                        running ? "STOP SERVER" : "RUN SERVER");
+       draw_text_button(kRightButtonX, kRunY, kButtonWidth, "START GAME",
+@@ -417,6 +545,8 @@ LanBox::internal_draw() {
+                          Color::black);
+       frame->draw_string(kLabelX, kAddressY, "Server address", Color::green,
+                          Color::black);
++      frame->draw_string(kLabelX, kJoinPortY, "Port", Color::green,
++                         Color::black);
+       bool connecting = state == LanLink::StateConnecting;
+       draw_text_button(kLeftButtonX, kJoinButtonsY, kButtonWidth,
+                        connecting ? "CONNECTING" : "CONNECT", !connecting);
+@@ -429,6 +559,7 @@ LanBox::internal_draw() {
+       const std::string rows[][2] = {
+         { "Server name", link()->get_peer_name() },
+         { "Server address", link()->get_peer_address() },
++        { "Port", std::to_string(port_in_use) },
+         { "", "" },
+         { "Your name", player_name_field->get_text() },
+         { "Your address", own_address.empty() ? "-" : own_address },
+@@ -479,10 +610,12 @@ LanBox::handle_click_left(int x, int y) {
+         if (l == nullptr) {
+           message = kNoNetwork;
+         } else if (state == LanLink::StateIdle) {
+-          l->start_server(server_name_field->get_text());
++          port_in_use = take_port();
++          l->start_server(server_name_field->get_text(), port_in_use);
+         } else {
+           l->close();
+         }
++        show_fields();
+         set_redraw();
+       } else if (inside(x, y, kRightButtonX, kRunY, kButtonWidth,
+                         kButtonHeight)) {
+@@ -545,7 +678,7 @@ LanBox::handle_click_left(int x, int y) {
+           play_sound(Audio::TypeSfxClick);
+           message.clear();
+           servers.clear();
+-          l->search();
++          l->search(take_port());
+         }
+         set_redraw();
+       } else if (inside(x, y, kLeftButtonX, kJoinButtonsY, kButtonWidth,
+@@ -558,8 +691,10 @@ LanBox::handle_click_left(int x, int y) {
+                     : address.empty() ? "Type the server address." : "";
+         } else {
+           play_sound(Audio::TypeSfxClick);
+-          message = "Connecting to " + address + "...";
+-          l->connect(address, player_name_field->get_text());
++          port_in_use = take_port();
++          message = "Connecting to " + address + ":" +
++                    std::to_string(port_in_use) + "...";
++          l->connect(address, player_name_field->get_text(), port_in_use);
+         }
+         set_redraw();
+       } else if (inside(x, y, kRightButtonX, kJoinButtonsY, kButtonWidth,
+diff --git a/src/lan-box.h b/src/lan-box.h
+index d01f2ad..9668f2e 100644
+--- a/src/lan-box.h
++++ b/src/lan-box.h
+@@ -32,6 +32,7 @@
+ 
+ class Interface;
+ class TextInput;
++class PortInput;
+ class ListSavedFiles;
+ 
+ /* Opened by the Start button of a LAN game in the start box. One player
+@@ -63,6 +64,14 @@ class LanBox : public GuiObject {
+   std::unique_ptr<TextInput> server_name_field;
+   std::unique_ptr<TextInput> player_name_field;
+   std::unique_ptr<TextInput> address_field;
++  /* The port of the game (TCP, and UDP for the search), kept in the
++     settings: one value, a field in the server view and one in the join
++     view. 6810 at first. */
++  int port;
++  std::unique_ptr<PortInput> server_port_field;
++  std::unique_ptr<PortInput> join_port_field;
++  /* The port of the running server or of the connection. */
++  int port_in_use;
+   std::vector<LanLink::Server> servers;
+   std::string message;
+   /* The saved game the server goes on with ("": a new map), its map. */
+@@ -91,10 +100,15 @@ class LanBox : public GuiObject {
+   LanLink *link();
+   LanLink::State link_state();
+   void set_view(View view);
++  /* Which fields are shown: the view and the state of the link. */
++  void show_fields();
++  /* The port typed in, checked (a wrong one goes back to port). */
++  int take_port();
+   void draw_text_button(int x, int y, int w, const std::string &text,
+                         bool enabled = true);
+   void draw_centered(int y, const std::string &text);
+-  void draw_rows(int y, const std::string rows[][2], size_t count);
++  void draw_rows(int y, const std::string rows[][2], size_t count,
++                 int step = 10);
+   std::string ping_text();
+   /* The chosen saved game, if player 2 in it is a person. */
+   bool use_saved_game(const std::string &path);
+diff --git a/src/lan-link.h b/src/lan-link.h
+index 4496110..b966543 100644
+--- a/src/lan-link.h
++++ b/src/lan-link.h
+@@ -63,13 +63,24 @@ class LanLink {
+      none. */
+   virtual std::string take_message() = 0;
+ 
+-  /* Listen for a player and announce the server by name. */
+-  virtual void start_server(const std::string &name) = 0;
+-  /* Look for servers for a few seconds; get_servers() fills meanwhile. */
+-  virtual void search() = 0;
++  /* The internet address of this computer, for a game over the
++     internet. The first call starts the question (once a run); false
++     while it goes on, true when done: *address is it, or "" when there is
++     no answer. */
++  virtual bool get_external_address(std::string *address) = 0;
++
++  /* The port of a LAN game unless the players choose another one. */
++  static const int kDefaultPort = 6810;
++
++  /* Listen for a player on the port (TCP) and announce the server by name
++     (UDP, the same port). */
++  virtual void start_server(const std::string &name, int port) = 0;
++  /* Look for servers announced on the port for a few seconds;
++     get_servers() fills meanwhile. */
++  virtual void search(int port) = 0;
+   virtual std::vector<Server> get_servers() = 0;
+-  virtual void connect(const std::string &address,
+-                       const std::string &name) = 0;
++  virtual void connect(const std::string &address, const std::string &name,
++                       int port) = 0;
+   /* Back to idle: the server, the search or the connection ends. */
+   virtual void close() = 0;
+ 
+-- 
+2.45.2.windows.1
+

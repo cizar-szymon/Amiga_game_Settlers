@@ -71,7 +71,10 @@ STEP 4 - a game on the network (optional)
 
 Both Amigas need their own installation (steps 1-3), the same release of
 the program and a TCP/IP stack (e.g. Roadshow); port 6810 (TCP and UDP)
-open between them.
+open between them (another one: the Port field, the same on both sides).
+Over the internet: the server forwards the TCP port in its router, the
+other player types the server's Internet address and the port (SEARCH
+works only in the local network).
 
 1. One player: in the start box the game type "LAN game" -> Start ->
    START SERVER, type a name, RUN SERVER.
@@ -161,7 +164,10 @@ KROK 4 - gra w sieci (opcjonalnie)
 
 Obie Amigi potrzebują własnej instalacji (kroki 1-3), tego samego
 wydania programu i stosu TCP/IP (np. Roadshow); port 6810 (TCP i UDP)
-otwarty między nimi.
+otwarty między nimi (inny: pole Port, ten sam po obu stronach).
+Przez internet: serwer przekierowuje port TCP w swoim routerze, drugi
+gracz wpisuje Internet address serwera i port (SEARCH działa tylko
+w sieci lokalnej).
 
 1. Jeden gracz: w oknie startu typ gry "LAN game" -> Start ->
    START SERVER, wpisz nazwę, RUN SERVER.
@@ -253,7 +259,10 @@ SCHRITT 4 - ein Spiel im Netzwerk (wahlweise)
 
 Beide Amigas brauchen ihre eigene Installation (Schritte 1-3), dieselbe
 Version des Programms und einen TCP/IP-Stack (z. B. Roadshow); Port 6810
-(TCP und UDP) muss zwischen ihnen offen sein.
+(TCP und UDP) muss zwischen ihnen offen sein (ein anderer: das Feld Port,
+auf beiden Seiten derselbe). Über das Internet: der Server leitet den
+TCP-Port in seinem Router weiter, der andere Spieler gibt die Internet
+address des Servers und den Port ein (SEARCH geht nur im lokalen Netz).
 
 1. Ein Spieler: im Startfenster der Spieltyp "LAN game" -> Start ->
    START SERVER, einen Namen eingeben, RUN SERVER.

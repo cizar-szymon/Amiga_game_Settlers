@@ -1,0 +1,118 @@
+From e2b0f4eb386e0e8923819a878667877c25c3a851 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Wed, 4 Nov 2026 22:48:06 +0100
+Subject: [PATCH 45/46] The building window follows a click on another site; a
+ special click closes it
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7U35SbB3A5NzJn2rdyq7E
+---
+ src/popup.cc    |  9 +++++++--
+ src/viewport.cc | 39 ++++++++++++++++++++++++++++++++++++++-
+ src/viewport.h  |  1 +
+ 3 files changed, 46 insertions(+), 3 deletions(-)
+
+diff --git a/src/popup.cc b/src/popup.cc
+index 0f0efc4..bff839c 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -4561,13 +4561,18 @@ PopupBox::handle_save_clk(int cx, int cy) {
+ bool
+ PopupBox::handle_click_right(int cx, int cy) {
+   switch (box) {
+-    case TypeMap:
+-    case TypeResDir:
+     case TypeMineBuilding:
+     case TypeBasicBld:
+     case TypeBasicBldFlip:
+     case TypeAdv1Bld:
+     case TypeAdv2Bld:
++      /* Not in the original: a special click in the window to choose a
++         building gives it up, the window closes. */
++      play_sound(Audio::TypeSfxClick);
++      interface->close_popup();
++      return true;
++    case TypeMap:
++    case TypeResDir:
+       special_click = true;
+       handle_click_left(cx, cy);
+       special_click = false;
+diff --git a/src/viewport.cc b/src/viewport.cc
+index 7327b9e..3e6bc5b 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -2591,13 +2591,46 @@ Viewport::handle_click_left(int lx, int ly) {
+   if (interface->is_building_road()) {
+     road_click(clk_pos, false);
+   } else {
++    bool build_box = build_box_open(interface);
+     interface->update_map_cursor_pos(clk_pos);
+     play_sound(Audio::TypeSfxClick);
++    if (build_box) {
++      /* The building window follows the new site: the choice for that site
++         (small, large, mine), or closed where nothing can be built. */
++      interface->close_popup();
++      switch (interface->get_build_possibility()) {
++        case Interface::BuildPossibilitySmall:
++        case Interface::BuildPossibilityLarge:
++        case Interface::BuildPossibilityMine:
++          interface->get_panel_bar()->click_build_button();
++          break;
++        default:
++          break;
++      }
++    }
+   }
+ 
+   return true;
+ }
+ 
++/* The window to choose a building is open (not in the original: it
++   follows the cursor, and a special click closes it). */
++bool
++Viewport::build_box_open(Interface *interface) {
++  PopupBox *popup = interface->get_popup_box();
++  if ((popup == nullptr) || !popup->is_displayed()) return false;
++  switch (popup->get_box()) {
++    case PopupBox::TypeMineBuilding:
++    case PopupBox::TypeBasicBld:
++    case PopupBox::TypeBasicBldFlip:
++    case PopupBox::TypeAdv1Bld:
++    case PopupBox::TypeAdv2Bld:
++      return true;
++    default:
++      return false;
++  }
++}
++
+ /* The original's special click (right button held). */
+ bool
+ Viewport::handle_click_right(int lx, int ly) {
+@@ -2605,7 +2638,11 @@ Viewport::handle_click_right(int lx, int ly) {
+ 
+   MapPos clk_pos = map_pos_from_screen_pix(lx, ly);
+ 
+-  if (interface->is_building_road()) {
++  if (build_box_open(interface)) {
++    /* A special click gives up the building to choose: the window closes. */
++    interface->close_popup();
++    play_sound(Audio::TypeSfxClick);
++  } else if (interface->is_building_road()) {
+     road_click(clk_pos, true);
+   } else {
+     /* Move the cursor and open the window of a flag or building there,
+diff --git a/src/viewport.h b/src/viewport.h
+index 8c16e67..d2d408b 100644
+--- a/src/viewport.h
++++ b/src/viewport.h
+@@ -200,6 +200,7 @@ class Viewport : public GuiObject, public Map::Handler {
+   virtual bool handle_dbl_click(int x, int y, Event::Button button);
+   void road_click(MapPos clk_pos, bool special);
+   bool open_object_box(MapPos clk_pos);
++  static bool build_box_open(Interface *interface);
+   virtual bool handle_drag(int x, int y);
+ 
+   Frame *get_tile_frame(unsigned int tid, int tc, int tr);
+-- 
+2.45.2.windows.1
+

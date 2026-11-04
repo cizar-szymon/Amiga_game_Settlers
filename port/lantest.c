@@ -7,6 +7,9 @@
                                           saved game is sent (frames of 240
                                           bytes, waiting while the ring is
                                           full) and print the time
+     lantest extip                        the internet address (the HTTP
+                                          question of the server view)
+   PORT=n as the first argument: another port than 6810.
    Ctrl-C ends it. At the end: the time the network process ran and what
    went through. */
 #include <stdio.h>
@@ -123,35 +126,58 @@ static int send_file(const char *path, unsigned long start)
 
 int main(int argc, char **argv)
 {
-  const char *mode = argc > 1 ? argv[1] : "";
-  int seconds = 0, rc = 0;
+  const char *mode;
+  int seconds = 0, rc = 0, port = NET_PORT;
   unsigned long start, end, ecl, fo, fi, bo, bi;
   NetEvent ev;
 
+  if (argc > 1 && strncmp(argv[1], "PORT=", 5) == 0) {
+    port = atoi(argv[1] + 5);
+    if (port < 1 || port > 65535) port = NET_PORT;
+    argv++;
+    argc--;
+  }
+  mode = argc > 1 ? argv[1] : "";
+  if (strcmp(mode, "extip") == 0) {
+    char text[48];
+    unsigned long t0 = amiga_now_ms();
+    net_external_lookup();
+    while (!net_external_address(text, sizeof(text))) {
+      if (SetSignal(0, SIGBREAKF_CTRL_C) & SIGBREAKF_CTRL_C) break;
+      Delay(1);
+    }
+    printf("internet address: \"%s\" after %lu ms\n", text,
+           amiga_now_ms() - t0);
+    net_external_quit();
+    amiga_time_close();
+    return 0;
+  }
+  printf("port %d\n", port);
   if (!net_start("lantest")) {
     printf("no bsdsocket.library or no process\n");
     return 20;
   }
   start = amiga_now_ms();
   if (strcmp(mode, "serve") == 0) {
-    net_serve(argc > 2 ? argv[2] : "MASTER");
+    net_serve(argc > 2 ? argv[2] : "MASTER", port);
     seconds = argc > 3 ? atoi(argv[3]) : 60;
   } else if (strcmp(mode, "search") == 0) {
-    net_search(3000);
+    net_search(3000, port);
     seconds = 4;
   } else if (strcmp(mode, "connect") == 0 && argc > 2) {
     if (argc > 5 && strcmp(argv[5], "NAGLE") == 0) net_set_nodelay(0);
-    net_connect(argv[2], argc > 3 ? argv[3] : "SLAVE");
+    net_connect(argv[2], argc > 3 ? argv[3] : "SLAVE", port);
     seconds = argc > 4 ? atoi(argv[4]) : 20;
   } else if (strcmp(mode, "send") == 0 && argc > 3) {
-    net_connect(argv[2], "SENDER");
+    net_connect(argv[2], "SENDER", port);
     rc = send_file(argv[3], start);
     seconds = 3;  /* the rest goes out */
     start = amiga_now_ms();
   } else {
     printf("lantest serve [name] [seconds] | search | "
            "connect <address> [name] [seconds] [NAGLE] | "
-           "send <address> <file>\n");
+           "send <address> <file> | extip\n"
+           "PORT=n first: another port\n");
     net_quit();
     return 5;
   }

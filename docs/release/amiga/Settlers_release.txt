@@ -6,6 +6,15 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.115 (4.11.2026, wydanie beta)
+-------------------------------
+
+- Gra LAN: pole Port w oknie serwera i w oknie dolaczania (domyslnie
+  6810, zapamietywane w ustawieniach). Okno serwera pokazuje tez adres
+  internetowy Amigi - do gry przez internet z przekierowaniem portu
+  w routerze (opis w Settlers.txt, "Gra przez internet").
+
+
 0.111 (30.10.2026, wydanie beta)
 --------------------------------
 
