@@ -1155,6 +1155,20 @@ Test (Amiga 1, A1200 + Warp 1260, przez VPN; 0.116 jako `Settlers-test`, MASTER 
   1 i 2 do `data/intro`, NOINTRO), dwuklik / kliknięcie / prawy przycisk przy oknie budowy;
   Install (EN/PL/DE): intro zamiast „dyskietka 1 nie jest potrzebna”.
 
+### Wydanie 0.117 na GitHubie (4.11.2026)
+
+- Decyzja użytkownika: `intro.script` (nagrane intro portu, `build/intro/intro.script`) jest w
+  publicznej paczce, w `Settlers/data/intro` obok `ReadMe.txt`; pliki intro z dyskietek 1 i 2
+  gracz kopiuje sam. Pełna paczka `private/Settlers-0.117-full.zip` ma dane gry (`data/amiga`)
+  i 30 plików intro (`build/intro/files` bez `intro.script`).
+- `tools/make_release.sh`: odmawia bez `build/intro/intro.script`; drzewo publiczne może mieć tylko
+  program, ikony, `doc/`, dwa `ReadMe.txt` i `intro.script` – każdy inny plik albo nazwa pliku
+  z dyskietek (gfx*, sounds, music, extro, GA.., PIC.., SMP.., MUSI, US0.. …) → „refused”
+  (sprawdzone wstawieniem GA00, gfxfast i doc/music).
+- Test na Amidze 1: publiczny ZIP rozpakowany `UnZip` w `RAM:` – `Version` 0.117, program z bitem
+  E, `data/intro` tylko `intro.script` i `ReadMe.txt`, `data/amiga` tylko `ReadMe.txt`, w ikonie
+  Tool Types w nawiasach (z `(NOINTRO)`). README: lista „What it has” z intro.
+
 ## Ekrany panoramiczne 640×360, 960×540 i 1280×720 (0.99–0.100)
 
 Wszystkie trzy są w 8 bitach na karcie Warp (`modelist`; jest też 1360×768). Options → Screen:

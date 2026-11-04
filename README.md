@@ -13,11 +13,21 @@ card and a 68040/68060, at up to 800×600. It is a port of
 game (GPL-3.0), with a native Amiga backend (no SDL): an 8-bit Picasso96 screen,
 Paula sound, the game's own music module and the original Amiga graphics.
 
-**Current version: 0.111 (beta, 30.10.2026)** – the archive is
-[`releases/amiga/Settlers-0.111.zip`](releases/amiga/Settlers-0.111.zip)
+**Current version: 0.117 (beta, 4.11.2026)** – the archive is
+[`releases/amiga/Settlers-0.117.zip`](releases/amiga/Settlers-0.117.zip)
 (the same files unpacked: [`releases/amiga/Settlers`](releases/amiga/Settlers)).
 
 ![The game at 640×480 on a 68060](docs/shots/v1.png)
+
+## What it has
+
+- screens from 400×300 to 800×600 (4:3) and 640×360 / 960×540 (16:9), the map
+  magnified x2 / x3
+- game speed x0.5 … x3, quick save, the keys box
+- a LAN game for two players on two Amigas (plus up to two computer players),
+  with a chat; also over the internet with a forwarded port
+- the original intro of the Amiga game before the game (optional: from the
+  files of your own disks 1 and 2)
 
 ## Requirements
 
@@ -29,11 +39,14 @@ Paula sound, the game's own music module and the original Amiga graphics.
 
 ## Getting started
 
-1. Unpack the archive to your hard disk, e.g. `UnZip Settlers-0.111.zip -d Work:Games`.
+1. Unpack the archive to your hard disk, e.g. `UnZip Settlers-0.117.zip -d Work:Games`.
 2. Copy from the original disks to `Settlers/data/amiga`:
    from disk 3 `gfxheader`, `gfxfast`, `gfxchip`, `sounds`, `extro`;
    from disk 2 `gfxpics`, `music`.
 3. Double-click the Settlers icon.
+
+The intro (optional): copy the files listed in `Settlers/data/intro/ReadMe.txt`
+from disks 1 and 2 to `Settlers/data/intro` (`intro.script` is already there).
 
 The same step by step, in English, Polish and German: `Settlers/doc/Install.txt` /
 `Install.pdf` in the archive (all the texts of the archive are in its `doc` drawer) ([`docs/release/amiga/Install_src.txt`](docs/release/amiga/Install_src.txt)).
@@ -91,8 +104,8 @@ developers: [`docs/release/amiga/Settlers_dev_en.txt`](docs/release/amiga/Settle
 - Freeserf and this port: **GPL-3.0** ([`COPYING`](COPYING), also in the archive: `Settlers/doc/COPYING`).
 - Music player [micromod](https://github.com/martincameron/micromod) by Martin
   Cameron: BSD 3-Clause.
-- The Settlers © Blue Byte. The game data (graphics, sounds, music) comes from
-  your own original disks and is not distributed here.
+- The Settlers © Blue Byte. The game data (graphics, sounds, music, the files of
+  the intro) comes from your own original disks and is not distributed here.
 
 ---
 

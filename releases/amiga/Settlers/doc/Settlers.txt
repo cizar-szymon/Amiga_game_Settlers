@@ -1,7 +1,7 @@
 THE SETTLERS - Freeserf na Amige z karta graficzna
 ==================================================
 
-Wersja 0.111 (beta), 30.10.2026
+Wersja 0.117 (beta), 4.11.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) na Amige z karta graficzna
 (Picasso96) i procesorem 68040/68060, w rozdzielczosci do 800x600
@@ -40,11 +40,25 @@ ILBM do 8 bitplanow, pokazywany w czasie startu (co najmniej 4 s, z muzyka,
 jesli jest wlaczona), zmniejszony do ekranu.
 Bez niego ekran startu jest czarny.
 
+Intro oryginalu (nieobowiazkowe): przed gra pokazuje sie oryginalne
+intro gry na Amige, gdy w szufladzie data/intro sa jego pliki z Twoich
+dyskietek (intro.script jest juz w szufladzie, dolaczony do gry):
+  dyskietka 1: FHRS GA00 GA01 GA02 GAB2 GAC2 MUSI PIB1 PIC0 PIC2
+               SML2 SMP0 SMP2 SPR1 US00 US02
+  dyskietka 2: GA03 GA04 KMSK KPIC PIB5 PIC3 PIC4 PIC6
+               SMP3 SMP4 SMP5 US03 US04 US06
+Dowolny klawisz albo klikniecie przechodzi do gry; NOINTRO (Tool Type)
+wylacza intro. Bez tych plikow gra startuje od razu.
+
 
 STEROWANIE
 ----------
 
   mysz                     wszystko w grze (jak w oryginale)
+  dwuklik (wolne miejsce)  okno budowy od razu; na poczatku gry zamek
+  klik w inne miejsce      okno budowy pokazuje budynki dla niego;
+                           tam, gdzie nic nie da sie zbudowac, zamyka sie
+  prawy przycisk           zamyka okno budowy
   prawy przycisk + ruch    przewijanie mapy
   strzalki                 przewijanie mapy
   Z, rolka myszy           powiekszenie mapy: x2 (powyzej 400x300), x3 (800x600
@@ -108,7 +122,9 @@ Potrzebne:
 - stos TCP/IP (np. Roadshow) na obu komputerach,
 - ta sama wersja gry na obu (inna wersja jest odrzucana z komunikatem),
 - port 6810 (TCP i UDP) otwarty miedzy komputerami; na PC z WinUAE
-  trzeba go przepuscic w zaporze Windows.
+  trzeba go przepuscic w zaporze Windows. Inny port mozna wpisac w pole
+  "Port" w oknie serwera i w oknie dolaczania (1-65535, zapamietywany
+  w ustawieniach) - po obu stronach musi byc ten sam, takze do SEARCH.
 
 Zakladajacy gre (MASTER):
 1. W oknie startu zmien typ gry na "LAN game" (ikona z napisem LAN,
@@ -116,8 +132,11 @@ Zakladajacy gre (MASTER):
 2. Ustaw mape jak w New game: rozmiar, liczba losowa, gracze komputerowi
    (gracz 1 to Ty, gracz 2 - drugi czlowiek). Piasek i skaly na mapie:
    Options -> Advanced -> VIDEO; obowiazuja ustawienia zakladajacego.
-3. Start -> START SERVER. Wpisz nazwe serwera (MASTER) i kliknij
-   RUN SERVER - serwer oglasza sie w sieci.
+3. Start -> START SERVER. Wpisz nazwe serwera (MASTER), w razie
+   potrzeby port (Port, 6810) i kliknij RUN SERVER - serwer oglasza sie
+   w sieci. Okno pokazuje adres Amigi w sieci lokalnej (Server address)
+   i adres w internecie (Internet address, "..." w trakcie sprawdzania,
+   "none" bez internetu).
 4. Gdy drugi gracz dolaczy, pojawi sie jego nazwa, adres i czas
    odpowiedzi. Kliknij START GAME.
 
@@ -126,18 +145,37 @@ Dolaczajacy (SLAVE):
 2. SEARCH szuka serwerow w sieci przez 3 s; kliknij serwer na liscie
    albo wpisz jego adres IP w pole "Server address". Przez VPN i miedzy
    sieciami szukanie nie dziala - wpisz adres.
-3. Wpisz swoja nazwe (Your name, SLAVE) i kliknij CONNECT.
+3. Wpisz swoja nazwe (Your name, SLAVE), port serwera (Port, 6810)
+   i kliknij CONNECT.
 4. Czekaj, az zakladajacy wystartuje gre - gra zacznie sie sama.
+
+Gra przez internet:
+- Zakladajacy przekierowuje w routerze port gry (TCP, domyslnie 6810)
+  na adres swojej Amigi (Server address w oknie serwera).
+- Dolaczajacy wpisuje w "Server address" adres internetowy zakladajacego
+  (Internet address z jego okna serwera) i ten sam port. SEARCH dziala
+  tylko w sieci lokalnej.
+- Adres internetowy gra sprawdza raz, przy otwarciu okna serwera:
+  zapytanie HTTP do api.ipify.org (port 80) - jedyne polaczenie z
+  internetem w grze; nic poza tym nie jest wysylane.
 
 W czasie gry:
 - Obie Amigi licza te sama gre. Wszystko, co robisz (budowa, drogi,
   ustawienia, atak, pauza P, tempo + - 0), dziala u obu po ok. 0,2 s
   (przy wolnym WiFi dluzej).
-- Linia LAN w lewym gornym rogu pojawia sie tylko, gdy cos jest nie tak:
-  WAITING - gra czeka na druga strone (wolna siec); "OUT OF STEP" na
-  czerwono - gry sie rozeszly (zglos blad); takze przy wysylaniu zapisu
-  i po odejsciu gracza. Opcja LANINFO pokazuje ja zawsze: nazwa drugiego
-  gracza, czas odpowiedzi, "same <krok>" - obie gry zgodne.
+- Gdy polaczenie dziala dobrze, na ekranie nie ma o nim nic. Problem
+  pokazuje sie na zolto w lewym gornym rogu (tam, gdzie licznik FPS;
+  przy wlaczonym FPS pod nim):
+    LAN: WAITING FOR <gracz>     gra czeka na druga strone (dluzej niz
+                                 0,3 s - wolna siec albo gracz nie
+                                 odpowiada)
+    LAN: SLOW CONNECTION <n> MS  czas odpowiedzi dluzszy niz opoznienie
+                                 polecen gry (zwykle 160 ms)
+    LAN: OUT OF STEP <krok>      gry sie rozeszly (zglos blad)
+    LAN: SENDING THE GAME <n>%   wysylanie zapisu drugiemu graczowi
+    LAN: PLAYER GONE             drugi gracz odszedl
+  Opcja LANINFO pokazuje zawsze cala linie LAN: nazwa drugiego gracza,
+  czas odpowiedzi, "same <krok>" - obie gry zgodne.
 - Ekran wiekszy niz 640x480 przechodzi na czas gry LAN na 640x480
   (960x540 na 640x360).
 - Czat: Tab otwiera i zamyka okno czatu (Esc tez zamyka), Return wysyla
@@ -168,8 +206,9 @@ sa wylaczone - usun nawiasy, zeby wlaczyc.
   SFXAREA=ALL    efekty z calego ekranu (domyslnie tylko z obszaru 320x200
                  wokol srodka, jak w oryginale); SFXAREA=480x300 - wiekszy
   NOSOUND        bez dzwieku
+  NOINTRO        bez intro oryginalu przed gra
   LANINFO        w grze LAN zawsze linia LAN (gracz, czas odpowiedzi,
-                 zgodnosc gier); bez niej tylko WAITING / OUT OF STEP
+                 zgodnosc gier); bez niej tylko problemy na zolto
   DATA=sciezka   inna szuflada z danymi gry (domyslnie PROGDIR:data)
 
 Stos programu w ikonie: 1000000 (gra potrzebuje duzego stosu).

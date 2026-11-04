@@ -1,7 +1,7 @@
 THE SETTLERS - Freeserf for the Amiga with a graphics card
 ==========================================================
 
-Version 0.111 (beta), 30.10.2026
+Version 0.117 (beta), 4.11.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) on an Amiga with a graphics
 card (Picasso96) and a 68040/68060, at up to 800x600 (4:3) or 960x540
@@ -40,11 +40,27 @@ up to 8 bitplanes, shown while the game starts (at least 4 s, with the
 music when it is on), scaled down to the screen.
 Without it the screen is black while the game starts.
 
+The intro of the original (optional): the original intro of the Amiga
+game plays before the game when the drawer data/intro has its files from
+your disks (intro.script is already in the drawer, it comes with the
+game):
+  disk 1: FHRS GA00 GA01 GA02 GAB2 GAC2 MUSI PIB1 PIC0 PIC2
+          SML2 SMP0 SMP2 SPR1 US00 US02
+  disk 2: GA03 GA04 KMSK KPIC PIB5 PIC3 PIC4 PIC6
+          SMP3 SMP4 SMP5 US03 US04 US06
+Any key or click goes on to the game; NOINTRO (Tool Type) turns it off.
+Without these files the game starts at once.
+
 
 CONTROLS
 --------
 
   mouse                    everything in the game (as in the original)
+  double click (empty)     the building window at once; at the start
+                           of a game the castle
+  click on another site    the building window shows its buildings;
+                           where nothing can be built it closes
+  right button             closes the building window
   right button + move      scroll the map
   cursor keys              scroll the map
   Z, mouse wheel           the map magnified: x2 (above 400x300), x3 (800x600
@@ -111,7 +127,10 @@ Needed:
 - the same version of the game on both (another version is turned away
   with a message),
 - port 6810 (TCP and UDP) open between the computers; on a PC with
-  WinUAE it has to be let through the Windows firewall.
+  WinUAE it has to be let through the Windows firewall. Another port can
+  be typed into the "Port" field of the server box and of the join box
+  (1-65535, kept in the settings) - both sides need the same one, also
+  for SEARCH.
 
 The one who sets up the game (MASTER):
 1. In the start box switch the game type to "LAN game" (the icon with
@@ -119,8 +138,11 @@ The one who sets up the game (MASTER):
 2. Set up the map as in New game: size, random number, computer players
    (player 1 is you, player 2 the other person). Sand and rocks of the
    map: Options -> Advanced -> VIDEO; the settings of this side count.
-3. Start -> START SERVER. Type the name of the server (MASTER) and click
-   RUN SERVER - the server announces itself in the network.
+3. Start -> START SERVER. Type the name of the server (MASTER), the port
+   if needed (Port, 6810) and click RUN SERVER - the server announces
+   itself in the network. The box shows the address of the Amiga in the
+   local network (Server address) and on the internet (Internet address,
+   "..." while it is checked, "none" without the internet).
 4. When the other player joins, their name, address and response time
    show. Click START GAME.
 
@@ -129,19 +151,39 @@ The one who joins (SLAVE):
 2. SEARCH looks for servers in the network for 3 s; click a server in
    the list or type its IP address into "Server address". Through a VPN
    and between networks the search does not work - type the address.
-3. Type your name (Your name, SLAVE) and click CONNECT.
+3. Type your name (Your name, SLAVE), the port of the server (Port,
+   6810) and click CONNECT.
 4. Wait for the server to start the game - it begins by itself.
+
+Playing over the internet:
+- The one who sets up the game forwards the port of the game (TCP, 6810
+  by default) in the router to the address of their Amiga (Server
+  address in the server box).
+- The one who joins types the internet address of the server (Internet
+  address in its server box) into "Server address", and the same port.
+  SEARCH works only in the local network.
+- The game asks for the internet address once, when the server box
+  opens: an HTTP question to api.ipify.org (port 80) - the only
+  connection to the internet in the game; nothing else is sent.
 
 During the game:
 - Both Amigas run the same game. Everything you do (building, roads,
   settings, attacks, pause P, speed + - 0) happens on both after about
   0.2 s (longer on a slow WiFi).
-- The LAN line in the top left corner shows only when something is not
-  right: WAITING - the game waits for the other side (a slow network);
-  "OUT OF STEP" in red - the games went apart (please report it); also
-  while a save is sent and when a player has gone. The option LANINFO
-  shows it always: the other player's name, the response time,
-  "same <step>" - both games agree.
+- While the connection is fine, nothing about it is on the screen. A
+  problem shows in yellow in the top left corner (where the FPS counter
+  is; under it while the FPS are on):
+    LAN: WAITING FOR <player>    the game waits for the other side
+                                 (longer than 0.3 s - a slow network or
+                                 the player does not answer)
+    LAN: SLOW CONNECTION <n> MS  the response time is longer than the
+                                 delay of the game's commands (usually
+                                 160 ms)
+    LAN: OUT OF STEP <step>      the games went apart (please report it)
+    LAN: SENDING THE GAME <n>%   a save goes to the other player
+    LAN: PLAYER GONE             the other player has gone
+  The option LANINFO always shows the whole LAN line: the other
+  player's name, the response time, "same <step>" - both games agree.
 - A screen larger than 640x480 becomes 640x480 for a LAN game
   (960x540: 640x360).
 - Chat: Tab opens and closes the chat box (Esc closes it too), Return
@@ -173,8 +215,9 @@ are off - remove the brackets to switch them on.
                  320x200 area around the centre, as in the original);
                  SFXAREA=480x300 - a larger one
   NOSOUND        no sound
+  NOINTRO        no intro of the original before the game
   LANINFO        in a LAN game the LAN line always (player, response time,
-                 games agreeing); without it only WAITING / OUT OF STEP
+                 games agreeing); without it only problems, in yellow
   DATA=path      another drawer with the game data (default PROGDIR:data)
 
 Program stack in the icon: 1000000 (the game needs a large stack).

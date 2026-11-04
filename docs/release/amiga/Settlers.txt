@@ -42,7 +42,7 @@ Bez niego ekran startu jest czarny.
 
 Intro oryginalu (nieobowiazkowe): przed gra pokazuje sie oryginalne
 intro gry na Amige, gdy w szufladzie data/intro sa jego pliki z Twoich
-dyskietek:
+dyskietek (intro.script jest juz w szufladzie, dolaczony do gry):
   dyskietka 1: FHRS GA00 GA01 GA02 GAB2 GAC2 MUSI PIB1 PIC0 PIC2
                SML2 SMP0 SMP2 SPR1 US00 US02
   dyskietka 2: GA03 GA04 KMSK KPIC PIB5 PIC3 PIC4 PIC6

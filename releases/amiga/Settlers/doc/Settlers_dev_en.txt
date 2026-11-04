@@ -36,7 +36,10 @@ OPTIONS (Shell and Tool Types)
                    (Viewport::hear_width/height)
   FPS              Freeserf's frame counter (also Options -> Advanced)
   LANINFO          the LAN line always (LanGame::show_info); without it
-                   only WAITING, OUT OF STEP, sending a save, player gone
+                   only a problem, in yellow where the FPS are
+                   (LanGame::problem_text: player gone, OUT OF STEP,
+                   sending a save, waiting > 300 ms, ping > the delay of
+                   the commands)
   STATS            every second: numbers to RAM:Settlers-stats.txt, FPS on
                    the screen
   STATS=FULL       plus E-clock probes (they slow the game down!; the VIEW
@@ -106,8 +109,14 @@ docs/PORTING.md, chapter "Gra LAN".
 
   network       process "Settlers LAN" (port/amiga_net.c, priority 1,
                 WaitSelect); bsdsocket.library; the game reads a ring only
-  search        UDP 255.255.255.255:6810 once a second (RUN SERVER)
-  game          TCP 6810, TCP_NODELAY; frame: length, type, data
+  search        UDP 255.255.255.255:<port> once a second (RUN SERVER)
+  game          TCP <port>, TCP_NODELAY; frame: length, type, data
+  port          6810 or the Port field of the LAN box ([lan] port in
+                Settlers.ini); the same for TCP and UDP
+  internet      process "Settlers IP" (port/amiga_extip.c), once a run
+  address       when the server box opens: GET / HTTP/1.0 to
+                api.ipify.org:80, 5 s limit, the answer checked
+                (IPv4/IPv6)
   start         SETUP (map, players, the seed of the random numbers, the
                 delay, sand, rocks) or a whole saved game (240 byte pieces)
   turns         4 steps (80 ms); a command of turn t is done in turn
@@ -118,5 +127,6 @@ Ctrl+Shift+W - the player of this computer wins at once (on both).
 
 Tests: lansim (the same game without a network; -l two games in
 lockstep, -s/-r sand/rocks, the time of the checksum), lantest (the
-network process from the Shell: serve, search, connect, send FILE),
-tools/lan_peer.py (the other side on the PC).
+network process from the Shell: serve, search, connect, send FILE,
+extip; PORT=n as the first argument), tools/lan_peer.py (the other side
+on the PC; --port N).

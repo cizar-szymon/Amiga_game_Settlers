@@ -6,6 +6,58 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.117 (4.11.2026, beta release)
+-------------------------------
+
+- LAN game: after JOIN SERVER the server address field takes the typed
+  address at once (no click on the field needed).
+
+
+0.116 (4.11.2026, beta release)
+-------------------------------
+
+- LAN game: while the connection is fine, nothing about it is on the
+  screen. A problem (WAITING FOR, SLOW CONNECTION, OUT OF STEP, SENDING
+  THE GAME, PLAYER GONE) shows in yellow in the top left corner, where
+  the FPS counter is. The whole LAN line: the option LANINFO.
+
+
+0.115 (4.11.2026, beta release)
+-------------------------------
+
+- LAN game: a Port field in the server box and in the join box (6810 by
+  default, kept in the settings). The server box also shows the internet
+  address of the Amiga - for a game over the internet with the port
+  forwarded in the router (see Settlers_en.txt, "Playing over the
+  internet").
+
+
+0.114 (4.11.2026, beta release)
+-------------------------------
+
+- The building window follows the clicks: a click on another site shows
+  the buildings for that site, a click where nothing can be built closes
+  the window. The right mouse button closes the building window.
+
+
+0.113 (4.11.2026, beta release)
+-------------------------------
+
+- A double click on an empty site opens the building window at once
+  (as the build button of the panel); at the start of a game it places
+  the castle there.
+
+
+0.112 (4.11.2026, beta release)
+-------------------------------
+
+- Before the game the original intro of the Amiga game (pictures, music
+  and effects of the original), from the files of your disks 1 and 2 in
+  the drawer data/intro (the list of files: data/intro/ReadMe.txt).
+  Without these files the game starts at once. Any key or click goes on
+  to the game; the Tool Type NOINTRO turns the intro off.
+
+
 0.111 (30.10.2026, beta release)
 --------------------------------
 

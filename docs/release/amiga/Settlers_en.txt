@@ -42,7 +42,8 @@ Without it the screen is black while the game starts.
 
 The intro of the original (optional): the original intro of the Amiga
 game plays before the game when the drawer data/intro has its files from
-your disks:
+your disks (intro.script is already in the drawer, it comes with the
+game):
   disk 1: FHRS GA00 GA01 GA02 GAB2 GAC2 MUSI PIB1 PIC0 PIC2
           SML2 SMP0 SMP2 SPR1 US00 US02
   disk 2: GA03 GA04 KMSK KPIC PIB5 PIC3 PIC4 PIC6

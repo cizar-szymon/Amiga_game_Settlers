@@ -35,7 +35,9 @@ OPCJE (Shell i Tool Types)
                    320x200) albo z calego (Viewport::hear_width/height)
   FPS              licznik klatek Freeserf (tez Options -> Advanced)
   LANINFO          linia LAN zawsze (LanGame::show_info); bez niej tylko
-                   WAITING, OUT OF STEP, wysylanie zapisu, gracz odszedl
+                   problem na zolto w miejscu FPS (LanGame::problem_text:
+                   gracz odszedl, OUT OF STEP, wysylanie zapisu, czekanie
+                   > 300 ms, PING > opoznienie polecen)
   STATS            co 1 s: liczby do RAM:Settlers-stats.txt i FPS na ekranie
   STATS=FULL       do tego sondy E-clock (spowalniaja!; linia VIEW: ms/s
                    czesci widoku mapy) i zapis muzyki do
@@ -103,8 +105,14 @@ docs/PORTING.md, rozdzial "Gra LAN".
 
   siec          proces "Settlers LAN" (port/amiga_net.c, priorytet 1,
                 WaitSelect); bsdsocket.library; gra czyta tylko pierscien
-  szukanie      UDP 255.255.255.255:6810 co 1 s (RUN SERVER)
-  gra           TCP 6810, TCP_NODELAY; ramka: dlugosc, typ, dane
+  szukanie      UDP 255.255.255.255:<port> co 1 s (RUN SERVER)
+  gra           TCP <port>, TCP_NODELAY; ramka: dlugosc, typ, dane
+  port          6810 albo z pola Port okna LAN ([lan] port w
+                Settlers.ini); TCP i UDP ten sam
+  adres w sieci proces "Settlers IP" (port/amiga_extip.c), raz na
+                uruchomienie przy otwarciu okna serwera: GET / HTTP/1.0
+                do api.ipify.org:80, limit 5 s, odpowiedz sprawdzana
+                (IPv4/IPv6)
   start         SETUP (mapa, gracze, ziarno liczb losowych, opoznienie,
                 piasek, skaly) albo caly zapis gry (kawalki po 240 B)
   tury          4 kroki (80 ms); polecenie z tury t dziala w turze
@@ -115,4 +123,5 @@ tego komputera wygrywa od razu (u obu).
 
 Testy: lansim (ta sama gra bez sieci; -l dwie gry w lockstepie, -s/-r
 piasek/skaly, czas sumy kontrolnej), lantest (proces sieciowy z Shella:
-serve, search, connect, send PLIK), tools/lan_peer.py (druga strona na PC).
+serve, search, connect, send PLIK, extip; PORT=n jako pierwszy
+argument), tools/lan_peer.py (druga strona na PC; --port N).

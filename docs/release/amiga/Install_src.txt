@@ -50,7 +50,8 @@ and the same for gfxfast, gfxchip, sounds and extro; then disk 2 in
 DF0: and gfxpics and music.
 
 The intro of the original (optional): files from disks 1 and 2 into
-Work:Games/Settlers/data/intro - the list is in data/intro/ReadMe.txt.
+Work:Games/Settlers/data/intro - the list is in data/intro/ReadMe.txt
+(intro.script, the other file of the intro, comes with the game).
 Without them the game starts at once, without the intro.
 
 
@@ -146,7 +147,8 @@ i tak samo gfxfast, gfxchip, sounds i extro; potem dyskietka 2 w DF0:
 i pliki gfxpics oraz music.
 
 Intro oryginału (nieobowiązkowe): pliki z dyskietek 1 i 2 do
-Work:Games/Settlers/data/intro - lista jest w data/intro/ReadMe.txt.
+Work:Games/Settlers/data/intro - lista jest w data/intro/ReadMe.txt
+(intro.script, drugi plik intro, jest dołączony do gry).
 Bez nich gra startuje od razu, bez intro.
 
 
@@ -243,7 +245,8 @@ DF0: und gfxpics und music.
 
 Das Intro des Originals (wahlweise): Dateien von den Disketten 1 und 2
 nach Work:Games/Settlers/data/intro - die Liste steht in
-data/intro/ReadMe.txt. Ohne sie startet das Spiel sofort, ohne Intro.
+data/intro/ReadMe.txt (intro.script, die andere Datei des Intros, liegt
+dem Spiel bei). Ohne sie startet das Spiel sofort, ohne Intro.
 
 
 SCHRITT 3 - das Spiel starten
