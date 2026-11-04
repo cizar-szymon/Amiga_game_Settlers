@@ -1,0 +1,68 @@
+From 24af09a90f7bf2cf859816d6106d9610950e6d41 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Wed, 4 Nov 2026 23:30:29 +0100
+Subject: [PATCH] LAN box: the address field has the focus as soon as the join
+ view opens
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7U35SbB3A5NzJn2rdyq7E
+---
+ src/lan-box.cc | 14 +++++++++++---
+ src/lan-box.h  |  2 ++
+ 2 files changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/src/lan-box.cc b/src/lan-box.cc
+index 347d6dd..425dac1 100644
+--- a/src/lan-box.cc
++++ b/src/lan-box.cc
+@@ -164,6 +164,7 @@ LanBox::LanBox(Interface *_interface, PGameInfo _mission)
+   , address_field(new TextInput())
+   , port(LanLink::kDefaultPort)
+   , port_in_use(LanLink::kDefaultPort)
++  , focus_address(false)
+   , save_list(new ListSavedFiles())
+   , save_map_size(0)
+   , save_size(0)
+@@ -252,9 +253,10 @@ LanBox::set_view(View _view) {
+       message = link()->take_message();
+     }
+   }
+-  if (view == ViewJoin) {
+-    address_field->set_focused();  /* The address is typed at once. */
+-  }
++  /* The address is typed at once: its field gets the focus in the next
++     update - the click that opened the view takes the focus away from
++     the fields when it is handled (GuiObject::handle_event). */
++  focus_address = view == ViewJoin;
+   set_redraw();
+ }
+ 
+@@ -293,6 +295,12 @@ LanBox::take_port() {
+ 
+ void
+ LanBox::update() {
++  if (focus_address) {
++    focus_address = false;
++    if (view == ViewJoin) {
++      address_field->set_focused();
++    }
++  }
+   LanLink *l = link();
+   if (l == nullptr || view == ViewChoose) {
+     return;
+diff --git a/src/lan-box.h b/src/lan-box.h
+index 9668f2e..edf7727 100644
+--- a/src/lan-box.h
++++ b/src/lan-box.h
+@@ -72,6 +72,8 @@ class LanBox : public GuiObject {
+   std::unique_ptr<PortInput> join_port_field;
+   /* The port of the running server or of the connection. */
+   int port_in_use;
++  /* The address field gets the focus in the next update (join view). */
++  bool focus_address;
+   std::vector<LanLink::Server> servers;
+   std::string message;
+   /* The saved game the server goes on with ("": a new map), its map. */
+-- 
+2.45.2.windows.1
+

@@ -1142,6 +1142,19 @@ Test (Amiga 1, A1200 + Warp 1260, przez VPN; 0.116 jako `Settlers-test`, MASTER 
 - żółtego „PLAYER GONE” bez LANINFO nie złapałem na zrzucie (komunikat trwa 4 s do powrotu do
   menu); ta sama ścieżka co WAITING.
 
+### Fokus pola adresu w oknie dołączania (0.117, 4.11.2026)
+
+- Kliknięcie JOIN SERVER ustawiało fokus pola adresu w `set_view`, ale `GuiObject::handle_event` po
+  obsłużonym kliknięciu zdejmuje fokus z pola (kliknięty obiekt nie jest polem). Teraz `set_view`
+  ustawia `focus_address`, a fokus dostaje pole w następnym `LanBox::update()` (co klatkę).
+  Inne pola bez zmian (kliknięcie przenosi fokus, port sprawdzany przy utracie fokusu).
+- Test (Amiga 1, 0.117 jako `Settlers-test`): JOIN SERVER i od razu klawisze `1 0 . 2` przez
+  AmiAgenta – zrzut F9: pole adresu „10.2” z ramką fokusu; potem w pole portu „0”, kliknięcie
+  pola adresu – port wraca do 6810, „5” trafia do adresu („10.25”). Settlers.ini przywrócone.
+- Historia wydań (PL/EN) uzupełniona o 0.112–0.117; w opisach dla gracza intro (pliki z dyskietek
+  1 i 2 do `data/intro`, NOINTRO), dwuklik / kliknięcie / prawy przycisk przy oknie budowy;
+  Install (EN/PL/DE): intro zamiast „dyskietka 1 nie jest potrzebna”.
+
 ## Ekrany panoramiczne 640×360, 960×540 i 1280×720 (0.99–0.100)
 
 Wszystkie trzy są w 8 bitach na karcie Warp (`modelist`; jest też 1360×768). Options → Screen:

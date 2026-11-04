@@ -49,7 +49,9 @@ In a Shell, for each file of disk 3, e.g.:
 and the same for gfxfast, gfxchip, sounds and extro; then disk 2 in
 DF0: and gfxpics and music.
 
-Disk 1 (the intro) is not needed.
+The intro of the original (optional): files from disks 1 and 2 into
+Work:Games/Settlers/data/intro - the list is in data/intro/ReadMe.txt.
+Without them the game starts at once, without the intro.
 
 
 STEP 3 - start the game
@@ -143,7 +145,9 @@ W Shellu, dla każdego pliku z dyskietki 3, np.:
 i tak samo gfxfast, gfxchip, sounds i extro; potem dyskietka 2 w DF0:
 i pliki gfxpics oraz music.
 
-Dyskietka 1 (intro) nie jest potrzebna.
+Intro oryginału (nieobowiązkowe): pliki z dyskietek 1 i 2 do
+Work:Games/Settlers/data/intro - lista jest w data/intro/ReadMe.txt.
+Bez nich gra startuje od razu, bez intro.
 
 
 KROK 3 - uruchom grę
@@ -237,7 +241,9 @@ In der Shell für jede Datei von Diskette 3, z. B.:
 und genauso gfxfast, gfxchip, sounds und extro; dann Diskette 2 in
 DF0: und gfxpics und music.
 
-Diskette 1 (das Intro) wird nicht gebraucht.
+Das Intro des Originals (wahlweise): Dateien von den Disketten 1 und 2
+nach Work:Games/Settlers/data/intro - die Liste steht in
+data/intro/ReadMe.txt. Ohne sie startet das Spiel sofort, ohne Intro.
 
 
 SCHRITT 3 - das Spiel starten

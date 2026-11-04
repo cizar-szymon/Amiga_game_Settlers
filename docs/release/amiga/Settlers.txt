@@ -1,7 +1,7 @@
 THE SETTLERS - Freeserf na Amige z karta graficzna
 ==================================================
 
-Wersja 0.111 (beta), 30.10.2026
+Wersja 0.117 (beta), 4.11.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) na Amige z karta graficzna
 (Picasso96) i procesorem 68040/68060, w rozdzielczosci do 800x600
@@ -40,11 +40,25 @@ ILBM do 8 bitplanow, pokazywany w czasie startu (co najmniej 4 s, z muzyka,
 jesli jest wlaczona), zmniejszony do ekranu.
 Bez niego ekran startu jest czarny.
 
+Intro oryginalu (nieobowiazkowe): przed gra pokazuje sie oryginalne
+intro gry na Amige, gdy w szufladzie data/intro sa jego pliki z Twoich
+dyskietek:
+  dyskietka 1: FHRS GA00 GA01 GA02 GAB2 GAC2 MUSI PIB1 PIC0 PIC2
+               SML2 SMP0 SMP2 SPR1 US00 US02
+  dyskietka 2: GA03 GA04 KMSK KPIC PIB5 PIC3 PIC4 PIC6
+               SMP3 SMP4 SMP5 US03 US04 US06
+Dowolny klawisz albo klikniecie przechodzi do gry; NOINTRO (Tool Type)
+wylacza intro. Bez tych plikow gra startuje od razu.
+
 
 STEROWANIE
 ----------
 
   mysz                     wszystko w grze (jak w oryginale)
+  dwuklik (wolne miejsce)  okno budowy od razu; na poczatku gry zamek
+  klik w inne miejsce      okno budowy pokazuje budynki dla niego;
+                           tam, gdzie nic nie da sie zbudowac, zamyka sie
+  prawy przycisk           zamyka okno budowy
   prawy przycisk + ruch    przewijanie mapy
   strzalki                 przewijanie mapy
   Z, rolka myszy           powiekszenie mapy: x2 (powyzej 400x300), x3 (800x600
@@ -192,6 +206,7 @@ sa wylaczone - usun nawiasy, zeby wlaczyc.
   SFXAREA=ALL    efekty z calego ekranu (domyslnie tylko z obszaru 320x200
                  wokol srodka, jak w oryginale); SFXAREA=480x300 - wiekszy
   NOSOUND        bez dzwieku
+  NOINTRO        bez intro oryginalu przed gra
   LANINFO        w grze LAN zawsze linia LAN (gracz, czas odpowiedzi,
                  zgodnosc gier); bez niej tylko problemy na zolto
   DATA=sciezka   inna szuflada z danymi gry (domyslnie PROGDIR:data)
