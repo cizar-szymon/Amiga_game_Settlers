@@ -39,7 +39,7 @@ done
 cp COPYING "$G/doc/COPYING"				# GPL-3.0, goes with the program
 cp port/thirdparty/micromod/licence.txt "$G/doc/micromod-licence.txt"
 # the drawers (a plain one, tools/icon/drawer.png): the game's and doc next to the game's icon
-python tools/make_doc_icon.py "$R/Settlers.info" --frame tools/icon/drawer.png --crop 0 0 46 40 --transparent --drawer --window 300 130 >/dev/null
+cp tools/icon/warp-drawer.info "$R/Settlers.info"	# the game drawer: the WARP logo (tools/icon/warp-drawer.info, ../WARP-drawer.info)
 python tools/make_doc_icon.py "$G/doc.info" --frame tools/icon/drawer.png --crop 0 0 46 40 --transparent --drawer --window 430 330 --pos 170 12 >/dev/null
 # the texts with icons opened by MultiView (file:picture:x:y)
 for t in Install.txt:doc_i:72:10 Settlers.txt:doc_pl:72:80 Settlers_en.txt:doc_en:282:80 \
