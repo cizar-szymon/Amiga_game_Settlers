@@ -4,7 +4,7 @@
  * Options, in the Shell or as Tool Types of the icon:
  *   MODE=400x300|640x360|640x400|640x480|800x600|960x540|WxH  DATA=path  LOAD=savefile  NOSOUND  FPS
  *   STATS[=FULL]  VERIFY  RENDER=VRAM|FAST  LOCK=FRAME|CALL  BLIT=0|1|2
- *   DEBUG=0..4
+ *   NOINTRO  DEBUG=0..4
  */
 
 #include <cstdio>
@@ -29,6 +29,7 @@
 #include "port/amiga_screen.h"
 #include "port/audio-amiga.h"
 #include "port/amiga_wb.h"
+#include "port/intro-amiga.h"
 #include "src/viewport.h"
 #include "port/amiga-box.h"
 #include "port/lan-amiga.h"
@@ -70,6 +71,8 @@ static unsigned int width = 640, height = 480;
 static bool mode_given = false;
 /* FREEZE: the loaded game paused (screenshots to compare). */
 static bool freeze = false;
+/* NOINTRO: no intro of the original before the game. */
+static bool no_intro = false;
 
 /* One option, from the Shell or a Tool Type of the icon; false when it is
    not known. */
@@ -95,6 +98,8 @@ parse_option(const char *a) {
     }
   } else if (strcasecmp(a, "FREEZE") == 0) {
     freeze = true;
+  } else if (strcasecmp(a, "NOINTRO") == 0) {
+    no_intro = true;
   } else if ((v = option_value(a, "PATHS")) != nullptr) {
     /* SCREEN: paths and borders drawn into every frame (to compare). */
     Viewport::paths_in_tiles = strcasecmp(v, "SCREEN") != 0;
@@ -162,7 +167,8 @@ main(int argc, char *argv[]) {
                       "[DATA=path] [LOAD=savefile] [NOSOUND] [SFXAREA=WxH|ALL] [FPS] "
                       "[STATS[=FULL]] "
                       "[VERIFY] [RENDER=VRAM|FAST] [LOCK=FRAME|CALL] "
-                      "[BLIT=0|1|2] [PATHS=TILES|SCREEN] [FREEZE] [DEBUG=n]");
+                      "[BLIT=0|1|2] [PATHS=TILES|SCREEN] [FREEZE] [NOINTRO] "
+                      "[DEBUG=n]");
         return 5;
       }
     }
@@ -172,6 +178,17 @@ main(int argc, char *argv[]) {
   }
 
   Log::Info["main"] << "Settlers " << SETTLERS_VERSION;
+
+  /* The original intro (Blue Byte 1993) from the player's own files in
+     data/intro, when they are there; any key or click goes on to the
+     game, Ctrl-C quits. */
+  if (!no_intro) {
+    std::string intro_dir = data_dirs.front() + "/intro";
+    if (intro_play(intro_dir.c_str(), !AudioAmiga::disabled,
+                   EventLoopAmiga::show_stats) != 0) {
+      return 0;
+    }
+  }
 
   try {
     Settings &settings = Settings::get_instance();

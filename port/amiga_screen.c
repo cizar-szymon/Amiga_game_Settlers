@@ -85,6 +85,34 @@ static ULONG find_mode(int w, int h)
 
 static int open_display(int w, int h, char *err, int errlen);
 
+/* Is there an 8-bit mode of exactly w x h? */
+int amiga_screen_mode_exists(int w, int h)
+{
+  struct List *ml;
+  struct P96Mode *m;
+  int found = 0, opened = 0;
+
+  if (P96Base == NULL) {
+    P96Base = OpenLibrary((CONST_STRPTR)"Picasso96API.library", 2);
+    if (P96Base == NULL) return 0;
+    opened = 1;
+  }
+  ml = p96AllocModeListTags(P96MA_FormatsAllowed, RGBFF_CLUT, TAG_DONE);
+  if (ml != NULL) {
+    for (m = (struct P96Mode *)ml->lh_Head; m->Node.ln_Succ != NULL;
+         m = (struct P96Mode *)m->Node.ln_Succ) {
+      if (m->Depth == 8 && m->Width == w && m->Height == h) found = 1;
+    }
+    p96FreeModeList(ml);
+  }
+  if (opened) {
+    CloseLibrary(P96Base);
+    P96Base = NULL;
+  }
+  return found;
+}
+
+
 int amiga_screen_open(int w, int h, const char *title, char *err, int errlen)
 {
   strncpy(screen_title, title, sizeof(screen_title) - 1);
@@ -464,6 +492,22 @@ int amiga_wait(unsigned long ms)
     return 1;
   }
   return 0;
+}
+
+/* Rows sy.. of the screen moved to dy.. (h rows, the whole width) by the
+   card's blitter; the rows may overlap. */
+void amiga_screen_move(int sy, int dy, int h)
+{
+  struct BitMap *bm;
+  if (screen == NULL || h <= 0) return;
+  bm = screen->RastPort.BitMap;
+  BltBitMap(bm, 0, sy, bm, 0, dy, width, h, 0xc0, 0xff, NULL);
+}
+
+/* The priority of this task; returns the old one. */
+int amiga_task_priority(int pri)
+{
+  return SetTaskPri(FindTask(NULL), pri);
 }
 
 int amiga_break(void)

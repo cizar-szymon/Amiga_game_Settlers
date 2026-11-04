@@ -50,6 +50,8 @@ typedef struct AmigaEvent {
 int amiga_screen_open(int width, int height, const char *title,
                       char *err, int errlen);
 void amiga_screen_close(void);
+/* Is there an 8-bit RTG mode of exactly w x h? */
+int amiga_screen_mode_exists(int w, int h);
 /* Another w x h mode while the game runs; on failure the old one is
    opened again and -1 returned. */
 int amiga_screen_reopen(int w, int h, char *err, int errlen);
@@ -101,6 +103,12 @@ int amiga_get_event(AmigaEvent *ev);
 /* Sleeps until an input event arrives, Ctrl-C is pressed or ms
    milliseconds have passed. Returns 1 when Ctrl-C was pressed. */
 int amiga_wait(unsigned long ms);
+
+/* Moves h rows of the screen from row sy to row dy (blitter, may overlap). */
+void amiga_screen_move(int sy, int dy, int h);
+
+/* Sets the priority of the calling task; returns the old one. */
+int amiga_task_priority(int pri);
 
 /* Ctrl-C pending (clears it)? */
 int amiga_break(void);

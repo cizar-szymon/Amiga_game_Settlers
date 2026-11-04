@@ -72,7 +72,8 @@ if(AMIGA_CPU)
     ${FS}/gui.cc ${FS}/popup.cc ${FS}/game-init.cc ${FS}/notification.cc
     ${FS}/panel.cc ${FS}/version.cc ${FS}/text-input.cc ${FS}/list.cc
     ${FS}/command_line.cc ${FS}/video.cc ${FS}/audio.cc ${FS}/event_loop.cc
-    audio-amiga.cc amiga_audio.c thirdparty/micromod/micromod.c amiga_wb.c)
+    audio-amiga.cc amiga_audio.c thirdparty/micromod/micromod.c amiga_wb.c
+    intro-player.cc intro-amiga.cc)
   target_include_directories(fs_gui PUBLIC ${FREESERF_DIR}
                              ${CMAKE_CURRENT_SOURCE_DIR}/..
                              ${CMAKE_CURRENT_SOURCE_DIR}/gen)
