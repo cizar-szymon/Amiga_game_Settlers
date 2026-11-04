@@ -46,6 +46,8 @@ class IntroPlayer {
   int frame_count() const { return nframes; }
   /* The frame step() runs next. */
   int frame() const { return cur_frame; }
+  /* The scene of the original (1..7) the last step() was in. */
+  int scene() const { return scene_no; }
 
   /* Runs the operations of the next frame; sfx gets its kSfxPerFrame
      effect samples (signed 8 bit, Paula channel 3). False when all frames
@@ -66,8 +68,15 @@ class IntroPlayer {
   bool picture_changed() const { return dirty; }
   /* The shown picture: kWidth x kHeight colour indices (band b of the
      display uses colours b * 64 .. b * 64 + 63, kBlack outside it) and the
-     palette (256 RGB triplets, 8 bit). */
-  void render(uint8_t *pixels, uint8_t *rgb);
+     palette (256 RGB triplets, 8 bit). Line y is at row(pixels, y). Only
+     the lines whose plane data changed since the last render() are
+     converted (pixels must be the same buffer every time). scroll = d when
+     the picture moved up by d lines (down when d < 0): line y then shows
+     what line y + d showed before, unless changed[y] = 1. */
+  void render(uint8_t *pixels, uint8_t *rgb, uint8_t *changed, int *scroll);
+  const uint8_t *row(const uint8_t *pixels, int y) const {
+    return pixels + slot[y] * kWidth;
+  }
 
  protected:
   struct Band {
@@ -93,6 +102,7 @@ class IntroPlayer {
   size_t pos;
   int nframes;
   int cur_frame;
+  int scene_no;
 
   /* The memory blocks of the original, one arena, kPad guard bytes before
      and after each (blits may start a word before a buffer). */
@@ -106,6 +116,15 @@ class IntroPlayer {
   uint8_t *module_data[kMaxModules];
   size_t module_size[kMaxModules];
   int nmodules;
+
+  /* The files of the intro as they are on the disk, read by open(). */
+  enum { kMaxFiles = 64 };
+  struct File {
+    char name[5];
+    uint8_t *raw;
+    size_t size;
+  } files[kMaxFiles];
+  int nfiles;
 
   int8_t *musi;
   size_t musi_size;
@@ -123,6 +142,18 @@ class IntroPlayer {
 
   uint16_t *blit_tmp;
 
+  /* What each line of pixels shows: its plane data when it was converted
+     (the usual 320-pixel window), so that unchanged lines are skipped. */
+  enum { kLineNone, kLineBlack, kLineFast, kLineOther };
+  uint8_t line_state[kHeight];
+  uint8_t line_depth[kHeight];
+  uint32_t line_data[kHeight][60];
+  /* Storage row of each line (rotated when the band scrolls). */
+  uint8_t slot[kHeight];
+  const uint8_t *last_planes[6];
+  int last_depth, last_first;
+  int band_scroll();
+
   bool fail(const char *fmt, const char *arg = "");
   bool read_file(const char *name, uint8_t **data, size_t *size,
                  bool rle);
@@ -134,7 +165,10 @@ class IntroPlayer {
   void op_view(const uint8_t *&p);
   void mix(int8_t *out);
   void sfx_start(unsigned k, unsigned vol, unsigned rep);
-  void render_band(const Band &b, int bi, int y0, int y1, uint8_t *pixels);
+  void render_band(const Band &b, int bi, int y0, int y1, uint8_t *pixels,
+                   uint8_t *changed);
+  void black_lines(int y0, int y1, uint8_t *pixels, uint8_t *changed);
+  bool line_same(int y, const uint8_t *const *pl, int depth);
 };
 
 #endif  // PORT_INTRO_PLAYER_H_

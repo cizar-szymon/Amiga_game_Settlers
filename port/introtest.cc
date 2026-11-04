@@ -56,16 +56,48 @@ main(int argc, char *argv[]) {
   static uint8_t pixels[IntroPlayer::kWidth * IntroPlayer::kHeight];
   static uint8_t rgb[IntroPlayer::kWidth * IntroPlayer::kHeight * 3];
   uint8_t pal[256 * 3];
+  uint8_t changed[IntroPlayer::kHeight];
   int8_t buf[IntroPlayer::kSfxPerFrame];
+  static uint8_t screen[IntroPlayer::kWidth * IntroPlayer::kHeight];
+  int screen_errors = 0;
   for (int f = 0; f < frames; f++) {
     player.step(buf);
     if (player.music_event() != IntroPlayer::MusicNone) {
       std::printf("frame %d: music %d\n", f, player.music_event());
     }
     std::fwrite(buf, 1, sizeof(buf), sfx);
-    player.render(pixels, pal);
-    for (int i = 0; i < IntroPlayer::kWidth * IntroPlayer::kHeight; i++) {
-      std::memcpy(rgb + 3 * i, pal + 3 * pixels[i], 3);
+    /* As intro-amiga.cc does it: render only after a change; the screen
+       moved by the scroll, then the changed lines and those that came in
+       written. The screen must equal the picture in every frame. */
+    int scroll = 0;
+    if (player.picture_changed() || f == 0) {
+      player.render(pixels, pal, changed, &scroll);
+      const int w = IntroPlayer::kWidth, h = IntroPlayer::kHeight;
+      if (scroll > 0 && scroll < h) {
+        std::memmove(screen, screen + scroll * w, (h - scroll) * w);
+      } else if (scroll < 0 && -scroll < h) {
+        std::memmove(screen - scroll * w, screen, (h + scroll) * w);
+      }
+      for (int y = 0; y < h; y++) {
+        if (f == 0 || changed[y] ||
+            (scroll != 0 && (y + scroll < 0 || y + scroll >= h))) {
+          std::memcpy(screen + y * w, player.row(pixels, y), w);
+        }
+      }
+    }
+    for (int y = 0; y < IntroPlayer::kHeight; y++) {
+      if (std::memcmp(screen + y * IntroPlayer::kWidth, player.row(pixels, y),
+                      IntroPlayer::kWidth) != 0) {
+        screen_errors++;
+        break;
+      }
+    }
+    for (int y = 0; y < IntroPlayer::kHeight; y++) {
+      const uint8_t *r = player.row(pixels, y);
+      uint8_t *o = rgb + y * IntroPlayer::kWidth * 3;
+      for (int x = 0; x < IntroPlayer::kWidth; x++) {
+        std::memcpy(o + 3 * x, pal + 3 * r[x], 3);
+      }
     }
     if (f == dump) {
       std::snprintf(path, sizeof(path), "%s/frame%05d.ppm", argv[2], f);
@@ -80,6 +112,7 @@ main(int argc, char *argv[]) {
     std::fprintf(crc, "%d %08x\n", f,
                  static_cast<unsigned>(crc32(0, rgb, sizeof(rgb))));
   }
+  std::printf("frames where the updated screen differs: %d\n", screen_errors);
   std::fclose(crc);
   std::fclose(sfx);
   return 0;

@@ -133,11 +133,16 @@ byterun1(const uint8_t *src, const uint8_t *src_end, uint8_t *dst,
 
 IntroPlayer::IntroPlayer()
   : script(nullptr), script_size(0), pos(0), nframes(0), cur_frame(0),
+    scene_no(0),
     arena(nullptr), block(nullptr), block_size(nullptr), nblocks(0),
-    nmodules(0), musi(nullptr), musi_size(0), music_ev(MusicNone),
+    nmodules(0), nfiles(0), musi(nullptr), musi_size(0), music_ev(MusicNone),
     nbands(0), dirty(true), sfx_bank(nullptr), sfx_on(false),
     blit_tmp(nullptr) {
   err[0] = 0;
+  std::memset(line_state, kLineNone, sizeof(line_state));
+  for (int y = 0; y < kHeight; y++) slot[y] = static_cast<uint8_t>(y);
+  std::memset(last_planes, 0, sizeof(last_planes));
+  last_depth = 0;
   dir[0] = 0;
   std::memset(module_data, 0, sizeof(module_data));
   std::memset(voices, 0, sizeof(voices));
@@ -160,6 +165,7 @@ IntroPlayer::~IntroPlayer() {
   delete[] block_size;
   for (int i = 0; i < nmodules; i++) std::free(module_data[i]);
   std::free(musi);
+  for (int i = 0; i < nfiles; i++) std::free(files[i].raw);
   delete[] blit_tmp;
 }
 
@@ -173,6 +179,22 @@ IntroPlayer::fail(const char *fmt, const char *arg) {
 bool
 IntroPlayer::read_file(const char *name, uint8_t **data, size_t *size,
                        bool rle) {
+  for (int i = 0; i < nfiles; i++) {
+    if (std::strcmp(files[i].name, name) != 0) continue;
+    /* A file read by open(): a copy (unpacked), the cache keeps its own. */
+    size_t n = rle ? unrle(files[i].raw, files[i].size, nullptr, 0)
+                   : files[i].size;
+    uint8_t *out = static_cast<uint8_t *>(std::malloc(n + 1));
+    if (out == nullptr) return fail("no memory for %s", name);
+    if (rle) {
+      unrle(files[i].raw, files[i].size, out, n);
+    } else {
+      std::memcpy(out, files[i].raw, n);
+    }
+    *data = out;
+    *size = n;
+    return true;
+  }
   char path[300];
   std::snprintf(path, sizeof(path), "%s/%s", dir, name);
   FILE *f = std::fopen(path, "rb");
@@ -408,32 +430,37 @@ IntroPlayer::check_script() {
   if (frames != nframes) {
     return fail("%s/intro.script: wrong number of frames", dir);
   }
-  for (int i = 0; i < nnames; i++) {
-    char path[300];
-    std::snprintf(path, sizeof(path), "%s/%s", dir, names[i]);
-    FILE *f = std::fopen(path, "rb");
-    if (f == nullptr) return fail("%s not found", path);
-    std::fclose(f);
+  /* All the files the script loads are read now, as they are on the disk
+     (1.4 MB): loading one in the middle of a scene took up to 120 ms on
+     the Warp, six frames. */
+  for (int i = 0; i < nnames && i < kMaxFiles; i++) {
+    uint8_t *raw;
+    size_t len;
+    if (!read_file(names[i], &raw, &len, false)) return false;
+    std::memcpy(files[nfiles].name, names[i], 5);
+    files[nfiles].raw = raw;
+    files[nfiles].size = len;
+    nfiles++;
   }
   return true;
 }
 
 void
 IntroPlayer::op_load(const uint8_t *&p) {
-  char name[5];
-  std::memcpy(name, p, 4);
-  name[4] = 0;
+  const uint8_t *name = p;
   p += 4;
   uint8_t *dst = pointer(p);
   uint32_t n = rd32(p);
-  uint8_t *data;
-  size_t size;
-  /* PICx are ByteRun1 pictures without the disk's RLE. */
-  if (!read_file(name, &data, &size, std::strncmp(name, "PIC", 3) != 0)) {
+  for (int i = 0; i < nfiles; i++) {
+    if (std::memcmp(files[i].name, name, 4) != 0) continue;
+    /* PICx are ByteRun1 pictures without the disk's RLE. */
+    if (std::memcmp(name, "PIC", 3) == 0) {
+      std::memcpy(dst, files[i].raw, files[i].size < n ? files[i].size : n);
+    } else {
+      unrle(files[i].raw, files[i].size, dst, n);
+    }
     return;
   }
-  std::memcpy(dst, data, size < n ? size : n);
-  std::free(data);
 }
 
 /* The Amiga blitter in area mode: D = f(A, B, C) with the shifts of A and
@@ -780,7 +807,7 @@ IntroPlayer::step(int8_t *sfx) {
         break;
       }
       case kScene:
-        p++;
+        scene_no = *p++;
         break;
       case kView:
         op_view(p);
@@ -797,10 +824,27 @@ IntroPlayer::step(int8_t *sfx) {
   return true;
 }
 
+/* The usual window, 320 pixels from the first bit of each plane: is the
+   plane data of line y the same as when it was last converted? */
+bool
+IntroPlayer::line_same(int y, const uint8_t *const *pl, int depth) {
+  int sl = slot[y];
+  if (line_state[sl] != kLineFast || line_depth[sl] != depth) return false;
+  const uint32_t *old = line_data[sl];
+  for (int k = 0; k < depth; k++) {
+    const alias16 *p = reinterpret_cast<const alias16 *>(pl[k]);
+    const alias16 *o = reinterpret_cast<const alias16 *>(old + 10 * k);
+    for (int i = 0; i < kWidth / 16; i++) {
+      if (p[i] != o[i]) return false;
+    }
+  }
+  return true;
+}
+
 /* One display band (the copper's view from line y0 to y1). */
 void
 IntroPlayer::render_band(const Band &b, int bi, int y0, int y1,
-                         uint8_t *pixels) {
+                         uint8_t *pixels, uint8_t *changed) {
   int nwords = (static_cast<int>(b.ddfstop) - static_cast<int>(b.ddfstrt)) /
                8 + 1;
   if (nwords < 1) nwords = 1;
@@ -808,32 +852,63 @@ IntroPlayer::render_band(const Band &b, int bi, int y0, int y1,
   int hs = static_cast<int>(b.diwstrt & 0xFF) - 0x81;
   int he = static_cast<int>(b.diwstop & 0xFF) + 0x100 - 0x81;
   int x0 = static_cast<int>(b.ddfstrt) * 2 + 17 - 0x81;
-  const uint8_t *pl[6];
+  const uint8_t *pl[6] = { nullptr, nullptr, nullptr, nullptr, nullptr,
+                           nullptr };
   for (int k = 0; k < b.depth; k++) pl[k] = b.planes[k];
   int line_bytes = nwords * 2;
   uint8_t base = static_cast<uint8_t>(bi * 64);
   bool fast = b.con1 == 0 && x0 == 0 && hs <= 0 && he >= kWidth &&
               nwords * 16 >= kWidth && base == 0;
+  const int depth = b.depth;
   for (int y = y0; y < y1; y++) {
-    uint8_t *row = pixels + y * kWidth;
+    const int sl = slot[y];
+    uint8_t *row = pixels + sl * kWidth;
     if (fast) {
-      /* The usual window: 320 pixels from the first bit of each plane. */
-      alias32 *o = reinterpret_cast<alias32 *>(row);
-      for (int j = 0; j < kWidth / 8; j++) {
-        uint32_t hi = 0, lo = 0;
-        for (int k = 0; k < b.depth; k++) {
-          unsigned v = pl[k][j];
-          hi |= c2p_tab[v][0] << k;
-          lo |= c2p_tab[v][1] << k;
+      if (!line_same(y, pl, depth)) {
+        alias32 *o = reinterpret_cast<alias32 *>(row);
+        const uint8_t *p0 = pl[0], *p1 = pl[1], *p2 = pl[2], *p3 = pl[3],
+                      *p4 = pl[4], *p5 = pl[5];
+        if (depth == 5 || depth == 6) {
+          for (int j = 0; j < kWidth / 8; j++) {
+            const uint32_t *t0 = c2p_tab[p0[j]], *t1 = c2p_tab[p1[j]],
+                           *t2 = c2p_tab[p2[j]], *t3 = c2p_tab[p3[j]],
+                           *t4 = c2p_tab[p4[j]];
+            uint32_t hi = t0[0] | (t1[0] << 1) | (t2[0] << 2) |
+                          (t3[0] << 3) | (t4[0] << 4);
+            uint32_t lo = t0[1] | (t1[1] << 1) | (t2[1] << 2) |
+                          (t3[1] << 3) | (t4[1] << 4);
+            if (depth == 6) {
+              const uint32_t *t5 = c2p_tab[p5[j]];
+              hi |= t5[0] << 5;
+              lo |= t5[1] << 5;
+            }
+            o[2 * j] = hi;
+            o[2 * j + 1] = lo;
+          }
+        } else {
+          for (int j = 0; j < kWidth / 8; j++) {
+            uint32_t hi = 0, lo = 0;
+            for (int k = 0; k < depth; k++) {
+              unsigned v = pl[k][j];
+              hi |= c2p_tab[v][0] << k;
+              lo |= c2p_tab[v][1] << k;
+            }
+            o[2 * j] = hi;
+            o[2 * j + 1] = lo;
+          }
         }
-        o[2 * j] = hi;
-        o[2 * j + 1] = lo;
+        for (int k = 0; k < depth; k++) {
+          std::memcpy(line_data[sl] + 10 * k, pl[k], kWidth / 8);
+        }
+        line_state[sl] = kLineFast;
+        line_depth[sl] = static_cast<uint8_t>(depth);
+        changed[y] = 1;
       }
     } else {
       /* Any window, fine scroll per odd / even plane (BPLCON1). */
       uint8_t pix[40 * 16 + 16];
       std::memset(pix, 0, sizeof(pix));
-      for (int k = 0; k < b.depth; k++) {
+      for (int k = 0; k < depth; k++) {
         int delay = (b.con1 >> ((k & 1) ? 4 : 0)) & 0xF;
         for (int i = 0; i < line_bytes * 8; i++) {
           if (pl[k][i >> 3] & (0x80 >> (i & 7))) {
@@ -847,17 +922,73 @@ IntroPlayer::render_band(const Band &b, int bi, int y0, int y1,
         uint8_t v = (i >= 0 && i < n && x >= hs && x < he) ? pix[i] : 0;
         row[x] = static_cast<uint8_t>(base + v);
       }
+      line_state[sl] = kLineOther;
+      changed[y] = 1;
     }
-    for (int k = 0; k < b.depth; k++) {
+    for (int k = 0; k < depth; k++) {
       pl[k] += line_bytes + ((k & 1) ? b.mod2 : b.mod1);
     }
   }
 }
 
 void
-IntroPlayer::render(uint8_t *pixels, uint8_t *rgb) {
+IntroPlayer::black_lines(int y0, int y1, uint8_t *pixels, uint8_t *changed) {
+  for (int y = y0; y < y1; y++) {
+    const int sl = slot[y];
+    if (line_state[sl] != kLineBlack) {
+      std::memset(pixels + sl * kWidth, kBlack, kWidth);
+      line_state[sl] = kLineBlack;
+      changed[y] = 1;
+    }
+  }
+}
+
+/* Has the one band moved by whole lines in memory since the last render
+   (scene 1 scrolls the sky down to the road this way)? Line y then shows
+   what line y + d showed: the stored lines are rotated, not converted
+   again. Returns d (0: no such move). */
+int
+IntroPlayer::band_scroll() {
+  if (nbands != 1) {
+    last_depth = 0;
+    return 0;
+  }
+  const Band &b = bands[0];
+  int d = 0;
+  int nwords = (static_cast<int>(b.ddfstop) - static_cast<int>(b.ddfstrt)) /
+               8 + 1;
+  intptr_t stride = nwords * 2 + b.mod1;
+  if (last_depth == b.depth && b.mod1 == b.mod2 && stride > 0 &&
+      b.first_line == last_first) {
+    intptr_t delta = b.planes[0] - last_planes[0];
+    bool same = delta != 0 && delta % stride == 0;
+    for (int k = 1; k < b.depth && same; k++) {
+      same = b.planes[k] - last_planes[k] == delta;
+    }
+    if (same && delta / stride > -kHeight && delta / stride < kHeight) {
+      d = static_cast<int>(delta / stride);
+    }
+  }
+  for (int k = 0; k < b.depth; k++) last_planes[k] = b.planes[k];
+  last_depth = b.depth;
+  last_first = b.first_line;
+  if (d != 0) {
+    uint8_t old[kHeight];
+    std::memcpy(old, slot, sizeof(old));
+    for (int y = 0; y < kHeight; y++) {
+      slot[y] = old[(y + d + kHeight) % kHeight];
+    }
+  }
+  return d;
+}
+
+void
+IntroPlayer::render(uint8_t *pixels, uint8_t *rgb, uint8_t *changed,
+                    int *scroll) {
   dirty = false;
   std::memset(rgb, 0, 256 * 3);
+  std::memset(changed, 0, kHeight);
+  *scroll = band_scroll();
   int y = 0;
   for (int bi = 0; bi < nbands; bi++) {
     const Band &b = bands[bi];
@@ -865,10 +996,10 @@ IntroPlayer::render(uint8_t *pixels, uint8_t *rgb) {
     int y1 = bi + 1 < nbands ? bands[bi + 1].first_line : kHeight;
     if (y1 > kHeight) y1 = kHeight;
     if (bi == 0) {
-      if (y0 > 0) std::memset(pixels, kBlack, y0 * kWidth);
+      black_lines(0, y0, pixels, changed);
       y = y0;
     }
-    if (y1 > y0) render_band(b, bi, y0, y1, pixels);
+    if (y1 > y0) render_band(b, bi, y0, y1, pixels, changed);
     if (y1 > y) y = y1;
     uint8_t *c = rgb + bi * 64 * 3;
     for (int i = 0; i < 32; i++) {
@@ -885,7 +1016,5 @@ IntroPlayer::render(uint8_t *pixels, uint8_t *rgb) {
       c[3 * (32 + i) + 2] = bl >> 1;
     }
   }
-  if (y < kHeight) {
-    std::memset(pixels + y * kWidth, kBlack, (kHeight - y) * kWidth);
-  }
+  black_lines(y, kHeight, pixels, changed);
 }
