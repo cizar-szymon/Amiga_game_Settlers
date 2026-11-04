@@ -3,7 +3,7 @@
 #ifndef PORT_SETTLERS_VERSION_H_
 #define PORT_SETTLERS_VERSION_H_
 
-#define SETTLERS_VERSION "0.113"
+#define SETTLERS_VERSION "0.114"
 /* A test build: "TEST <version>" in the top left corner (where the FPS
    are, while they are off). Empty for an official release. */
 #define SETTLERS_LABEL ""
