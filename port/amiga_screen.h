@@ -10,7 +10,7 @@ extern "C" {
 
 enum {
   AEV_NONE,
-  AEV_MOVE,       /* x, y */
+  AEV_MOVE,       /* x, y; rel: dx, dy (the pointer held, see below) */
   AEV_BUTTON,     /* x, y, button (1 left, 2 middle, 3 right), down */
   AEV_KEY,        /* rawkey code, qual, ascii (0 if none), down */
   AEV_CLOSE,      /* close gadget */
@@ -30,6 +30,11 @@ typedef struct AmigaEvent {
   int code;
   int qual;
   int ascii;
+  /* While the right button is held the pointer stays where it went down
+     (as in the original: the map scrolls on and on): a move is then
+     rel = 1 with the motion in dx, dy, and x, y stay at that place. */
+  int rel;
+  int dx, dy;
 } AmigaEvent;
 
 /* Raw key codes the port uses */

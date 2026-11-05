@@ -1,0 +1,2567 @@
+From c7d626ce9aca90e58f93934518390d760e8d90b1 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Thu, 5 Nov 2026 19:54:58 +0100
+Subject: [PATCH] 0.118: options and mouse of the original, LAN lobby, sync
+ error save and resync
+
+- Options - Video: Pathway scrolling (the map follows the end of a road, as
+  far as needed), Fast mapclick (a right double click opens the map window),
+  Fast building (a double click on a site opens the building window, sets a
+  flag where only a flag fits, starts a road on an own flag; the map alone)
+- The building sites of the panel show the sites for a flag alone; they
+  switch with the left button while the right one is held
+- Left click with the right button held (Event::ButtonBoth): the window of
+  a building, demolishing; the right button alone and the key 2 do not
+  demolish; the right button does not close the building window
+- A double click on a tree stump opens the building window
+- A demolished building without a road takes its flag
+- Map sizes 1 and 2; the size kept after a game and in the settings
+- The map window keeps its choices; Autosave 3 and 5 min
+- Load game: a wide list, no map preview; the Save Game box 2.5 times as
+  wide; quick saves with names that fit an Amiga disk (30 letters)
+- LAN: a lobby after connecting (the server chooses the map, both see its
+  preview, chat, quick answers); a new map keeps the players; Show ping
+  in LAN game; a save when the game ends (LAN_ERR_...); out of step: a
+  save of both sides (SYNC_ERR_...) and a resync (the server's game to the
+  other side, Ctrl+Shift+R); LANTEST Ctrl+Shift+X makes a game go apart
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7U35RuKvTQMs84jNJEFhT
+---
+ src/advanced-box.cc |  16 +-
+ src/event_loop.h    |   5 +-
+ src/game-init.cc    |  78 ++++++-
+ src/game-init.h     |   8 +
+ src/game.cc         |  12 +-
+ src/game.h          |   6 +
+ src/gui.cc          |   2 +
+ src/gui.h           |   4 +
+ src/interface.cc    | 183 +++++++++++++++--
+ src/interface.h     |  49 ++++-
+ src/lan-box.cc      | 486 +++++++++++++++++++++++++++++++++++++++++++-
+ src/lan-box.h       |  46 +++++
+ src/lan-command.cc  |   3 +
+ src/lan-command.h   |   9 +-
+ src/lan-game.cc     | 424 +++++++++++++++++++++++++++++++++++++-
+ src/lan-game.h      |  66 +++++-
+ src/map.cc          |   6 +-
+ src/panel.cc        |  45 +++-
+ src/panel.h         |   3 +
+ src/popup.cc        |  60 ++++--
+ src/popup.h         |   3 +
+ src/savegame.cc     |   4 +-
+ src/viewport.cc     | 105 ++++++++--
+ src/viewport.h      |   2 +
+ 24 files changed, 1528 insertions(+), 97 deletions(-)
+
+diff --git a/src/advanced-box.cc b/src/advanced-box.cc
+index d98d066..21d4b5f 100644
+--- a/src/advanced-box.cc
++++ b/src/advanced-box.cc
+@@ -161,6 +161,9 @@ static const Option options[] = {
+      of the data and the language is left out. */
+   { N_("Show FPS"), &Interface::get_show_fps, nullptr,
+     &Interface::switch_show_fps },
++  /* The time there and back of the LAN connection, left of the FPS. */
++  { N_("Show ping in LAN game"), &Interface::get_show_ping, nullptr,
++    &Interface::switch_show_ping },
+ #else
+   /* With the data of several versions installed. */
+   { N_("Graphics"), nullptr, graphics_text,
+@@ -174,6 +177,15 @@ static const Option options[] = {
+ 
+ /* The Video box: what the map looks like. */
+ static const Option video_options[] = {
++  /* Options of the original game, first and in its order: the map follows
++     the road being built; a double special click on the map opens the map
++     window; a double click on a building site the choice of buildings. */
++  { N_("Pathway scrolling"), &Interface::get_pathway_scrolling, nullptr,
++    &Interface::switch_pathway_scrolling },
++  { N_("Fast mapclick"), &Interface::get_fast_mapclick, nullptr,
++    &Interface::switch_fast_mapclick },
++  { N_("Fast building"), &Interface::get_fast_building, nullptr,
++    &Interface::switch_fast_building },
+   /* Less desert on new maps (not missions). */
+   { N_("Sand on new maps"), nullptr, sand_text, &Interface::more_sand,
+     &Interface::less_sand },
+@@ -200,12 +212,12 @@ typedef struct PageInfo {
+ 
+ static const PageInfo pages[] = {
+ #ifdef __AMIGA__
+-  { nullptr, options, sizeof(options) / sizeof(options[0]), 152 },
++  { nullptr, options, sizeof(options) / sizeof(options[0]), 172 },
+ #else
+   { nullptr, options, sizeof(options) / sizeof(options[0]), 256 },
+ #endif
+   { N_("Video"), video_options,
+-    sizeof(video_options) / sizeof(video_options[0]), 144 },
++    sizeof(video_options) / sizeof(video_options[0]), 204 },
+   { N_("Audio"), nullptr, 0, 84 },
+ };
+ 
+diff --git a/src/event_loop.h b/src/event_loop.h
+index aa8d220..03642ef 100644
+--- a/src/event_loop.h
++++ b/src/event_loop.h
+@@ -42,7 +42,10 @@ class Event {
+   typedef enum Button {
+     ButtonLeft = 1,
+     ButtonMiddle,
+-    ButtonRight
++    ButtonRight,
++    /* The left button clicked while the right one is held (a click only,
++       the release of the right button then gives no click). */
++    ButtonBoth
+   } Button;
+ 
+  public:
+diff --git a/src/game-init.cc b/src/game-init.cc
+index aaf6c80..025947e 100644
+--- a/src/game-init.cc
++++ b/src/game-init.cc
+@@ -135,6 +135,7 @@ GameInitBox::GameInitBox(Interface *interface)
+   custom_mission->remove_all_players();
+   custom_mission->add_player(12, {0x00, 0xe3, 0xe3}, 40, 40, 40);
+   custom_mission->add_player(1, {0xcf, 0x63, 0x63}, 20, 30, 40);
++  custom_mission->set_map_size(interface->custom_map_size);
+   mission = custom_mission;
+ 
+   /* Both of the first two players are people: this computer and the one
+@@ -143,6 +144,7 @@ GameInitBox::GameInitBox(Interface *interface)
+   lan_mission->remove_all_players();
+   lan_mission->add_player(12, {0x00, 0xe3, 0xe3}, 40, 40, 40);
+   lan_mission->add_player(13, {0xcf, 0x63, 0x63}, 40, 40, 40);
++  lan_mission->set_map_size(interface->lan_map_size);
+ 
+   minimap->set_displayed(true);
+   minimap->set_size(150, 160);
+@@ -154,15 +156,12 @@ GameInitBox::GameInitBox(Interface *interface)
+   random_input->set_displayed(true);
+   add_float(random_input.get(), 19 + 31*8, 15);
+ 
+-  file_list->set_size(160, 160);
++  /* Load game: the list of saves over the whole width, no map (the
++     long names, e.g. LAN_ERR_<date>_<time>, are seen whole; a choice no
++     longer reads the save). */
++  file_list->set_size(320, 160);
+   file_list->set_displayed(false);
+   file_list->set_selection_handler([this](const std::string &item) {
+-    Game game;
+-    if (GameStore::get_instance().load(item, &game)) {
+-      this->map = game.get_map();
+-      this->minimap->set_map(map);
+-      this->minimap->set_displayed(true);
+-    }
+     this->set_redraw();  /* "Load LAN game" or "Load game" */
+   });
+   file_list->set_open_handler([this](const std::string &) {
+@@ -174,6 +173,26 @@ GameInitBox::GameInitBox(Interface *interface)
+ GameInitBox::~GameInitBox() {
+ }
+ 
++void
++GameInitBox::refresh_lan_mission() {
++  interface->lan_map_size = lan_mission->get_map_size();
++  if (game_type == GameLan) {
++    random_input->set_random(lan_mission->get_random_base());
++    request_map_preview();
++  }
++}
++
++/* The menu is made again after a game: the interface keeps the map size
++   (and the settings file, between runs). */
++void
++GameInitBox::remember_map_size() {
++  if (game_type == GameLan) {
++    interface->lan_map_size = mission->get_map_size();
++  } else {
++    interface->custom_map_size = mission->get_map_size();
++  }
++}
++
+ void
+ GameInitBox::draw_box_icon(int ix, int iy, int sprite) {
+   frame->draw_sprite(8 * ix + 20, iy + 16, Data::AssetIcon, sprite);
+@@ -250,6 +269,19 @@ GameInitBox::internal_draw() {
+     frame->draw_string(190 + 19, 55 + 76, "Making the map", Color::green,
+                        Color::black);
+   }
++  if (game_type == GameLan) {
++    /* No map here: the server chooses it in the LAN box, which both
++       players see once they are connected. */
++    static const char *const lines[] = {
++      "The map is chosen", "in the LAN box,", "after the other",
++      "player joins." };
++    frame->fill_rect(190, 55, 150, 160, Color::black);
++    for (int i = 0; i < 4; i++) {
++      std::string line = lines[i];
++      frame->draw_string(190 + (150 - 8 * static_cast<int>(line.size())) / 2,
++                         55 + 60 + 10 * i, line, Color::green, Color::black);
++    }
++  }
+ 
+   const int layout[] = {
+     266, 0, 0,    // Start button
+@@ -502,9 +534,9 @@ GameInitBox::handle_action(int action) {
+         case GameLoad: {
+           random_input->set_displayed(false);
+           file_list->set_displayed(true);
+-          /* The preview shows the chosen save; no new map. */
++          /* No map: the list of saves takes its place. */
+           preview_pending = false;
+-          minimap->set_displayed(true);
++          minimap->set_displayed(false);
+           break;
+         }
+       }
+@@ -530,6 +562,7 @@ GameInitBox::handle_action(int action) {
+         case GameCustom:
+         case GameLan:
+           mission->set_map_size(std::min(10u, mission->get_map_size() + 1));
++          remember_map_size();
+           break;
+       }
+       request_map_preview();
+@@ -546,7 +579,8 @@ GameInitBox::handle_action(int action) {
+           break;
+         case GameCustom:
+         case GameLan:
+-          mission->set_map_size(std::max(3u, mission->get_map_size() - 1));
++          mission->set_map_size(std::max(1u, mission->get_map_size() - 1));
++          remember_map_size();
+           break;
+       }
+       request_map_preview();
+@@ -589,7 +623,22 @@ GameInitBox::handle_action(int action) {
+       std::string str = random_input->get_text();
+       if (str.length() == 16) {
+         mission = (game_type == GameLan) ? lan_mission : custom_mission;
++        /* A new map draws new players (a custom game); a LAN game keeps
++           its own: the two people and the computer players as they were
++           set, or the second Amiga would get a computer player. */
++        std::vector<PPlayerInfo> keep;
++        if (game_type == GameLan) {
++          for (size_t i = 0; i < mission->get_player_count(); i++) {
++            keep.push_back(mission->get_player(i));
++          }
++        }
+         mission->set_random_base(random_input->get_random());
++        if (game_type == GameLan) {
++          mission->remove_all_players();
++          for (const PPlayerInfo &p : keep) {
++            mission->add_player(p);
++          }
++        }
+         request_map_preview();
+       }
+       break;
+@@ -789,7 +838,7 @@ GameInitBox::update_preview() {
+   }
+   /* The Sand of the Advanced box changed: the preview again, once the
+      options (and Advanced) are closed. */
+-  if (is_custom() && !preview_pending &&
++  if (game_type == GameCustom && !preview_pending &&
+       interface->get_popup_box() == nullptr &&
+       (interface->get_sand_percent() != preview_sand ||
+        interface->get_rock_percent() != preview_rocks)) {
+@@ -804,6 +853,13 @@ GameInitBox::update_preview() {
+ 
+ void
+ GameInitBox::request_map_preview() {
++  if (game_type == GameLan) {
++    /* The map is made in the LAN box. */
++    preview_pending = false;
++    minimap->set_displayed(false);
++    set_redraw();
++    return;
++  }
+   preview_pending = true;
+   preview_due = EventLoop::get_instance().get_ticks() + 400;
+   minimap->set_displayed(false);
+diff --git a/src/game-init.h b/src/game-init.h
+index b217338..c691f25 100644
+--- a/src/game-init.h
++++ b/src/game-init.h
+@@ -109,6 +109,14 @@ class GameInitBox : public GuiObject {
+   void draw_background();
+   unsigned int get_player_face_sprite(size_t face);
+   void handle_action(int action);
++  void remember_map_size();
++
++ public:
++  /* The map of the LAN game changed in the LAN box (size, another one):
++     the code and the preview here too. */
++  void refresh_lan_mission();
++
++ protected:
+   bool handle_player_click(unsigned int player, int x, int y);
+   unsigned int get_next_character(unsigned int player);
+   void apply_random(Random rnd);
+diff --git a/src/game.cc b/src/game.cc
+index 72345dd..c6c2130 100644
+--- a/src/game.cc
++++ b/src/game.cc
+@@ -1997,6 +1997,16 @@ Game::demolish_building_(MapPos pos) {
+       flag_reset_transport(flag);
+     }
+ 
++    /* A flag left with no road goes with the building (as in the
++       original); a flag on a road stays. Building::burnup() tries this
++       too, but there the building still holds the flag. */
++    MapPos flag_pos = map->move_down_right(pos);
++    if (map->get_obj(flag_pos) == Map::ObjectFlag &&
++        map->paths(flag_pos) == 0 &&
++        !flags[map->get_obj_index(flag_pos)]->has_building()) {
++      demolish_flag_(flag_pos);
++    }
++
+     return true;
+   }
+ 
+@@ -2836,7 +2846,7 @@ operator >> (SaveReaderBinary &reader, Game &game) {
+   int map_size = v16;
+ 
+   // Avoid allocating a huge map if the input file is invalid
+-  if (map_size < 3 || map_size > 10) {
++  if (map_size < 1 || map_size > 10) {
+     throw ExceptionFreeserf("Invalid map size in file");
+   }
+ 
+diff --git a/src/game.h b/src/game.h
+index d8781d6..aff012b 100644
+--- a/src/game.h
++++ b/src/game.h
+@@ -135,6 +135,12 @@ class Game {
+   unsigned int get_tick() const { return tick; }
+   bool is_paused() const { return game_speed == 0; }
+   unsigned int get_speed() const { return game_speed; }
++  unsigned int get_speed_save() const { return game_speed_save; }
++  /* LAN resync: the speed of the server's game (a save does not keep it). */
++  void set_speeds(unsigned int speed, unsigned int saved) {
++    game_speed = speed;
++    game_speed_save = saved;
++  }
+   GameAI &get_ai_game() { return ai_game; }
+   void set_max_next_index(unsigned int value) { max_next_index = value; }
+ 
+diff --git a/src/gui.cc b/src/gui.cc
+index f4f1cef..5717d34 100644
+--- a/src/gui.cc
++++ b/src/gui.cc
+@@ -182,6 +182,8 @@ GuiObject::handle_event(const Event *event) {
+         result = handle_click_left(event_x, event_y);
+       } else if (event->button == Event::ButtonRight) {
+         result = handle_click_right(event_x, event_y);
++      } else if (event->button == Event::ButtonBoth) {
++        result = handle_click_both(event_x, event_y);
+       }
+       break;
+     case Event::TypeDrag: {
+diff --git a/src/gui.h b/src/gui.h
+index 956ea26..8a0677b 100644
+--- a/src/gui.h
++++ b/src/gui.h
+@@ -59,6 +59,10 @@ class GuiObject : public EventLoop::Handler {
+   virtual bool handle_click_left(int x, int y) { return false; }
+   /* The original's special click (right button held). */
+   virtual bool handle_click_right(int x, int y) { return false; }
++  /* Left clicked with the right button held: a left click, unless the
++     object has a use for it. */
++  virtual bool handle_click_both(int x, int y) {
++    return handle_click_left(x, y); }
+   virtual bool handle_dbl_click(int x, int y, Event::Button button) {
+     return false; }
+   virtual bool handle_drag(int dx, int dy) { return true; }
+diff --git a/src/interface.cc b/src/interface.cc
+index c9caf6e..4a6cd44 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -77,6 +77,17 @@ Interface::Interface()
+   sand_percent = 100;
+   tree_variety = true;
+   wild_boars = true;
++  fast_building = true;
++  fast_mapclick = true;
++  pathway_scrolling = true;
++  minimap_options.ownership = 0;
++  minimap_options.roads = false;
++  minimap_options.advanced = -1;
++  minimap_options.buildings = true;
++  minimap_options.grid = false;
++  minimap_options.scale = 1;
++  custom_map_size = 3;
++  lan_map_size = 3;
+   rock_percent = 100;
+   autosave_last_ticks = 0;
+   autosave_last_game_tick = 0;
+@@ -97,6 +108,7 @@ Interface::Interface()
+   last_const_tick = 0;
+ 
+   show_fps = false;
++  show_ping = false;
+   exit_to_menu = false;
+   quit_program = false;
+   fps = 0;
+@@ -230,9 +242,29 @@ Interface::apply_settings() {
+   stock_box_occupied = settings.get("advanced", "stock_box_occupied", false);
+   tree_variety = settings.get("advanced", "tree_variety", true);
+   wild_boars = settings.get("advanced", "wild_boars", true);
++  fast_building = settings.get("options", "fast_building", true);
++  fast_mapclick = settings.get("options", "fast_mapclick", true);
++  pathway_scrolling = settings.get("options", "pathway_scrolling", true);
++  minimap_options.ownership = std::max(0, std::min(2,
++    settings.get("map_window", "ownership", minimap_options.ownership)));
++  minimap_options.roads = settings.get("map_window", "roads",
++                                       minimap_options.roads);
++  minimap_options.advanced = std::max(-1, std::min(23,
++    settings.get("map_window", "advanced", minimap_options.advanced)));
++  minimap_options.buildings = settings.get("map_window", "buildings",
++                                           minimap_options.buildings);
++  minimap_options.grid = settings.get("map_window", "grid",
++                                      minimap_options.grid);
++  custom_map_size = std::max(1u, std::min(10u,
++    settings.get("game", "map_size", custom_map_size)));
++  lan_map_size = std::max(1u, std::min(10u,
++    settings.get("game", "lan_map_size", lan_map_size)));
++  minimap_options.scale = (settings.get("map_window", "scale",
++                                        minimap_options.scale) == 2) ? 2 : 1;
+   if (settings.get("advanced", "show_fps", show_fps) != show_fps) {
+     switch_show_fps();
+   }
++  show_ping = settings.get("advanced", "show_ping", false);
+   autosave_minutes = settings.get("advanced", "autosave", 0u);
+   sand_percent = std::min(100u, settings.get("advanced", "sand", 100u));
+   rock_percent = std::min(100u, settings.get("advanced", "rocks", 100u));
+@@ -276,7 +308,19 @@ Interface::store_settings() {
+   settings.set("advanced", "stock_box_occupied", stock_box_occupied);
+   settings.set("advanced", "tree_variety", tree_variety);
+   settings.set("advanced", "wild_boars", wild_boars);
++  settings.set("options", "fast_building", fast_building);
++  settings.set("options", "fast_mapclick", fast_mapclick);
++  settings.set("options", "pathway_scrolling", pathway_scrolling);
++  settings.set("map_window", "ownership", minimap_options.ownership);
++  settings.set("map_window", "roads", minimap_options.roads);
++  settings.set("map_window", "advanced", minimap_options.advanced);
++  settings.set("map_window", "buildings", minimap_options.buildings);
++  settings.set("map_window", "grid", minimap_options.grid);
++  settings.set("map_window", "scale", minimap_options.scale);
++  settings.set("game", "map_size", custom_map_size);
++  settings.set("game", "lan_map_size", lan_map_size);
+   settings.set("advanced", "show_fps", show_fps);
++  settings.set("advanced", "show_ping", show_ping);
+   settings.set("advanced", "autosave", autosave_minutes);
+   settings.set("advanced", "sand", sand_percent);
+   settings.set("advanced", "rocks", rock_percent);
+@@ -425,6 +469,38 @@ Interface::command(LanCommand::Type type, MapPos pos, int a, int b, int c) {
+   return command(LanCommand(type, 0, pos, a, b, c));
+ }
+ 
++void
++Interface::layout_popup() {
++  if (popup != nullptr) {
++    /* The Save box 2.5 times as wide: the names of the files whole. */
++    int popup_width = (popup->get_box() == PopupBox::TypeLoadSave)
++                      ? PopupBox::kSaveBoxWidth : 144;
++    int popup_height = 160;
++    int popup_x = (width - popup_width) / 2;
++    int popup_y = (height - popup_height) / 2;
++    popup->move_to(popup_x, popup_y);
++    popup->set_size(popup_width, popup_height);
++    set_redraw();
++  }
++}
++
++void
++Interface::center_lan_box() {
++  if (lan_box != nullptr) {
++    int bw = 0, bh = 0;
++    lan_box->get_size(&bw, &bh);
++    lan_box->move_to((width - bw) / 2, (height - bh) / 2);
++    set_redraw();
++  }
++}
++
++void
++Interface::lan_mission_changed() {
++  if (init_box != nullptr) {
++    init_box->refresh_lan_mission();
++  }
++}
++
+ void
+ Interface::close_lan_box() {
+   if (lan_box != nullptr) {
+@@ -975,8 +1051,7 @@ Interface::build_road_segment(Direction dir, bool special) {
+     }
+ 
+     update_map_cursor_pos(dest);
+-
+-    /* TODO Pathway scrolling */
++    pathway_scroll(dest);
+   } else {
+     return -1;
+   }
+@@ -997,12 +1072,43 @@ Interface::remove_road_segment() {
+   }
+ 
+   update_map_cursor_pos(dest);
+-
+-  /* TODO Pathway scrolling */
++  pathway_scroll(dest);
+ 
+   return res;
+ }
+ 
++/* Pathway scrolling (an option of the original): while a road is built,
++   the map moves when the end of the road comes near the edge of the view,
++   only as far as needed to keep the end that far from the edge - as the
++   original, a long road is built on without scrolling by hand. */
++void
++Interface::pathway_scroll(MapPos pos) {
++  if (!pathway_scrolling || (viewport == nullptr)) return;
++  int sx = 0, sy = 0, vw = 0, vh = 0;
++  viewport->screen_pix_from_map_coord(pos, &sx, &sy);
++  viewport->get_size(&vw, &vh);
++  const int margin = 48;  /* about one and a half tiles */
++  if (sx >= vw || sy >= vh) {
++    /* Out of the view (wrapped around the map): centre on it. */
++    viewport->move_to_map_pos(pos);
++    return;
++  }
++  int dx = 0, dy = 0;
++  if (sx < margin) {
++    dx = sx - margin;
++  } else if (sx >= vw - margin) {
++    dx = sx - (vw - margin);
++  }
++  if (sy < margin) {
++    dy = sy - margin;
++  } else if (sy >= vh - margin) {
++    dy = sy - (vh - margin);
++  }
++  if (dx != 0 || dy != 0) {
++    viewport->move_by_pixels(dx, dy);
++  }
++}
++
+ /* Extend currently constructed road with an array of directions. */
+ int
+ Interface::extend_road(const Road &road) {
+@@ -1159,14 +1265,7 @@ Interface::layout() {
+     panel->set_size(panel_width, panel_height);
+   }
+ 
+-  if (popup != nullptr) {
+-    int popup_width = 144;
+-    int popup_height = 160;
+-    int popup_x = (width - popup_width) / 2;
+-    int popup_y = (height - popup_height) / 2;
+-    popup->move_to(popup_x, popup_y);
+-    popup->set_size(popup_width, popup_height);
+-  }
++  layout_popup();
+ 
+   if (init_box != nullptr) {
+     int init_box_width = 360;
+@@ -1187,10 +1286,7 @@ Interface::layout() {
+                           (height - platform_box_height) / 2);
+   }
+ 
+-  if (lan_box != nullptr) {
+-    lan_box->move_to((width - LanBox::kWidth) / 2,
+-                     (height - LanBox::kHeight) / 2);
+-  }
++  center_lan_box();
+ 
+   if (advanced_box != nullptr) {
+     int bw = 0, bh = 0;
+@@ -1362,7 +1458,7 @@ Interface::less_rocks() {
+ 
+ void
+ Interface::next_autosave_interval() {
+-  static const unsigned int intervals[] = { 0, 10, 20, 30, 60 };
++  static const unsigned int intervals[] = { 0, 3, 5, 10, 20, 30, 60 };
+   const size_t count = sizeof(intervals) / sizeof(intervals[0]);
+   size_t i = 0;
+   while (i < count && intervals[i] != autosave_minutes) i++;
+@@ -1403,13 +1499,28 @@ Interface::switch_show_fps() {
+ 
+ /* Count the drawn frames and show the rate of the last second in the top
+    left corner of the screen. */
++std::string
++Interface::ping_label() const {
++  if (!show_ping || !lan_game || (lan_link == nullptr)) {
++    return std::string();
++  }
++  int ms = lan_link->get_ping_ms();
++  return (ms >= 0) ? "PING " + std::to_string(ms) + " MS" : "PING -";
++}
++
+ void
+ Interface::draw_fps(Frame *frame) {
++  /* The ping of a LAN game first, left of the FPS (or the build label). */
++  std::string ping = ping_label();
+   if (!show_fps) {
++    std::string text = ping;
+     if (!build_label.empty()) {
+-      frame->fill_rect(0, 0, 8 * static_cast<int>(build_label.size()) + 4, 11,
++      text = text.empty() ? build_label : text + "  " + build_label;
++    }
++    if (!text.empty()) {
++      frame->fill_rect(0, 0, 8 * static_cast<int>(text.size()) + 4, 11,
+                        Color::black);
+-      frame->draw_string(2, 2, build_label, Color::green, Color::transparent);
++      frame->draw_string(2, 2, text, Color::green, Color::transparent);
+     }
+     return;
+   }
+@@ -1426,6 +1537,7 @@ Interface::draw_fps(Frame *frame) {
+ #ifdef __AMIGA__
+   /* Amiga port: green on black, readable on any part of the map. */
+   std::string text = "FPS " + std::to_string(fps);
++  if (!ping.empty()) text = ping + "  " + text;
+   frame->fill_rect(0, 0, 8 * static_cast<int>(text.size()) + 4, 11,
+                    Color::black);
+   frame->draw_string(2, 2, text, Color::green, Color::transparent);
+@@ -1598,6 +1710,12 @@ Interface::update() {
+ 
+ bool
+ Interface::handle_key_pressed(char key, int modifier) {
++  /* Return in the LAN box: its chat line goes out. */
++  if ((key == '\r' || key == '\n') && (lan_box != nullptr) &&
++      lan_box->is_displayed()) {
++    lan_box->handle_return();
++    return true;
++  }
+   switch (key) {
+     /* Interface control */
+     case '\t': {
+@@ -1654,6 +1772,31 @@ Interface::handle_key_pressed(char key, int modifier) {
+         command(LanCommand::TypeTestWin);
+       }
+       break;
++    case 'x':
++    case 'X':
++      /* LANTEST: this side's game goes apart from the other one (one more
++         random number, here only): OUT OF STEP, SYNC_ERR, the resync. */
++      if (lan_test_keys && lan_game && game && (modifier & 3) == 3) {
++        game->random_int();
++        lan_game->note("LANTEST: THIS GAME GOES APART");
++        Log::Warn["lan"] << "LANTEST: this game made to go apart";
++      }
++      break;
++    case 'r':
++    case 'R':
++      /* A LAN game: the server's game to the other side (a test). */
++      if (lan_game && (modifier & 3) == 3) {
++        command(LanCommand::TypeResync);
++      }
++      break;
++    case 'd':
++    case 'D':
++      /* A LAN game: both sides save the state for a bug report. Off for
++         now: the reports go to a server later (user, 5.11.2026). */
++      if (false && lan_game && (modifier & 3) == 3) {
++        command(LanCommand::TypeDump);
++      }
++      break;
+     case 'i': {
+       /* The keys of the game (also the "I" button of the settings box). */
+       open_keys_box();
+@@ -1697,7 +1840,7 @@ Interface::handle_key_pressed(char key, int modifier) {
+     }
+     case 'z':
+       if (modifier & 1) {
+-        GameStore::get_instance().quick_save("quicksave", game.get(),
++        GameStore::get_instance().quick_save("quick", game.get(),
+                                              lan_game != nullptr);
+       } else if (modifier == 0 && zoom_hook) {
+         zoom_hook(0);
+diff --git a/src/interface.h b/src/interface.h
+index 4c6c30d..1adee66 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -134,7 +134,41 @@ class Interface : public GuiObject, public GameManager::Handler {
+   bool tree_variety;
+   /* Wild boars among trees (only the picture and sounds). */
+   bool wild_boars;
+-  unsigned int autosave_minutes;  // 0: off
++  /* Options of the original game (its Options box). Fast building: a
++     double click on a building site opens the choice of buildings.
++     Pathway scrolling: the map follows the end of the road being built.
++     Fast mapclick: a double special click on the map opens the map window,
++     as the map button of the panel. */
++  bool fast_building;
++  bool fast_mapclick;
++  bool pathway_scrolling;
++  unsigned int autosave_minutes;
++
++ public:
++  /* What the map window shows (its buttons): kept when the window closes
++     and in the settings file, so it opens as it was left. */
++  struct MinimapOptions {
++    int ownership;   // MinimapGame::OwnershipMode
++    bool roads;
++    int advanced;    // -1 buildings on/off, 0 flags, 1..23 one building type
++    bool buildings;
++    bool grid;
++    int scale;       // 1 or 2
++  };
++  MinimapOptions minimap_options;
++  /* The map size chosen in the start menu, for a new game and for a LAN
++     game: the menu is made again after a game, and keeps them. */
++  unsigned int custom_map_size;
++  unsigned int lan_map_size;
++  /* The LAN box in the middle of the screen (its height changes). */
++  void center_lan_box();
++  /* The popup in the middle of the screen, its size by its box (the Save
++     box is wider). */
++  void layout_popup();
++  /* The server changed the map in the LAN box: the start box shows it. */
++  void lan_mission_changed();
++
++ protected:  // 0: off
+   /* The size of the deserts of new maps (not missions), % of the
+      original's. */
+   unsigned int sand_percent;
+@@ -154,6 +188,8 @@ class Interface : public GuiObject, public GameManager::Handler {
+ 
+   /* Frames per second display (Ctrl+Shift+F). */
+   bool show_fps;
++  /* The ping of a LAN game left of the FPS (Options - Advanced). */
++  bool show_ping;
+   bool exit_to_menu;
+   /* A game of two players on two computers, while it runs. */
+   std::unique_ptr<LanGame> lan_game;
+@@ -186,6 +222,10 @@ class Interface : public GuiObject, public GameManager::Handler {
+     message_level = (message_level == 0) ? 3 : message_level - 1; }
+   /* Mouse dragging moves the map vertically the other way. */
+   bool get_show_fps() const { return show_fps; }
++  bool get_show_ping() const { return show_ping; }
++  void switch_show_ping() { show_ping = !show_ping; }
++  /* "PING 12 MS" while a LAN game runs and Show ping is on, else "". */
++  std::string ping_label() const;
+   void switch_show_fps();
+   bool get_invert_scrolling() const { return invert_scrolling; }
+   void switch_invert_scrolling() { invert_scrolling = !invert_scrolling; }
+@@ -199,6 +239,12 @@ class Interface : public GuiObject, public GameManager::Handler {
+   void switch_tree_variety() { tree_variety = !tree_variety; }
+   bool get_wild_boars() const { return wild_boars; }
+   void switch_wild_boars() { wild_boars = !wild_boars; }
++  bool get_fast_building() const { return fast_building; }
++  void switch_fast_building() { fast_building = !fast_building; }
++  bool get_fast_mapclick() const { return fast_mapclick; }
++  void switch_fast_mapclick() { fast_mapclick = !fast_mapclick; }
++  bool get_pathway_scrolling() const { return pathway_scrolling; }
++  void switch_pathway_scrolling() { pathway_scrolling = !pathway_scrolling; }
+   void switch_stock_box_occupied() {
+     stock_box_occupied = !stock_box_occupied; }
+   /* Data source of the graphics, the sounds and the music (when the data
+@@ -334,6 +380,7 @@ class Interface : public GuiObject, public GameManager::Handler {
+   void build_road_reset() { build_road_end(); build_road_begin(); }
+   int build_road_segment(Direction dir, bool special = false);
+   int remove_road_segment();
++  void pathway_scroll(MapPos pos);
+   int extend_road(const Road &road);
+   bool build_road_is_valid_dir(Direction dir) {
+     return (BIT_TEST(building_road_valid_dir, dir) != 0); }
+diff --git a/src/lan-box.cc b/src/lan-box.cc
+index 425dac1..c936c7f 100644
+--- a/src/lan-box.cc
++++ b/src/lan-box.cc
+@@ -39,6 +39,10 @@
+ #include "src/list.h"
+ #include "src/savegame.h"
+ #include "src/game.h"
++#include "src/minimap.h"
++#include "src/map-generator.h"
++#include "src/map-geometry.h"
++#include "src/event_loop.h"
+ 
+ static const int kExitSize = 16;
+ static const int kButtonWidth = 112;
+@@ -71,6 +75,28 @@ static const int kAddressY = 122;
+ static const int kJoinPortY = 134;
+ static const int kJoinButtonsY = 150;
+ static const int kMessageY = 180;
++/* The lobby (kLobbyHeight): the map on the left, the game on the right,
++   the chat under them, the buttons at the bottom. */
++static const int kMapX = 16, kMapY = 22, kMapSize = 128;
++static const int kInfoX = 152, kInfoValueX = 240, kInfoY = 24;
++static const int kInfoStep = 10;
++static const int kHalfWidth = 88;
++static const int kInfoLeftX = 152, kInfoRightX = 248;
++static const int kSizeButtonsY = 82;
++static const int kMapButtonsY = 102;
++static const int kChatX = 16, kChatY = 156, kChatW = 320;
++static const size_t kChatRows = 5;
++static const int kChatFieldY = 204;
++static const int kLobbyButtonsY = 222;
++static const int kLobbyMessageY = 244;
++/* Shown in a row of the chat: the name, a space, the text. */
++static const size_t kChatNameShown = 7;
++static const size_t kChatTextMax = 32;
++/* The player who joined: answers about the map with one click, under the
++   chat: another map, the map is average, the map is great. */
++static const char *const kQuickAnswers[] = { "CHANGE", "AVERAGE", "GREAT" };
++static const int kQuickCount = 3;
++static const int kQuickX = 16, kQuickWidth = 64, kQuickStep = 68;
+ 
+ static const char kNoNetwork[] = "No network in this version.";
+ 
+@@ -82,6 +108,31 @@ name_filter(const char key, TextInput *text_input) {
+          key == '_' || key == '.';
+ }
+ 
++/* The letters of the game's font (as the chat of the game). */
++static bool
++chat_letter(char c) {
++  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
++         (c >= '0' && c <= '9') || c == ' ' || c == '-' || c == '.' ||
++         c == ':' || c == '?' || c == '%';
++}
++
++static bool
++chat_filter(const char key, TextInput *text_input) {
++  return chat_letter(key);
++}
++
++/* Only the letters of the font, at most max (the other side may send
++   anything). */
++static std::string
++chat_clean(const std::string &s, size_t max) {
++  std::string r;
++  for (char c : s) {
++    if (r.size() >= max) break;
++    if (chat_letter(c)) r += c;
++  }
++  return r;
++}
++
+ /* Digits and dots of an IPv4 address. */
+ static bool
+ address_filter(const char key, TextInput *text_input) {
+@@ -169,8 +220,23 @@ LanBox::LanBox(Interface *_interface, PGameInfo _mission)
+   , save_map_size(0)
+   , save_size(0)
+   , save_sum(0)
+-  , save_delay(0) {
++  , save_delay(0)
++  , was_connected(false)
++  , preview(new Minimap(nullptr))
++  , preview_pending(false)
++  , preview_due(0)
++  , lobby_save_size(0)
++  , chat_field(new TextInput())
++  , focus_chat(false) {
+   set_size(kWidth, kHeight);
++  preview->set_size(kMapSize, kMapSize);
++  preview->set_displayed(false);
++  add_float(preview.get(), kMapX, kMapY);
++  chat_field->set_size(kChatW, 10);
++  chat_field->set_max_length(kChatTextMax);
++  chat_field->set_filter(chat_filter);
++  chat_field->set_displayed(false);
++  add_float(chat_field.get(), kChatX, kChatFieldY);
+   save_list->set_size(kListW, 96);
+   save_list->set_open_handler([this](const std::string &path) {
+     if (use_saved_game(path)) {
+@@ -260,26 +326,47 @@ LanBox::set_view(View _view) {
+   set_redraw();
+ }
+ 
++/* Shown or hidden, redrawn only when that changes: the box is updated
++   with every frame of the network (the ping, once a second), and the map
++   preview draws its whole map when redrawn. */
++static void
++show_if(GuiObject *object, bool shown) {
++  if (object->is_displayed() != shown) {
++    object->set_displayed(shown);
++  }
++}
++
+ void
+ LanBox::show_fields() {
+   LanLink::State state = link_state();
+   bool running = state == LanLink::StateServing ||
+                  state == LanLink::StateConnected;
+-  save_list->set_displayed(view == ViewLoad);
+-  server_name_field->set_displayed(view == ViewServer);
+-  player_name_field->set_displayed(view == ViewJoin);
+-  address_field->set_displayed(view == ViewJoin);
++  bool in_lobby = lobby();
++  show_if(save_list.get(), view == ViewLoad);
++  show_if(server_name_field.get(), view == ViewServer && !in_lobby);
++  if (in_lobby && !chat_field->is_displayed()) {
++    focus_chat = true;
++  }
++  show_if(chat_field.get(), in_lobby);
++  bool map_shown = in_lobby &&
++                   (view == ViewServer ? save_path.empty()
++                                       : lobby_save_name.empty()) &&
++                   preview_map && !preview_pending;
++  show_if(preview.get(), map_shown);
++  fit_size();
++  show_if(player_name_field.get(), view == ViewJoin);
++  show_if(address_field.get(), view == ViewJoin);
+   /* The port of a running server is shown as text: it is the one in use
+      until STOP SERVER. */
+   bool server_port = view == ViewServer && !running;
+   if (server_port && !server_port_field->is_displayed()) {
+     server_port_field->show();
+   }
+-  server_port_field->set_displayed(server_port);
++  show_if(server_port_field.get(), server_port);
+   if (view == ViewJoin && !join_port_field->is_displayed()) {
+     join_port_field->show();
+   }
+-  join_port_field->set_displayed(view == ViewJoin);
++  show_if(join_port_field.get(), view == ViewJoin);
+ }
+ 
+ int
+@@ -301,6 +388,17 @@ LanBox::update() {
+       address_field->set_focused();
+     }
+   }
++  if (focus_chat) {
++    focus_chat = false;
++    if (chat_field->is_displayed()) {
++      chat_field->set_focused();
++    }
++  }
++  if (preview_pending &&
++      static_cast<int>(EventLoop::get_instance().get_ticks() -
++                       preview_due) >= 0) {
++    generate_preview();
++  }
+   LanLink *l = link();
+   if (l == nullptr || view == ViewChoose) {
+     return;
+@@ -308,6 +406,22 @@ LanBox::update() {
+   if (!l->poll()) {
+     return;
+   }
++  /* A player joined the server: the lobby, the map to them. */
++  bool connected = l->get_state() == LanLink::StateConnected;
++  if (connected != was_connected) {
++    was_connected = connected;
++    chat.clear();
++    chat_field->set_text(std::string());
++    if (connected && l->is_server()) {
++      preview_mission = mission;
++      send_lobby();
++      request_preview();
++    } else if (!connected) {
++      lobby_save_name.clear();
++      preview_map.reset();
++      preview->set_map(nullptr);
++    }
++  }
+   if (own_address.empty()) {
+     own_address = l->get_address();
+   }
+@@ -329,7 +443,36 @@ LanBox::update() {
+   int type = 0;
+   std::string data;
+   while (l->receive(&type, &data)) {
+-    if (type == LanGame::MessageSetup) {
++    if (type == LanGame::MessageChat && data.size() >= 2) {
++      size_t nl = data.find('\n', 1);
++      if (nl != std::string::npos) {
++        add_chat(data.substr(1, nl - 1), data.substr(nl + 1));
++        play_sound(Audio::TypeSfxMessage);
++      }
++    } else if (type == LanGame::MessageLobby) {
++      /* The server's map (the player who joined). */
++      std::istringstream s(data);
++      std::string kind;
++      s >> kind;
++      if (kind == "map") {
++        Random seed;
++        unsigned int delay = 0;
++        PGameInfo m = lan_decode_setup(data.substr(4), &seed, &delay);
++        if (m) {
++          preview_mission = m;
++          lobby_save_name.clear();
++          request_preview();
++        }
++      } else if (kind == "save") {
++        s >> lobby_save_size;
++        std::string name;
++        std::getline(s, name);
++        lobby_save_name = chat_clean(name.size() > 0 ? name.substr(1) : name,
++                                     15);
++        if (lobby_save_name.empty()) lobby_save_name = "?";
++        preview_map.reset();
++      }
++    } else if (type == LanGame::MessageSetup) {
+       /* The same game as the server; closes this box. */
+       if (interface->start_lan_game(data, false)) {
+         return;
+@@ -408,9 +551,316 @@ LanBox::use_saved_game(const std::string &path) {
+   size_t slash = path.find_last_of("/\\:");
+   save_name = (slash == std::string::npos) ? path : path.substr(slash + 1);
+   save_map_size = game.get_map()->get_size();
++  send_lobby();
+   return true;
+ }
+ 
++bool
++LanBox::lobby() {
++  return (view == ViewServer || view == ViewJoined) &&
++         link_state() == LanLink::StateConnected;
++}
++
++void
++LanBox::fit_size() {
++  int h = lobby() ? kLobbyHeight : kHeight;
++  if (height != h) {
++    set_size(kWidth, h);
++    interface->center_lan_box();
++  }
++}
++
++void
++LanBox::send_lobby() {
++  LanLink *l = link();
++  if (l == nullptr || !l->is_server() ||
++      l->get_state() != LanLink::StateConnected) {
++    return;
++  }
++  if (!save_path.empty()) {
++    l->send(LanGame::MessageLobby, "save " + std::to_string(save_map_size) +
++                                   " " + save_name);
++  } else {
++    l->send(LanGame::MessageLobby,
++            "map " + lan_encode_setup(mission, Random(), 1));
++  }
++}
++
++void
++LanBox::map_changed() {
++  preview_mission = mission;
++  send_lobby();
++  if (save_path.empty()) {
++    request_preview();
++  }
++  interface->lan_mission_changed();
++  show_fields();
++  set_redraw();
++}
++
++void
++LanBox::request_preview() {
++  preview_pending = true;
++  preview_due = EventLoop::get_instance().get_ticks() + 400;
++  show_fields();
++  set_redraw();
++}
++
++/* The map of the lobby, made as the start box makes its preview (the
++   same random base, size, sand and rocks). */
++void
++LanBox::generate_preview() {
++  preview_pending = false;
++  if (!preview_mission) {
++    return;
++  }
++  preview_map.reset(new Map(MapGeometry(preview_mission->get_map_size())));
++  ClassicMapGenerator generator(*preview_map,
++                                preview_mission->get_random_base());
++  generator.init(MapGenerator::HeightGeneratorMidpoints, true);
++  generator.set_desert_percent(preview_mission->get_sand_percent());
++  generator.set_rock_percent(preview_mission->get_rock_percent());
++  generator.generate();
++  preview_map->init_tiles(generator);
++  preview->set_map(preview_map);
++  show_fields();
++  set_redraw();
++}
++
++void
++LanBox::add_chat(const std::string &name, const std::string &text,
++                 bool note) {
++  LobbyLine line;
++  line.name = chat_clean(name, 15);
++  line.text = chat_clean(text, kChatTextMax);
++  line.note = note;
++  chat.push_back(line);
++  while (chat.size() > kChatRows) {
++    chat.pop_front();
++  }
++  set_redraw();
++}
++
++void
++LanBox::handle_return() {
++  if (!lobby()) {
++    return;
++  }
++  std::string text = chat_clean(chat_field->get_text(), kChatTextMax);
++  if (text.empty()) {
++    return;
++  }
++  send_chat(text);
++  chat_field->set_text(std::string());
++  chat_field->set_focused();
++}
++
++void
++LanBox::send_chat(const std::string &text) {
++  LanLink *l = link();
++  bool server = l->is_server();
++  std::string name = server ? server_name_field->get_text()
++                            : player_name_field->get_text();
++  /* As the chat of the game: the player, the name, a new line, the text. */
++  if (l->send(LanGame::MessageChat,
++              std::string(1, static_cast<char>(server ? 0 : 1)) + name +
++              "\n" + text)) {
++    add_chat(name, text);
++  } else {
++    add_chat(std::string(), "NOT SENT - NO CONNECTION", true);
++  }
++  set_redraw();
++}
++
++void
++LanBox::draw_lobby() {
++  bool server = view == ViewServer;
++  LanLink *l = link();
++  std::string other = l->get_peer_name();
++  std::string own = server ? server_name_field->get_text()
++                           : player_name_field->get_text();
++  bool saved = server ? !save_path.empty() : !lobby_save_name.empty();
++
++  /* The map, or what is played. */
++  if (!preview->is_displayed()) {
++    frame->fill_rect(kMapX, kMapY, kMapSize, kMapSize, Color::black);
++    std::string text = saved ? "Saved game" : "Making the map...";
++    if (!saved && !preview_mission) text = "No map yet.";
++    frame->draw_string(kMapX + (kMapSize - frame->get_string_width(text)) / 2,
++                       kMapY + kMapSize / 2 - 4, text, Color::green);
++  }
++
++  int ai = 0;
++  unsigned int size = 0;
++  if (preview_mission) {
++    size = preview_mission->get_map_size();
++    for (size_t i = 0; i < preview_mission->get_player_count(); i++) {
++      if (preview_mission->get_player(i)->get_face() < 12) ai++;
++    }
++  }
++  std::string game_label = saved ? "Saved" : "Map size";
++  std::string game_value = server
++    ? (saved ? save_name : std::to_string(mission->get_map_size()))
++    : (saved ? lobby_save_name
++             : (preview_mission ? std::to_string(size) : "-"));
++  std::string ai_value = saved ? "-" : (preview_mission ? std::to_string(ai)
++                                                        : "-");
++  if (server && !saved) {
++    int own_ai = 0;
++    for (size_t i = 0; i < mission->get_player_count(); i++) {
++      if (mission->get_player(i)->get_face() < 12) own_ai++;
++    }
++    ai_value = std::to_string(own_ai);
++  }
++  const std::string rows[][2] = {
++    { "Server", (server ? own : other).substr(0, 12) },
++    { "Player 2", (server ? other : own).substr(0, 12) },
++    { "Response", ping_text() },
++    { game_label, game_value.substr(0, 12) },
++    { "AI", ai_value },
++  };
++  int y = kInfoY;
++  for (const auto &row : rows) {
++    frame->draw_string(kInfoX, y, row[0], Color::green, Color::black);
++    frame->draw_string(kInfoValueX, y, row[1], Color::green, Color::black);
++    y += kInfoStep;
++  }
++
++  if (server) {
++    draw_text_button(kInfoLeftX, kSizeButtonsY, kHalfWidth, "SMALLER",
++                     !saved && mission->get_map_size() > 1);
++    draw_text_button(kInfoRightX, kSizeButtonsY, kHalfWidth, "LARGER",
++                     !saved && mission->get_map_size() < 10);
++    draw_text_button(kInfoLeftX, kMapButtonsY, kHalfWidth, "OTHER MAP",
++                     !saved);
++    draw_text_button(kInfoRightX, kMapButtonsY, kHalfWidth,
++                     saved ? "NEW MAP" : "SAVED GAME");
++  } else {
++    frame->draw_string(kInfoX, kSizeButtonsY + 4, "The server chooses",
++                       Color::green, Color::black);
++    frame->draw_string(kInfoX, kSizeButtonsY + 14, "the map. Agree on",
++                       Color::green, Color::black);
++    frame->draw_string(kInfoX, kSizeButtonsY + 24, "it in the chat.",
++                       Color::green, Color::black);
++  }
++  frame->draw_string(kInfoX, kMapButtonsY + 28, "Chat: type, Return",
++                     Color::green, Color::black);
++
++  /* The chat: the last lines, the field to write in below. */
++  int ch = static_cast<int>(kChatRows) * 8 + 4;
++  frame->fill_rect(kChatX, kChatY, kChatW, ch, Color::black);
++  int ry = kChatY + 2;
++  for (const LobbyLine &line : chat) {
++    if (line.note) {
++      frame->draw_string(kChatX + 2, ry, line.text, Color(0xdd, 0xdd, 0x00));
++    } else {
++      std::string name = line.name.substr(0, kChatNameShown);
++      frame->draw_string(kChatX + 2, ry, name, Color::green);
++      frame->draw_string(kChatX + 2 + 8 * static_cast<int>(name.size() + 1),
++                         ry, line.text, Color(0xdd, 0xdd, 0xdd));
++    }
++    ry += 8;
++  }
++
++  if (server) {
++    draw_text_button(kLeftButtonX, kLobbyButtonsY, kButtonWidth, "CANCEL");
++    draw_text_button(kRightButtonX, kLobbyButtonsY, kButtonWidth,
++                     "START GAME");
++  } else {
++    for (int i = 0; i < kQuickCount; i++) {
++      draw_text_button(kQuickX + i * kQuickStep, kLobbyButtonsY, kQuickWidth,
++                       kQuickAnswers[i]);
++    }
++    draw_text_button(kRightButtonX, kLobbyButtonsY, kButtonWidth,
++                     "DISCONNECT");
++  }
++  if (!message.empty()) {
++    frame->draw_string(kLabelX, kLobbyMessageY, message, Color::green,
++                       Color::black);
++  }
++}
++
++/* A click in the lobby; false: not on a button of it. */
++bool
++LanBox::lobby_click(int x, int y) {
++  bool server = view == ViewServer;
++  if (!server) {
++    for (int i = 0; i < kQuickCount; i++) {
++      if (inside(x, y, kQuickX + i * kQuickStep, kLobbyButtonsY, kQuickWidth,
++                 kButtonHeight)) {
++        play_sound(Audio::TypeSfxClick);
++        send_chat(kQuickAnswers[i]);
++        return true;
++      }
++    }
++    if (inside(x, y, kRightButtonX, kLobbyButtonsY, kButtonWidth,
++               kButtonHeight)) {
++      play_sound(Audio::TypeSfxClick);
++      set_view(ViewJoin);
++      return true;
++    }
++    return false;
++  }
++  bool saved = !save_path.empty();
++  if (inside(x, y, kInfoLeftX, kSizeButtonsY, kHalfWidth, kButtonHeight)) {
++    if (saved || mission->get_map_size() <= 1) {
++      play_sound(Audio::TypeSfxNotAccepted);
++    } else {
++      play_sound(Audio::TypeSfxClick);
++      mission->set_map_size(mission->get_map_size() - 1);
++      map_changed();
++    }
++    return true;
++  }
++  if (inside(x, y, kInfoRightX, kSizeButtonsY, kHalfWidth, kButtonHeight)) {
++    if (saved || mission->get_map_size() >= 10) {
++      play_sound(Audio::TypeSfxNotAccepted);
++    } else {
++      play_sound(Audio::TypeSfxClick);
++      mission->set_map_size(mission->get_map_size() + 1);
++      map_changed();
++    }
++    return true;
++  }
++  if (inside(x, y, kInfoLeftX, kMapButtonsY, kHalfWidth, kButtonHeight)) {
++    if (saved) {
++      play_sound(Audio::TypeSfxNotAccepted);
++    } else {
++      /* Another map: a new random base; the players stay (a LAN game,
++         see GameInitBox). */
++      play_sound(Audio::TypeSfxClick);
++      std::vector<PPlayerInfo> keep;
++      for (size_t i = 0; i < mission->get_player_count(); i++) {
++        keep.push_back(mission->get_player(i));
++      }
++      mission->set_random_base(Random());
++      mission->remove_all_players();
++      for (const PPlayerInfo &p : keep) {
++        mission->add_player(p);
++      }
++      map_changed();
++    }
++    return true;
++  }
++  if (inside(x, y, kInfoRightX, kMapButtonsY, kHalfWidth, kButtonHeight)) {
++    play_sound(Audio::TypeSfxClick);
++    if (saved) {
++      save_path.clear();
++      map_changed();
++    } else {
++      set_view(ViewLoad);
++    }
++    return true;
++  }
++  if (inside(x, y, kLeftButtonX, kLobbyButtonsY, kButtonWidth,
++             kButtonHeight)) {
++    play_sound(Audio::TypeSfxClick);
++    set_view(ViewChoose);
++    return true;
++  }
++  return false;
++}
++
+ std::string
+ LanBox::ping_text() {
+   int ms = link() != nullptr ? link()->get_ping_ms() : -1;
+@@ -459,6 +909,12 @@ LanBox::internal_draw() {
+   draw_centered(9, "LAN game");
+ 
+   LanLink::State state = link_state();
++  if (lobby()) {
++    draw_lobby();
++    frame->draw_sprite(width - 8 - kExitSize, height - 7 - kExitSize,
++                       Data::AssetIcon, 60);  // Exit
++    return;
++  }
+   switch (view) {
+     case ViewChoose:
+       draw_centered(26, "Two players on two Amigas");
+@@ -599,6 +1055,20 @@ LanBox::handle_click_left(int x, int y) {
+ 
+   LanLink *l = link();
+   LanLink::State state = link_state();
++  if (lobby()) {
++    if (lobby_click(x, y)) {
++      return true;
++    }
++    if (view == ViewServer &&
++        inside(x, y, kRightButtonX, kLobbyButtonsY, kButtonWidth,
++               kButtonHeight)) {
++      /* START GAME: as the button of the server view, below. */
++      x = kRightButtonX;
++      y = kRunY;
++    } else {
++      return true;
++    }
++  }
+   switch (view) {
+     case ViewChoose:
+       if (inside(x, y, kButtonX, kServerButtonY, kButtonWidth,
+diff --git a/src/lan-box.h b/src/lan-box.h
+index edf7727..d86b240 100644
+--- a/src/lan-box.h
++++ b/src/lan-box.h
+@@ -22,6 +22,7 @@
+ #ifndef SRC_LAN_BOX_H_
+ #define SRC_LAN_BOX_H_
+ 
++#include <deque>
+ #include <memory>
+ #include <string>
+ #include <vector>
+@@ -29,11 +30,13 @@
+ #include "src/gui.h"
+ #include "src/mission.h"
+ #include "src/lan-link.h"
++#include "src/map.h"
+ 
+ class Interface;
+ class TextInput;
+ class PortInput;
+ class ListSavedFiles;
++class Minimap;
+ 
+ /* Opened by the Start button of a LAN game in the start box. One player
+    starts a server with the settings of the start box, the other one
+@@ -44,6 +47,8 @@ class LanBox : public GuiObject {
+      fits a 400x300 screen. */
+   static const int kWidth = 352;
+   static const int kHeight = 216;
++  /* Connected, before START GAME: the map, the chat (fits 400x300). */
++  static const int kLobbyHeight = 264;
+ 
+  protected:
+   typedef enum View {
+@@ -87,6 +92,28 @@ class LanBox : public GuiObject {
+   uint32_t save_sum;
+   unsigned int save_delay;
+ 
++  /* The lobby: both players connected, before START GAME. The server
++     chooses the map (size, another one, a saved game); both see it and
++     write in the chat. */
++  bool was_connected;
++  std::unique_ptr<Minimap> preview;
++  PMap preview_map;
++  /* The map shown: the server's mission, or what the server sent. */
++  PGameInfo preview_mission;
++  bool preview_pending;
++  unsigned int preview_due;
++  /* The server's saved game, as the player who joined sees it. */
++  std::string lobby_save_name;
++  unsigned int lobby_save_size;
++  std::unique_ptr<TextInput> chat_field;
++  typedef struct LobbyLine {
++    std::string name;
++    std::string text;
++    bool note;   /* of the game, not a player's */
++  } LobbyLine;
++  std::deque<LobbyLine> chat;
++  bool focus_chat;
++
+  public:
+   LanBox(Interface *interface, PGameInfo mission);
+   virtual ~LanBox();
+@@ -97,6 +124,10 @@ class LanBox : public GuiObject {
+   void go_on_with_save(const std::string &path);
+   /* A save of a LAN game: player 2 in it is a person. */
+   static bool is_lan_save(const std::string &path);
++  /* Return: the line of the chat goes to the other player. */
++  void handle_return();
++  /* A line of the chat to the other player (and into the own chat). */
++  void send_chat(const std::string &text);
+ 
+  protected:
+   LanLink *link();
+@@ -112,6 +143,21 @@ class LanBox : public GuiObject {
+   void draw_rows(int y, const std::string rows[][2], size_t count,
+                  int step = 10);
+   std::string ping_text();
++  /* Connected, before START GAME (the server or the player who joined). */
++  bool lobby();
++  /* The box's height for the view (the lobby is taller). */
++  void fit_size();
++  /* The server: the map of the lobby to the other player. */
++  void send_lobby();
++  /* The server changed the map: to the other side, the preview, the
++     start box. */
++  void map_changed();
++  void request_preview();
++  void generate_preview();
++  void add_chat(const std::string &name, const std::string &text,
++                bool note = false);
++  void draw_lobby();
++  bool lobby_click(int x, int y);
+   /* The chosen saved game, if player 2 in it is a person. */
+   bool use_saved_game(const std::string &path);
+   void receive_save(int type, const std::string &data);
+diff --git a/src/lan-command.cc b/src/lan-command.cc
+index e606fba..b02b877 100644
+--- a/src/lan-command.cc
++++ b/src/lan-command.cc
+@@ -208,6 +208,9 @@ LanCommand::apply(Game *game) const {
+     case TypeTestWin:
+       game->set_winner(player);
+       return true;
++    case TypeDump:
++    case TypeResync:
++      return true;  /* LanGame::dump(), resync(), not the game */
+     case TypeSetting:
+       break;
+     default:
+diff --git a/src/lan-command.h b/src/lan-command.h
+index f68ffd5..8eed404 100644
+--- a/src/lan-command.h
++++ b/src/lan-command.h
+@@ -51,7 +51,14 @@ class LanCommand {
+     TypeAttack,             /* pos of the building, a: knights */
+     TypePause,
+     TypeSpeed,              /* a: +1, -1, 0 = normal */
+-    TypeTestWin             /* LANTEST: the player wins now (a test) */
++    TypeTestWin,            /* LANTEST: the player wins now (a test) */
++    /* Both sides save the game and the last commands at the same step
++       (a: 1 OUT OF STEP found, 0 Ctrl+Shift+D): a bug report. The game is
++       not changed (LanGame does it). */
++    TypeDump,
++    /* The server's game goes to the player who joined, who goes on from it
++       (a: 1 after OUT OF STEP, 0 Ctrl+Shift+R). Done by LanGame. */
++    TypeResync
+   } Type;
+ 
+   /* The settings boxes of a player (TypeSetting). */
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index 2776ae0..8353acf 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -22,6 +22,8 @@
+ #include "src/lan-game.h"
+ 
+ #include <algorithm>
++#include <ctime>
++#include <fstream>
+ #include <sstream>
+ #include <string>
+ 
+@@ -37,6 +39,10 @@
+ #include "src/data.h"
+ #include "src/gui.h"
+ #include "src/box-frame.h"
++#include "src/savegame.h"
++#include "src/log.h"
++#include "src/game-manager.h"
++#include "src/viewport.h"
+ 
+ /* The largest screen of a LAN game. */
+ static const unsigned int kMaxWidth = 640;
+@@ -73,6 +79,7 @@ LanGame::LanGame(Interface *_interface, LanLink *_link, bool _server,
+   , out_of_step_at(0)
+   , gone(false)
+   , other_quit(false)
++  , end_saved(false)
+   , end_seen(false)
+   , peer_name(_link != nullptr ? _link->get_peer_name() : "")
+   , save_sent(0)
+@@ -82,7 +89,19 @@ LanGame::LanGame(Interface *_interface, LanLink *_link, bool _server,
+   , old_width(0)
+   , old_height(0)
+   , chat_open(false)
+-  , chat_shown_until(0) {
++  , chat_shown_until(0)
++  , dumped_at(0)
++  , file_in_size(0)
++  , file_in_sum(0)
++  , resync_waiting(false)
++  , resync_ready(false)
++  , resync_step(0)
++  , resync_size(0)
++  , resync_sum(0)
++  , resync_in_step(0)
++  , resync_speed(0)
++  , resync_speed_save(0)
++  , resyncs(0) {
+   /* The name this side gave in the LAN box. */
+   own_name = Settings::get_instance().get(
+     "lan", server ? "server_name" : "player_name",
+@@ -90,6 +109,8 @@ LanGame::LanGame(Interface *_interface, LanLink *_link, bool _server,
+ }
+ 
+ LanGame::~LanGame() {
++  /* This player leaves (exit, quit): the game is saved here too. */
++  save_at_end();
+   if (chat_box) {
+     interface->del_float(chat_box.get());
+   }
+@@ -184,6 +205,10 @@ LanGame::receive() {
+         Audio::get_instance().enqueue_sfx(Audio::TypeSfxMessage);
+         update_chat_box(true);
+       }
++    } else if (type >= MessageFileBegin && type <= MessageFileEnd) {
++      receive_file(type, data);
++    } else if (type >= MessageResyncBegin && type <= MessageResyncEnd) {
++      receive_resync(type, data);
+     } else if (type == MessageQuit) {
+       other_quit = true;
+     } else if (type == MessageSum) {
+@@ -210,9 +235,320 @@ LanGame::receive() {
+   }
+ }
+ 
++/* The report of a sync error as files: the .txt of the commands next to
++   the save, and the files of the player who joined sent to the server.
++   Off for now - reports will go to a server of their own, not to the
++   players' Amigas (user, 5.11.2026); the SYNC_ERR save stays. */
++static const bool kReportFiles = false;
++
++void
++LanGame::dump(bool sync_error) {
++  PGame game = interface->get_game();
++  if (!game || dumped_at == steps) return;
++  dumped_at = steps;
++  /* The names fit an Amiga disk with .lan.save (FFS: 30 letters):
++     SYNC_ERR_<yymmdd>_<hhmm><M|S> (the clock of this Amiga at the
++     error), LAN_DUMP_<step>_<M|S>. */
++  std::string base;
++  if (sync_error) {
++    std::time_t now = std::time(nullptr);
++    struct tm *at = std::localtime(&now);
++    char when[16] = "0";
++    if (at != nullptr) {
++      std::strftime(when, sizeof(when), "%y%m%d_%H%M", at);
++    }
++    base = std::string("SYNC_ERR_") + when + (server ? "M" : "S");
++  } else {
++    base = "LAN_DUMP_" + std::to_string(steps) + (server ? "_M" : "_S");
++  }
++  GameStore &store = GameStore::get_instance();
++  std::string folder = store.get_folder_path() + "/";
++  bool saved = store.save(folder + base + GameStore::lan_suffix() + ".save",
++                          game.get());
++
++  std::ostringstream log;
++  std::time_t t = std::time(nullptr);
++  struct tm *tm = std::localtime(&t);
++  char stamp[32] = "-";
++  if (tm != nullptr) {
++    std::strftime(stamp, sizeof(stamp), "%Y-%m-%d %H:%M:%S", tm);
++  }
++  log << "Settlers LAN bug report ("
++      << (sync_error ? "the games went apart" : "asked for") << ")\n"
++      << "side " << (server ? "MASTER (server)" : "SLAVE (joined)") << "\n"
++      << "own name " << own_name << ", other " << peer_name << "\n"
++      << "clock " << stamp << "\n"
++      << "step " << steps << ", game tick " << game->get_tick()
++      << ", turn delay " << delay << "\n"
++      << "out of step " << (out_of_step ? std::to_string(out_of_step_at)
++                                        : std::string("no")) << "\n"
++      << "\nsums (step own other):\n";
++  for (const std::string &s : sum_log) log << s << "\n";
++  log << "\ncommands (the last " << command_log.size() << "):\n";
++  for (const std::string &s : command_log) log << s << "\n";
++  std::string text = log.str();
++  if (kReportFiles) {
++    std::ofstream f(folder + base + ".txt", std::ios::binary);
++    f << text;
++  }
++  Log::Warn["lan"] << "LAN dump at step " << steps << ": " << base;
++  add_chat(-1, std::string(), saved ? "GAME SAVED: SYNC ERROR"
++                                    : "GAME NOT SAVED");
++  chat_shown_until = EventLoop::get_instance().get_ticks() + 10000;
++  update_chat_box(true);
++
++  /* The server gets both files of this side. */
++  if (kReportFiles && !server && saved) {
++    std::ifstream f(folder + base + GameStore::lan_suffix() + ".save",
++                    std::ios::binary);
++    std::stringstream save;
++    save << f.rdbuf();
++    queue_file(base + GameStore::lan_suffix() + ".save", save.str());
++    queue_file(base + ".txt", text);
++  }
++}
++
++void
++LanGame::note(const std::string &text) {
++  add_chat(-1, std::string(), text);
++  chat_shown_until = EventLoop::get_instance().get_ticks() + 10000;
++  update_chat_box(true);
++}
++
++void
++LanGame::resync() {
++  resyncs++;
++  /* From here the checksums are compared again. */
++  resync_step = steps;
++  out_of_step = false;
++  own_sums.clear();
++  if (!server) {
++    resync_waiting = true;
++    add_chat(-1, std::string(), "RESYNC: WAITING FOR THE SERVER");
++    chat_shown_until = EventLoop::get_instance().get_ticks() + 10000;
++    update_chat_box(true);
++    return;
++  }
++  PGame game = interface->get_game();
++  if (!game) return;
++  std::ostringstream out;
++  if (!GameStore::get_instance().write(&out, game.get())) {
++    add_chat(-1, std::string(), "RESYNC FAILED");
++    return;
++  }
++  std::string data = out.str();
++  static const size_t kPiece = LanLink::kMaxData - 10;
++  file_out.push_back(std::make_pair(
++    static_cast<int>(MessageResyncBegin),
++    std::to_string(data.size()) + " " +
++    std::to_string(lan_data_checksum(data)) + " " + std::to_string(steps) +
++    " " + std::to_string(game->get_speed()) + " " +
++    std::to_string(game->get_speed_save())));
++  for (size_t at = 0; at < data.size(); at += kPiece) {
++    file_out.push_back(std::make_pair(static_cast<int>(MessageResyncData),
++                                      data.substr(at, kPiece)));
++  }
++  file_out.push_back(std::make_pair(static_cast<int>(MessageResyncEnd),
++                                    std::string()));
++  Log::Warn["lan"] << "Resync at step " << steps << ": " << data.size()
++                   << " bytes to the other side";
++  add_chat(-1, std::string(), "RESYNC: THE GAME GOES TO THE OTHER SIDE");
++  chat_shown_until = EventLoop::get_instance().get_ticks() + 10000;
++  update_chat_box(true);
++}
++
++void
++LanGame::receive_resync(int type, const std::string &data) {
++  if (type == MessageResyncBegin) {
++    std::istringstream s(data);
++    resync_in.clear();
++    resync_ready = false;
++    resync_size = 0;
++    s >> resync_size >> resync_sum >> resync_in_step >> resync_speed
++      >> resync_speed_save;
++    if (!s || resync_size > 4000000) {
++      resync_size = 0;
++    }
++    resync_in.reserve(resync_size);
++  } else if (type == MessageResyncData) {
++    if (resync_size != 0 && resync_in.size() < resync_size) {
++      resync_in += data;
++    }
++  } else if (resync_size != 0) {
++    resync_ready = resync_in.size() == resync_size &&
++                   lan_data_checksum(resync_in) == resync_sum;
++    if (!resync_ready) {
++      add_chat(-1, std::string(), "RESYNC: THE GAME CAME BROKEN");
++      Log::Warn["lan"] << "Resync data broken";
++      /* Stay apart rather than stop: the game goes on as it was. */
++      resync_waiting = false;
++    }
++  }
++}
++
++bool
++LanGame::load_resync() {
++  resync_ready = false;
++  std::string text;
++  text.swap(resync_in);
++  if (resync_in_step != steps) {
++    Log::Warn["lan"] << "Resync of step " << resync_in_step << " at step "
++                     << steps;
++  }
++  /* The view, the player and the open boxes of this side stay. */
++  Player *player = interface->get_player();
++  unsigned int index = (player != nullptr) ? player->get_index() : 1;
++  MapPos view = 0;
++  if (interface->get_viewport() != nullptr) {
++    view = interface->get_viewport()->get_current_map_pos();
++  }
++  if (interface->is_building_road()) {
++    interface->build_road_end();
++  }
++  interface->close_popup();
++  if (!GameManager::get_instance().load_game_text(text)) {
++    add_chat(-1, std::string(), "RESYNC FAILED");
++    Log::Warn["lan"] << "Resync: the game could not be read";
++    return false;
++  }
++  PGame game = interface->get_game();
++  if (game) {
++    game->set_speeds(resync_speed, resync_speed_save);
++  }
++  interface->set_player(index);
++  if (interface->get_viewport() != nullptr) {
++    interface->get_viewport()->move_to_map_pos(view);
++  }
++  /* The chat over the new map view. */
++  if (chat_box) {
++    interface->del_float(chat_box.get());
++    chat_box.reset();
++  }
++  add_chat(-1, std::string(), "RESYNC DONE - THE GAMES ARE THE SAME");
++  chat_shown_until = EventLoop::get_instance().get_ticks() + 10000;
++  update_chat_box(true);
++  Log::Warn["lan"] << "Resync done at step " << steps;
++  return true;
++}
++
++void
++LanGame::queue_file(const std::string &name, const std::string &data) {
++  static const size_t kPiece = LanLink::kMaxData - 10;
++  file_out.push_back(std::make_pair(
++    static_cast<int>(MessageFileBegin),
++    name + " " + std::to_string(data.size()) + " " +
++    std::to_string(lan_data_checksum(data))));
++  for (size_t at = 0; at < data.size(); at += kPiece) {
++    file_out.push_back(std::make_pair(static_cast<int>(MessageFileData),
++                                      data.substr(at, kPiece)));
++  }
++  file_out.push_back(std::make_pair(static_cast<int>(MessageFileEnd),
++                                    std::string()));
++}
++
++/* As many frames as the link takes now, the rest with the next step. */
++void
++LanGame::pump_files() {
++  if (link == nullptr || gone) {
++    file_out.clear();
++    return;
++  }
++  /* A few at a time: the turns go between them. */
++  for (int i = 0; i < 64 && !file_out.empty(); i++) {
++    if (!link->send(file_out.front().first, file_out.front().second)) {
++      return;
++    }
++    file_out.pop_front();
++  }
++}
++
++/* The name: letters, digits, _ - . only (it comes from the network). */
++static bool
++file_name_ok(const std::string &name) {
++  if (name.empty() || name.size() > 30) return false;
++  for (char c : name) {
++    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
++          (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.')) {
++      return false;
++    }
++  }
++  return name.find("..") == std::string::npos;
++}
++
++void
++LanGame::receive_file(int type, const std::string &data) {
++  if (type == MessageFileBegin) {
++    std::istringstream s(data);
++    file_in.clear();
++    file_in_name.clear();
++    file_in_size = 0;
++    file_in_sum = 0;
++    s >> file_in_name >> file_in_size >> file_in_sum;
++    if (!file_name_ok(file_in_name) || file_in_size > 4000000) {
++      file_in_name.clear();
++      return;
++    }
++    file_in.reserve(file_in_size);
++  } else if (type == MessageFileData) {
++    if (!file_in_name.empty() && file_in.size() < file_in_size) {
++      file_in += data;
++    }
++  } else if (!file_in_name.empty()) {
++    bool ok = file_in.size() == file_in_size &&
++              lan_data_checksum(file_in) == file_in_sum;
++    if (ok) {
++      std::string path = GameStore::get_instance().get_folder_path() + "/" +
++                         file_in_name;
++      std::ofstream f(path, std::ios::binary);
++      f << file_in;
++      ok = static_cast<bool>(f);
++    }
++    if (file_in_name.size() > 4 &&
++        file_in_name.compare(file_in_name.size() - 4, 4, ".txt") == 0) {
++      add_chat(-1, std::string(), ok ? "STATE OF THE OTHER SIDE RECEIVED"
++                                     : "STATE OF THE OTHER SIDE BROKEN");
++      chat_shown_until = EventLoop::get_instance().get_ticks() + 10000;
++      update_chat_box(true);
++    }
++    Log::Info["lan"] << "Report file " << file_in_name
++                     << (ok ? " received" : " broken");
++    file_in.clear();
++    file_in_name.clear();
++  }
++}
++
++bool
++LanGame::save_at_end() {
++  if (end_saved) return false;
++  end_saved = true;
++  PGame game = interface->get_game();
++  /* Not before the game went (a saved game still coming). */
++  if (!game || steps == 0 || !save_out.empty()) return false;
++  /* A file of its own, named by the time of the end (the clock of the
++     Amiga): LAN_ERR_<yymmdd>_<hhmmss>.lan.save - 30 letters, the most a
++     name may have on an Amiga disk (FFS: a longer one loses its end,
++     ".save", and the list of saves no longer shows it). */
++  std::time_t t = std::time(nullptr);
++  struct tm *tm = std::localtime(&t);
++  char stamp[32] = "0";
++  if (tm != nullptr) {
++    std::strftime(stamp, sizeof(stamp), "%y%m%d_%H%M%S", tm);
++  }
++  GameStore &store = GameStore::get_instance();
++  std::string path = store.get_folder_path() + "/LAN_ERR_" + stamp +
++                     GameStore::lan_suffix() + ".save";
++  bool ok = store.save(path, game.get());
++  if (ok) {
++    Log::Info["lan"] << "LAN game saved at its end (step " << steps
++                     << "): " << path;
++  }
++  return ok;
++}
++
+ void
+ LanGame::other_side_ended() {
+   end_seen = true;
++  bool saved = save_at_end();
+   unsigned int now = EventLoop::get_instance().get_ticks();
+   std::string who = peer_name.empty() ? std::string("The other player")
+                                       : peer_name;
+@@ -223,6 +559,9 @@ LanGame::other_side_ended() {
+   } else {
+     notice = "The connection to " + who + " is lost.";
+   }
++  if (saved) {
++    notice += " Game saved.";
++  }
+   notice_until = now + 4000;
+   leave_at = now + 4000;
+ }
+@@ -265,6 +604,24 @@ LanGame::pump_save() {
+ bool
+ LanGame::before_step() {
+   receive();
++  pump_files();
++  if (resync_waiting) {
++    /* The turn of the resync is done; the step waits for the server's
++       game (then goes on from it, at the same step as the server). */
++    if (gone) {
++      resync_waiting = false;
++    } else if (!resync_ready) {
++      if (waiting_since == 0) {
++        waiting_since = EventLoop::get_instance().get_ticks() | 1;
++      }
++      return false;
++    } else {
++      resync_waiting = false;
++      waiting_since = 0;
++      load_resync();
++      return true;
++    }
++  }
+   update_chat_box(false);   /* the lines go some time after the last */
+   if (!end_seen && (gone || other_quit)) {
+     gone = true;
+@@ -307,9 +664,37 @@ LanGame::before_step() {
+   const std::vector<LanCommand> &other =
+     (theirs != other_turns.end()) ? theirs->second.commands : none;
+   PGame game = interface->get_game();
++  int dump_now = -1;  /* -1 none, else 1 out of step, 0 asked for */
++  bool resync_now = false;
+   if (game) {
+-    for (const LanCommand &c : server ? own : other) c.apply(game.get());
+-    for (const LanCommand &c : server ? other : own) c.apply(game.get());
++    for (int side = 0; side < 2; side++) {
++      const std::vector<LanCommand> &cmds =
++        (side == 0) == server ? own : other;
++      for (const LanCommand &c : cmds) {
++        std::ostringstream line;
++        line << "turn " << turn << " step " << steps << " player "
++             << static_cast<int>(c.player) << " type "
++             << static_cast<int>(c.type) << " pos "
++             << game->get_map()->pos_col(c.pos) << ","
++             << game->get_map()->pos_row(c.pos) << " a " << c.a << " b "
++             << c.b << " c " << c.c << " road " << c.road.get_length();
++        command_log.push_back(line.str());
++        if (c.type == LanCommand::TypeResync) {
++          resync_now = true;
++        } else if (c.type == LanCommand::TypeDump) {
++          dump_now = std::max(dump_now, c.a != 0 ? 1 : 0);
++        } else {
++          c.apply(game.get());
++        }
++      }
++    }
++    while (command_log.size() > 2000) command_log.pop_front();
++  }
++  if (dump_now >= 0) {
++    dump(dump_now == 1);   /* first: the states as they went apart */
++  }
++  if (resync_now) {
++    resync();
+   }
+   if (mine != own_turns.end()) own_turns.erase(mine);
+   if (theirs != other_turns.end()) other_turns.erase(theirs);
+@@ -318,6 +703,13 @@ LanGame::before_step() {
+   own_turns[turn + delay] = pending;
+   send_turn(turn + delay, pending);
+   pending.clear();
++  if (resync_waiting && !resync_ready) {
++    return false;  /* the server's game first (see the start) */
++  }
++  if (resync_waiting) {
++    resync_waiting = false;
++    load_resync();
++  }
+   return true;
+ }
+ 
+@@ -353,9 +745,31 @@ LanGame::compare() {
+       other_sums.erase(theirs);  /* Too old to compare. */
+       continue;
+     }
++    if (theirs->first <= resync_step) {
++      /* From before the resync: the games were apart then. */
++      own_sums.erase(own_sums.begin(), ++mine);
++      other_sums.erase(theirs);
++      continue;
++    }
++    sum_log.push_back(std::to_string(theirs->first) + " " +
++                      std::to_string(mine->second) + " " +
++                      std::to_string(theirs->second));
++    while (sum_log.size() > 64) sum_log.pop_front();
+     if (mine->second != theirs->second && !out_of_step) {
+       out_of_step = true;
+       out_of_step_at = theirs->first;
++      note("OUT OF STEP AT " + std::to_string(out_of_step_at));
++      Log::Warn["lan"] << "Out of step at " << out_of_step_at;
++      /* Both sides save the game at the same step: the server asks (the
++         player who joined sees the same sums). */
++      if (server) {
++        queue(LanCommand(LanCommand::TypeDump, 0, 0, 1));
++        /* Then the server's game to the other side: they go on together
++           (a few resyncs a game at most, if it keeps going apart). */
++        if (resyncs < 5) {
++          queue(LanCommand(LanCommand::TypeResync, 0, 0, 1));
++        }
++      }
+     }
+     last_checked = theirs->first;
+     own_sums.erase(own_sums.begin(), ++mine);
+@@ -407,8 +821,8 @@ LanGame::draw(Frame *frame) {
+        they or the build label show). */
+     std::string problem = problem_text();
+     if (!problem.empty()) {
+-      int y = (interface->get_show_fps() || !Interface::build_label.empty())
+-              ? 12 : 0;
++      int y = (interface->get_show_fps() || !Interface::build_label.empty() ||
++               !interface->ping_label().empty()) ? 12 : 0;
+       int w = 8 * static_cast<int>(problem.size()) + 4;
+       frame->fill_rect(0, y, w, 11, Color::black);
+       frame->draw_string(2, y + 2, problem, Color(0xff, 0xdd, 0x00),
+diff --git a/src/lan-game.h b/src/lan-game.h
+index 2bb2136..e6c9216 100644
+--- a/src/lan-game.h
++++ b/src/lan-game.h
+@@ -28,6 +28,7 @@
+ #include <memory>
+ #include <string>
+ #include <vector>
++#include <utility>
+ 
+ #include "src/mission.h"
+ #include "src/random.h"
+@@ -64,7 +65,20 @@ class LanGame {
+     MessageSaveEnd = 6,
+     /* A line of the chat: the writer's player, name, '\n', the text. It
+        does not change the game, so it goes at once, not in a turn. */
+-    MessageChat = 7
++    MessageChat = 7,
++    /* Before START GAME, from the server: the map the players see in the
++       box ("map <SETUP>" or "save <map size> <name>"). */
++    MessageLobby = 8,
++    /* A file of a bug report, from the player who joined to the server:
++       "<name> <size> <checksum>", its bytes in pieces, the end. */
++    MessageFileBegin = 9,
++    MessageFileData = 10,
++    MessageFileEnd = 11,
++    /* RESYNC: the server's game, "<size> <checksum> <step> <speed>
++       <speed kept in a pause>", its bytes, the end. */
++    MessageResyncBegin = 12,
++    MessageResyncData = 13,
++    MessageResyncEnd = 14
+   } Message;
+ 
+   static const unsigned int kSumSteps = 250;  /* 5 s */
+@@ -109,6 +123,8 @@ class LanGame {
+   bool gone;
+   /* The other side said it left the game (else the link broke). */
+   bool other_quit;
++  /* The game was saved when it ended (save_at_end). */
++  bool end_saved;
+   /* gone or other_quit seen: the notice is up. */
+   bool end_seen;
+   std::string peer_name;
+@@ -132,6 +148,34 @@ class LanGame {
+   unsigned int chat_shown_until;
+   std::string own_name;
+   std::unique_ptr<LanChatBox> chat_box;
++  /* The commands done in the last turns (for a bug report): turn, step,
++     player, type, place, values. */
++  std::deque<std::string> command_log;
++  /* The step of the last dump (one per step). */
++  unsigned int dumped_at;
++  /* The sums of the last checks, both sides: "step own other". */
++  std::deque<std::string> sum_log;
++  /* Frames of the files of a report still to send (the player who
++     joined), sent as the link takes them, the game goes on meanwhile. */
++  std::deque<std::pair<int, std::string>> file_out;
++  /* A file coming from the other side: its name, size, sum, bytes. */
++  std::string file_in_name;
++  size_t file_in_size;
++  uint32_t file_in_sum;
++  std::string file_in;
++  /* Resync. The player who joined: stopped at the step of the resync
++     until the server's game is here (resync_ready). Both: the checksums
++     up to resync_step are no longer compared. */
++  bool resync_waiting;
++  bool resync_ready;
++  unsigned int resync_step;
++  std::string resync_in;
++  size_t resync_size;
++  uint32_t resync_sum;
++  unsigned int resync_in_step;
++  unsigned int resync_speed;
++  unsigned int resync_speed_save;
++  unsigned int resyncs;
+ 
+  public:
+   LanGame(Interface *interface, LanLink *link, bool server,
+@@ -161,10 +205,30 @@ class LanGame {
+   bool handle_chat_key(char key, int modifier);
+   /* The picture of the chat box (w x h). */
+   void draw_chat(Frame *frame, int w, int h);
++  /* A note of the game in the chat (shown for 10 s). */
++  void note(const std::string &text);
+   /* The time there and back -> the turns a command waits (SETUP). */
+   static unsigned int delay_for_ping(int ms);
+ 
+  protected:
++  /* TypeDump at the start of a turn: the game and the command log to the
++     saves folder, the player who joined sends both to the server. Out of
++     step: SYNC_ERR_<yymmdd>_<hhmm><M|S>; asked for (Ctrl+Shift+D):
++     LAN_DUMP_<step>_<M|S>. */
++  void dump(bool sync_error);
++  /* TypeResync at the start of a turn: the server sends its game; the
++     player who joined stops until it is here. */
++  void resync();
++  /* The player who joined: the server's game in place of this one. */
++  bool load_resync();
++  void receive_resync(int type, const std::string &data);
++  void queue_file(const std::string &name, const std::string &data);
++  void pump_files();
++  void receive_file(int type, const std::string &data);
++  /* The game ends (the other player left, the connection is lost, or
++     this one leaves): a save of it, once, to go on with later (a LAN
++     save: SAVED GAME in the LAN box). true: saved. */
++  bool save_at_end();
+   void receive();
+   void send_turn(unsigned int turn, const std::vector<LanCommand> &cmds);
+   void compare();
+diff --git a/src/map.cc b/src/map.cc
+index 248fac7..0631516 100644
+--- a/src/map.cc
++++ b/src/map.cc
+@@ -321,9 +321,9 @@ Map::map_space_from_obj[] = {
+ Map::Map(const MapGeometry& geom)
+   : geom_(geom)
+   , spiral_pos_pattern(new MapPos[295]) {
+-  // Some code may still assume that map has at least size 3.
+-  if (geom.size() < 3) {
+-    throw ExceptionFreeserf("Failed to create map with size less than 3.");
++  // Sizes 1 (32x32) and 2 (64x32) as in the original's game setup.
++  if (geom.size() < 1) {
++    throw ExceptionFreeserf("Failed to create map with size less than 1.");
+   }
+ 
+   landscape_tiles.resize(geom_.tile_count());
+diff --git a/src/panel.cc b/src/panel.cc
+index e6b9229..02290be 100644
+--- a/src/panel.cc
++++ b/src/panel.cc
+@@ -157,7 +157,8 @@ void
+ PanelBar::button_click(int button, bool special) {
+   PopupBox *popup = interface->get_popup_box();
+ 
+-  /* A special click (right button) works as in the original: on a build
++  /* A special click (right button; on a build button the left one with
++     the right held) works as in the original: on a build
+      button it switches the builder's help (the possible building sites),
+      on the map button it shows the castle, and only a special click
+      demolishes. */
+@@ -399,6 +400,36 @@ PanelBar::handle_click_right(int cx, int cy) {
+     return false;
+   }
+ 
++  set_redraw();
++  /* The building sites are switched and objects demolished only by a left
++     click with the right button held (handle_click_both), as in the
++     original: a stray right click demolishes nothing. */
++  switch (panel_btns[button]) {
++    case ButtonDestroy:
++    case ButtonDestroyRoad:
++    case ButtonBuildInactive:
++    case ButtonBuildFlag:
++    case ButtonBuildMine:
++    case ButtonBuildSmall:
++    case ButtonBuildLarge:
++    case ButtonBuildCastle:
++    case ButtonBuildRoad:
++      return true;
++    default:
++      break;
++  }
++  button_click(button, true);
++  return true;
++}
++
++/* Left click with the right button held: the original's special click. */
++bool
++PanelBar::handle_click_both(int cx, int cy) {
++  int button = button_at(cx, cy);
++  if (button < 0) {
++    return handle_click_left(cx, cy);
++  }
++
+   set_redraw();
+   button_click(button, true);
+   return true;
+@@ -431,12 +462,14 @@ PanelBar::handle_key_pressed(char key, int modifier) {
+     return false;
+   }
+ 
+-  /* The keys are not in the original; on the demolish buttons they act
+-     as a special click so that they can still demolish. */
++  /* The keys are not in the original. They never demolish: that is done
++     only with the mouse (left click with the right button held). */
+   int button = key - '1';
+-  bool special = (panel_btns[button] == ButtonDestroy ||
+-                  panel_btns[button] == ButtonDestroyRoad);
+-  button_click(button, special);
++  if (panel_btns[button] == ButtonDestroy ||
++      panel_btns[button] == ButtonDestroyRoad) {
++    return true;
++  }
++  button_click(button, false);
+ 
+   return true;
+ }
+diff --git a/src/panel.h b/src/panel.h
+index fb0d199..4988822 100644
+--- a/src/panel.h
++++ b/src/panel.h
+@@ -68,6 +68,8 @@ class PanelBar : public GuiObject, public Timer::Handler {
+   void update();
+   /* The build button, as a click on it (a double click on a site). */
+   void click_build_button() { button_click(0); }
++  /* The map button, as a click on it (Fast mapclick). */
++  void click_map_button() { button_click(2); }
+ 
+  protected:
+   void draw_panel_frame();
+@@ -81,6 +83,7 @@ class PanelBar : public GuiObject, public Timer::Handler {
+   virtual void internal_draw();
+   virtual bool handle_click_left(int x, int y);
+   virtual bool handle_click_right(int x, int y);
++  virtual bool handle_click_both(int x, int y);
+   virtual bool handle_key_pressed(char key, int modifier);
+ 
+   // timer_handler_t
+diff --git a/src/popup.cc b/src/popup.cc
+index bff839c..50ec59d 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -339,6 +339,14 @@ PopupBox::PopupBox(Interface *_interface)
+   minimap->set_parent(this);
+   minimap->set_size(128, 128);
+   add_float(minimap.get(), 8, 9);
++  /* The map window shows what it showed when it was closed. */
++  const Interface::MinimapOptions &mo = interface->minimap_options;
++  minimap->set_ownership_mode((MinimapGame::OwnershipMode)mo.ownership);
++  minimap->set_draw_roads(mo.roads);
++  minimap->set_advanced(mo.advanced);
++  minimap->set_draw_buildings(mo.buildings);
++  minimap->set_draw_grid(mo.grid);
++  minimap->set_scale(mo.scale);
+ 
+   file_list->set_size(120, 100);
+   file_list->set_displayed(false);
+@@ -355,6 +363,13 @@ PopupBox::PopupBox(Interface *_interface)
+ }
+ 
+ PopupBox::~PopupBox() {
++  Interface::MinimapOptions &mo = interface->minimap_options;
++  mo.ownership = minimap->get_ownership_mode();
++  mo.roads = minimap->get_draw_roads();
++  mo.advanced = minimap->get_advanced();
++  mo.buildings = minimap->get_draw_buildings();
++  mo.grid = minimap->get_draw_grid();
++  mo.scale = minimap->get_scale();
+ }
+ 
+ /* Draw the frame around the popup box. */
+@@ -2866,21 +2881,28 @@ PopupBox::draw_demolish_box() {
+ 
+ void
+ PopupBox::draw_save_box() {
+-  const int layout[] = {
+-    224, 0, 128,
+-    -1
+-  };
+-
+-  draw_box_background(PatternDiagonalGreen);
+-  draw_custom_icon_box(layout);
++  /* Wider than the other popups (kSaveBoxWidth): the frame of the boxes
++     of the port, as the LAN box. */
++  for (int ly = 0; ly < height; ly += 16) {
++    for (int lx = 0; lx < width; lx += 16) {
++      frame->draw_sprite(lx, ly, Data::AssetIcon, PatternDiagonalGreen);
++    }
++  }
++  draw_box_frame(frame, width, height);
++  text_shadow = true;
+ 
+-  draw_green_centered(2, _("Save Game"));
++  draw_green_centered_at(width / 2, 2, _("Save Game"));
+ 
+-  draw_popup_icon(14, 128, 60); /* Exit */
++  draw_popup_icon(0, 128, 224);  /* Save */
++  frame->draw_sprite(width - 32, 128 + 9, Data::AssetIcon, 60);  /* Exit */
+ }
+ 
+ void
+ PopupBox::internal_draw() {
++  if (box == TypeLoadSave) {
++    draw_save_box();
++    return;
++  }
+   draw_popup_box_frame();
+   text_shadow = false;
+ 
+@@ -3880,6 +3902,9 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     interface->close_popup();
+     break;
+   case ACTION_SHOW_SAVE:
++    /* The list and the name over the width of the wide box. */
++    file_list->set_size(kSaveBoxWidth - 24, 100);
++    file_field->set_size(kSaveBoxWidth - 24, 10);
+     file_list->set_displayed(true);
+     file_field->set_displayed(true);
+     file_field->set_focused();  /* The name is typed at once. */
+@@ -4547,9 +4572,10 @@ PopupBox::handle_box_bld_4(int cx, int cy) {
+ 
+ void
+ PopupBox::handle_save_clk(int cx, int cy) {
++  /* The Exit icon at the right of the wide box (draw_save_box). */
+   const int clkmap[] = {
+     ACTION_SAVE, 0, 128, 32, 64,
+-    ACTION_CLOSE_BOX, 112, 128, 16, 16,
++    ACTION_CLOSE_BOX, width - 40, 128, 16, 16,
+     -1
+   };
+ 
+@@ -4561,16 +4587,6 @@ PopupBox::handle_save_clk(int cx, int cy) {
+ bool
+ PopupBox::handle_click_right(int cx, int cy) {
+   switch (box) {
+-    case TypeMineBuilding:
+-    case TypeBasicBld:
+-    case TypeBasicBldFlip:
+-    case TypeAdv1Bld:
+-    case TypeAdv2Bld:
+-      /* Not in the original: a special click in the window to choose a
+-         building gives it up, the window closes. */
+-      play_sound(Audio::TypeSfxClick);
+-      interface->close_popup();
+-      return true;
+     case TypeMap:
+     case TypeResDir:
+       special_click = true;
+@@ -4752,7 +4768,11 @@ void PopupBox::hide() {
+ 
+ void
+ PopupBox::set_box(Type box_) {
++  bool wide = (box == TypeLoadSave) != (box_ == TypeLoadSave);
+   box = box_;
++  if (wide) {
++    interface->layout_popup();  /* the Save box is wider */
++  }
+   if (box == TypeMap) {
+     minimap->set_displayed(true);
+   } else {
+diff --git a/src/popup.h b/src/popup.h
+index 9436d59..57f4601 100644
+--- a/src/popup.h
++++ b/src/popup.h
+@@ -36,6 +36,9 @@ class TextInput;
+ 
+ class PopupBox : public GuiObject {
+  public:
++  /* The Save box: 2.5 times the width of a popup. */
++  static const int kSaveBoxWidth = 360;
++
+   typedef enum Type {
+     TypeNone = 0,
+     TypeMap = 1,
+diff --git a/src/savegame.cc b/src/savegame.cc
+index 1d2ef9f..4c65b94 100644
+--- a/src/savegame.cc
++++ b/src/savegame.cc
+@@ -826,8 +826,10 @@ GameStore::quick_save(const std::string &prefix, Game *game, bool lan) {
+     return false;
+   }
+ 
++  /* Short: a name on an Amiga disk has at most 30 letters (FFS), with
++     "quick-" and ".lan.save" 28. */
+   char name[128];
+-  size_t r = strftime(name, sizeof(name), "%Y-%m-%d_%H-%M-%S", tm);
++  size_t r = strftime(name, sizeof(name), "%y%m%d_%H%M%S", tm);
+   if (r == 0) {
+     return false;
+   }
+diff --git a/src/viewport.cc b/src/viewport.cc
+index 3e6bc5b..b612636 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -36,6 +36,7 @@
+ #include "src/interface.h"
+ #include "src/popup.h"
+ #include "src/panel.h"
++#include "src/notification.h"
+ #include "src/event_loop.h"
+ #include "src/pathfinder.h"
+ 
+@@ -2390,6 +2391,10 @@ Viewport::draw_map_cursor_possible_build() {
+           sprite = 49;
+         }
+       }
++      /* Empty flag site, as in the original. */
++      if (sprite < 0 && game->can_build_flag(pos, interface->get_player())) {
++        sprite = 47;
++      }
+ 
+       if (sprite >= 0) {
+         draw_game_sprite(lx, ly, sprite);
+@@ -2613,8 +2618,18 @@ Viewport::handle_click_left(int lx, int ly) {
+   return true;
+ }
+ 
++/* A window is shown over the map (a popup or a message): the double
++   clicks of Fast building and Fast mapclick work on the map alone. */
++bool
++Viewport::window_open() const {
++  PopupBox *popup = interface->get_popup_box();
++  NotificationBox *notification = interface->get_notification_box();
++  return ((popup != nullptr) && popup->is_displayed()) ||
++         ((notification != nullptr) && notification->is_displayed());
++}
++
+ /* The window to choose a building is open (not in the original: it
+-   follows the cursor, and a special click closes it). */
++   follows the cursor). */
+ bool
+ Viewport::build_box_open(Interface *interface) {
+   PopupBox *popup = interface->get_popup_box();
+@@ -2639,23 +2654,56 @@ Viewport::handle_click_right(int lx, int ly) {
+   MapPos clk_pos = map_pos_from_screen_pix(lx, ly);
+ 
+   if (build_box_open(interface)) {
+-    /* A special click gives up the building to choose: the window closes. */
+-    interface->close_popup();
+-    play_sound(Audio::TypeSfxClick);
++    /* The window to choose a building stays open and the cursor on its
++       site: the building would go where the cursor is. */
+   } else if (interface->is_building_road()) {
+     road_click(clk_pos, true);
+   } else {
+-    /* Move the cursor and open the window of a flag or building there,
+-       as a click does in the original. */
++    /* Move the cursor; a flag opens its window. A building opens its
++       window only with the left button clicked while the right one is
++       held (handle_click_both). */
+     interface->update_map_cursor_pos(clk_pos);
+-    open_object_box(clk_pos);
++    if (map->get_obj(clk_pos) == Map::ObjectFlag) {
++      open_object_box(clk_pos);
++    }
++  }
++
++  return true;
++}
++
++/* Left clicked with the right button held: the window of the building or
++   flag there (each building: castle, lumberjack...); elsewhere, and
++   while a road is being built, an ordinary left click. */
++bool
++Viewport::handle_click_both(int lx, int ly) {
++  MapPos clk_pos = map_pos_from_screen_pix(lx, ly);
++  if (interface->is_building_road() ||
++      map->get_obj(clk_pos) == Map::ObjectNone ||
++      map->get_obj(clk_pos) > Map::ObjectCastle) {
++    return handle_click_left(lx, ly);
+   }
+ 
++  set_redraw();
++  interface->close_popup();
++  interface->update_map_cursor_pos(clk_pos);
++  play_sound(Audio::TypeSfxClick);
++  open_object_box(clk_pos);
+   return true;
+ }
+ 
+ bool
+ Viewport::handle_dbl_click(int lx, int ly, Event::Button button) {
++  if (button == Event::ButtonRight) {
++    /* Fast mapclick (an option of the original): a double special click
++       on the map, with no window open and no road being built, opens the
++       map window as the map button of the panel does. */
++    if (!interface->get_fast_mapclick() || interface->is_building_road() ||
++        window_open()) {
++      return false;
++    }
++    interface->get_panel_bar()->click_map_button();
++    return true;
++  }
+   if (button != Event::ButtonLeft) return 0;
+ 
+   set_redraw();
+@@ -2697,27 +2745,52 @@ Viewport::handle_dbl_click(int lx, int ly, Event::Button button) {
+         play_sound(Audio::TypeSfxNotAccepted);
+       }
+     }
+-  } else if (map->get_obj(clk_pos) != Map::ObjectNone) {
+-    return open_object_box(clk_pos);
++  } else if (map->get_obj(clk_pos) == Map::ObjectFlag &&
++             map->get_owner(clk_pos) == player->get_index() &&
++             interface->get_fast_building() && !window_open()) {
++    /* A double click on an own flag, with Fast building and the map alone
++       shown: what the build button of the panel offers there - a road
++       begins at the flag. The window of the flag opens with a special
++       click. */
++    interface->update_map_cursor_pos(clk_pos);
++    play_sound(Audio::TypeSfxClick);
++    interface->build_road_begin();
++    return true;
++  } else if (map->get_obj(clk_pos) != Map::ObjectNone &&
++             map->get_obj(clk_pos) <= Map::ObjectCastle) {
++    /* A flag: its window. A building opens its window only with the left
++       button clicked while the right one is held (handle_click_both). */
++    if (map->get_obj(clk_pos) == Map::ObjectFlag) {
++      return open_object_box(clk_pos);
++    }
++    return false;
+   } else {
++    /* An empty site, or one with a small object a building may stand on
++       (a tree stump...): the build possibility of the site decides. */
+     /* A double click on an empty site (not in the original): what the build
+        button of the panel offers there at once - the window to choose a
+-       building (small, large, mine), or the castle at the start. */
++       building (small, large, mine), or the castle at the start. Only
++       while the map alone is shown: with a window open (statistics,
++       settings, a building...) the build button of the panel is not
++       there either, and the double click is an ordinary click. Only with
++       Fast building on (Options - Video), as in the original. */
++    if (!interface->get_fast_building() || window_open()) {
++      return false;
++    }
+     interface->update_map_cursor_pos(clk_pos);
+     switch (interface->get_build_possibility()) {
+       case Interface::BuildPossibilitySmall:
+       case Interface::BuildPossibilityLarge:
+-      case Interface::BuildPossibilityMine: {
+-        PopupBox *popup = interface->get_popup_box();
+-        if ((popup != nullptr) && popup->is_displayed()) {
+-          interface->close_popup();
+-        }
++      case Interface::BuildPossibilityMine:
+         interface->get_panel_bar()->click_build_button();
+         return true;
+-      }
+       case Interface::BuildPossibilityCastle:
+         interface->build_castle();
+         return true;
++      case Interface::BuildPossibilityFlag:
++        /* Only a flag fits here: set it at once. */
++        interface->build_flag();
++        return true;
+       default:
+         break;
+     }
+diff --git a/src/viewport.h b/src/viewport.h
+index d2d408b..3d8ac2d 100644
+--- a/src/viewport.h
++++ b/src/viewport.h
+@@ -197,10 +197,12 @@ class Viewport : public GuiObject, public Map::Handler {
+  protected:
+   virtual bool handle_click_left(int x, int y);
+   virtual bool handle_click_right(int x, int y);
++  virtual bool handle_click_both(int x, int y);
+   virtual bool handle_dbl_click(int x, int y, Event::Button button);
+   void road_click(MapPos clk_pos, bool special);
+   bool open_object_box(MapPos clk_pos);
+   static bool build_box_open(Interface *interface);
++  bool window_open() const;
+   virtual bool handle_drag(int x, int y);
+ 
+   Frame *get_tile_frame(unsigned int tid, int tc, int tr);
+-- 
+2.45.2.windows.1
+

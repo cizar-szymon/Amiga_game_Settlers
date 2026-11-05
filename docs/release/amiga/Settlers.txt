@@ -55,18 +55,28 @@ STEROWANIE
 ----------
 
   mysz                     wszystko w grze (jak w oryginale)
-  dwuklik (wolne miejsce)  okno budowy od razu; na poczatku gry zamek
+  dwuklik (wolne miejsce)  okno budowy od razu; na poczatku gry zamek;
+                           tam, gdzie miesci sie tylko flaga - flaga
+                           (opcja Fast building w Options -> Video)
+  dwuklik (wlasna flaga)   droga od tej flagi (Fast building);
+                           okno flagi: prawy przycisk
+  dwuklik prawym           okno mapy (opcja Fast mapclick)
   klik w inne miejsce      okno budowy pokazuje budynki dla niego;
                            tam, gdzie nic nie da sie zbudowac, zamyka sie
-  prawy przycisk           zamyka okno budowy
-  prawy przycisk + ruch    przewijanie mapy
+  prawy wcisniety + lewy   na budynku: okno budynku (zamek, drwal...,
+                           u wroga atak); na fladze: okno flagi;
+                           na przycisku burzenia w panelu: burzenie
+                           (sam prawy nic nie burzy)
+  prawy przycisk + ruch    przewijanie mapy; wskaznik stoi w miejscu
+                           wcisniecia, przewijanie bez konca (jak w oryginale)
   strzalki                 przewijanie mapy
   Z, rolka myszy           powiekszenie mapy: x2 (powyzej 400x300), x3 (800x600
                            i 960x540); w 640x360 bez powiekszenia;
                            rolka w gore/w dol o stopien, Z po kolei
   P                        pauza (drugi raz: dalej), na ekranie napis PAUSE
-  1 ... 5                  przyciski panelu
-  B                        miejsca pod budowe
+  1 ... 5                  przyciski panelu (bez burzenia)
+  B                        miejsca pod budowe (tez: prawy wcisniety
+                           i lewy na przycisku budowy w panelu)
   Tab                      nastepna wiadomosc; w grze LAN: okno czatu
   +                        tempo gry: x1,5 / x2 / x2,5 / x3
   -                        wolniej, najnizej x0,5
@@ -100,7 +110,8 @@ Options -> Amiga:
   MC68040 20-50 MHz co 1 MHz
 Options -> Advanced:
   Invert scrolling, Large numbers, Autosave, Stock box until occupied,
-  Show FPS (licznik klatek w rogu ekranu)
+  Show FPS (licznik klatek w rogu ekranu),
+  Show ping in LAN game (czas odpowiedzi sieci w grze LAN, na lewo od FPS)
 Options -> Advanced -> VIDEO:
   Sand on new maps (ilosc pustyn na nowych mapach: None, 10% of normal
     ... Normal, przyciski - +),
@@ -185,6 +196,14 @@ W czasie gry:
   i cyfry nie dzialaja jako klawisze gry.
 - Gdy jeden gracz wyjdzie z gry (albo zerwie sie polaczenie), drugi
   widzi komunikat i po 4 s wraca do menu startowego.
+- Gdy gry sie rozejda (LAN: OUT OF STEP), obie Amigi same zapisuja gre
+  z tego samego kroku: SYNC_ERR_<rrmmdd>_<ggmm>M (serwer) i ...S (gracz,
+  ktory dolaczyl). Potem serwer wysyla swoja gre drugiemu graczowi
+  (resync): ta Amiga staje na chwile, wczytuje ja i obie graja dalej
+  zgodnie. W czacie: RESYNC DONE.
+- Gra LAN zapisuje sie sama, gdy sie konczy (wyjscie gracza, zerwane
+  polaczenie) - u obu graczy, plik LAN_ERR_<data>_<godzina konca> (LAN na
+  liscie zapisow); dalsza gra jak z kazdym zapisem LAN, nizej.
 
 Zapis i dalsza gra:
 - Zapisuj zwyklym oknem Save. Zapisy gier LAN maja na liscie zolte LAN

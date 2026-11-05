@@ -83,6 +83,7 @@ Timer::create(unsigned int _id, unsigned int _interval,
 
 EventLoopAmiga::EventLoopAmiga()
   : running(false)
+  , right_used(false)
   , drag_button(0)
   , drag_x(0)
   , drag_y(0)
@@ -181,6 +182,7 @@ EventLoopAmiga::handle_event(const AmigaEvent &ev) {
       int b = ev.button;
       if (ev.down) {
         buttons_down[b] = 1;
+        if (b == Event::ButtonRight) right_used = false;
         last_x = ev.x;
         last_y = ev.y;
         break;
@@ -188,6 +190,30 @@ EventLoopAmiga::handle_event(const AmigaEvent &ev) {
       buttons_down[b] = 0;
       int x = ev.x;
       int y = ev.y;
+      /* Left clicked with the right button held (the original's way to
+         switch the building sites on the build button): one click of
+         both, and the right button gives none when it is let go. */
+      if (b == Event::ButtonLeft && buttons_down[Event::ButtonRight]) {
+        if (drag_button == b) {
+          drag_button = 0;
+          dragged = false;
+          drag_dist = 0;
+        }
+        right_used = true;
+        last_click[b] = 0;
+        notify_click(x, y, Event::ButtonBoth);
+        break;
+      }
+      if (b == Event::ButtonRight && right_used) {
+        right_used = false;
+        if (drag_button == b) {
+          drag_button = 0;
+          dragged = false;
+          drag_dist = 0;
+        }
+        last_click[b] = 0;
+        break;
+      }
       if (drag_button == b) {
         bool moved = dragged && drag_dist > MOUSE_MOVE_SENSITIVITY;
         drag_button = 0;
@@ -230,8 +256,10 @@ EventLoopAmiga::handle_event(const AmigaEvent &ev) {
           drag_dist = 0;
         }
         if (drag_button != b) break;
-        int dx = ev.x - last_x;
-        int dy = ev.y - last_y;
+        /* The right button holds the pointer: the motion comes as dx, dy
+           (the map scrolls on and on, as in the original). */
+        int dx = ev.rel ? ev.dx : ev.x - last_x;
+        int dy = ev.rel ? ev.dy : ev.y - last_y;
         if (dx != 0 || dy != 0) {
           notify_drag(drag_x, drag_y, dx, dy, static_cast<Event::Button>(b));
           dragged = true;

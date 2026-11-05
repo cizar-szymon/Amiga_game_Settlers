@@ -319,9 +319,8 @@ main(int argc, char *argv[]) {
       interface.get_viewport()->move_to_map_pos(centre);
     };
     Interface::zoom_hook = event_loop.on_zoom;
-    if (SETTLERS_LABEL[0] != 0) {
-      Interface::build_label = SETTLERS_LABEL " " SETTLERS_VERSION;
-    }
+    /* No label of a test build on the map (user, 5.11.2026): the
+       version is in the start menu and in Version. */
     /* The start picture stays at least 4 s (with the music, when it is
        on); Ctrl-C quits. */
     if (VideoAmiga::start_picture_ms != 0) {

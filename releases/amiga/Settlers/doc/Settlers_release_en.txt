@@ -6,6 +6,55 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.118 (5.11.2026, beta release)
+-------------------------------
+
+Options of the original (Options -> Video, first in the list):
+- Pathway scrolling: while a road is built the map follows its end, as
+  far as needed.
+- Fast mapclick: a right double click on the map opens the map window.
+- Fast building: a double click on an empty site (also on a tree stump)
+  opens the building window, where only a flag fits it sets the flag,
+  on an own flag it starts a road from it. With the map alone, no window
+  open.
+
+The mouse as in the original:
+- The right button held + move: the map scrolls on and on, the pointer
+  stays where the button went down (also with Invert scrolling).
+- The right button held + the left one: on a building its window (an
+  enemy's: attack), on the build button of the panel the building sites
+  (with the sites for a flag alone), on the demolish button demolishing.
+  The right button alone does not demolish, nor does the key 2.
+- The right button does not close the building window.
+
+The game:
+- A demolished building without a road takes its flag with it.
+- Map sizes 1 (32x32) and 2 (64x32); the chosen size stays after a game
+  and in the settings.
+- The map window keeps what it showed (land, roads, buildings, grid,
+  zoom).
+- Autosave every 3 and 5 minutes (besides 10, 20, 30, 60).
+- Load game: a wide list of saves, no map preview. The Save Game box 2.5
+  times as wide - the whole names of the files.
+- Quick save Ctrl+Z: quick-<yymmdd>_<hhmmss>.save.
+
+LAN game:
+- A lobby once connected: the server chooses the map (SMALLER, LARGER,
+  OTHER MAP, SAVED GAME), both see its preview and write in the chat
+  (Return sends); the player who joined has the buttons CHANGE, AVERAGE,
+  GREAT. START GAME on the server. In the start menu a LAN game makes no
+  map.
+- A new map in the start menu keeps the players (the second player stays
+  a person).
+- Show ping in LAN game (Options -> Advanced): the network's response
+  time left of the FPS.
+- When the game ends (a player leaves, the link breaks), both Amigas save
+  it: LAN_ERR_<yymmdd>_<hhmmss>.
+- When the games go apart (OUT OF STEP): both sides save SYNC_ERR_..M /
+  ..S, then the server sends its game to the other player (resync) and
+  both go on alike. Ctrl+Shift+R: a resync on request.
+
+
 0.117 (4.11.2026, beta release)
 -------------------------------
 
@@ -37,7 +86,7 @@ the F10 key when the bug happens.
 
 - The building window follows the clicks: a click on another site shows
   the buildings for that site, a click where nothing can be built closes
-  the window. The right mouse button closes the building window.
+  the window.
 
 
 0.113 (4.11.2026, beta release)

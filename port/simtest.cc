@@ -6,7 +6,10 @@
  * program is built for the PC and for the Amiga; the checksums must match.
  *
  * usage: simtest [-m MISSION] [-l SAVE] [-n STEPS] [-k EVERY] [-s OUTFILE]
- *                [-r SEED] [-c]
+ *                [-r SEED] [-c] [-z SIZE]
+ *
+ * -z starts a new game on a random map of that size (1-10) with four
+ * computer players instead of a mission.
  *
  * -c builds player 0's castle at the free place nearest to the map centre,
  * so that a save made with -s shows a game in progress (the scene of the
@@ -118,6 +121,7 @@ int main(int argc, char *argv[]) {
   std::string load_file, out_file;
   std::string seed = "4764524674278577";
   bool castle = false;
+  unsigned int map_size = 0;
 
   for (int i = 1; i < argc; i++) {
     const char *a = argv[i];
@@ -129,9 +133,13 @@ int main(int argc, char *argv[]) {
     else if (!strcmp(a, "-s") && v) { out_file = v; i++; }
     else if (!strcmp(a, "-r") && v) { seed = v; i++; }
     else if (!strcmp(a, "-c")) { castle = true; }
+    else if (!strcmp(a, "-z") && v) {
+      map_size = strtoul(v, nullptr, 10);
+      i++;
+    }
     else {
       printf("usage: simtest [-m MISSION] [-l SAVE] [-n STEPS] [-k EVERY]"
-             " [-s OUTFILE] [-r SEED] [-c]\n");
+             " [-s OUTFILE] [-r SEED] [-c] [-z SIZE]\n");
       return 5;
     }
   }
@@ -142,9 +150,24 @@ int main(int argc, char *argv[]) {
 
   GameManager &gm = GameManager::get_instance();
   uint32_t t0 = now_ms();
-  bool ok = load_file.empty()
-              ? gm.start_game(GameInfo::get_mission(mission))
-              : gm.load_game(load_file);
+  bool ok;
+  if (map_size != 0) {
+    /* A random map with four computer players. */
+    PGameInfo info = std::make_shared<GameInfo>(Random(seed));
+    info->set_map_size(map_size);
+    info->remove_all_players();
+    static const Player::Color colors[] = {
+      {0x00, 0xe3, 0xe3}, {0xcf, 0x63, 0x63}, {0xdf, 0x7f, 0xef},
+      {0xef, 0xef, 0x8f} };
+    for (unsigned int i = 0; i < 4; i++) {
+      info->add_player(1 + i, colors[i], 40, 40, 40);
+    }
+    ok = gm.start_game(info);
+  } else {
+    ok = load_file.empty()
+           ? gm.start_game(GameInfo::get_mission(mission))
+           : gm.load_game(load_file);
+  }
   if (!ok) {
     printf("ERROR: cannot start game\n");
     return 10;
@@ -166,7 +189,8 @@ int main(int argc, char *argv[]) {
   }
   uint32_t t1 = now_ms();
   printf("start: %s, %u ms\n",
-         load_file.empty() ? ("mission " + std::to_string(mission)).c_str()
+         map_size != 0 ? ("map size " + std::to_string(map_size)).c_str()
+         : load_file.empty() ? ("mission " + std::to_string(mission)).c_str()
                            : load_file.c_str(),
          static_cast<unsigned>(t1 - t0));
   printf("step %6u crc %08lx\n", 0u,

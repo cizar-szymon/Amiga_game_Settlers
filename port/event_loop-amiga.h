@@ -33,6 +33,9 @@ class EventLoopAmiga : public EventLoop {
   bool running;
   unsigned int start_ms;
   int buttons_down[4];
+  /* A left click was made while the right button was held: its release
+     is no click. */
+  bool right_used;
   int drag_button;
   int drag_x, drag_y;
   int last_x, last_y;

@@ -6,6 +6,7 @@
 #include <exec/execbase.h>
 #include <devices/timer.h>
 #include <devices/inputevent.h>
+#include <devices/input.h>
 #include <intuition/intuition.h>
 #include <intuition/screens.h>
 #include <graphics/gfx.h>
@@ -41,6 +42,25 @@ static struct timerequest *timer_req;
 static int timer_open;
 static int width, height;
 static int left_down, mid_down, right_down;
+
+/* The pointer held while the right button is down (the original's way of
+   scrolling): the window reports relative motion (IDCMP_DELTAMOVE), not
+   stopped by the edge of the screen, and the game's pointer stays at
+   hold_x, hold_y. When the button goes up the system pointer is put
+   there (input.device), where the game's one is.
+   The messages already queued when the mode changes are still in the old
+   one: each change notes the last of them (mode_switch). */
+static int hold_on, hold_x, hold_y, hold_last_x, hold_last_y;
+static int delta_mode;   /* the mode of the message being read */
+typedef struct ModeSwitch {
+  struct IntuiMessage *last_old;  /* last message in the old mode */
+  int mode;
+} ModeSwitch;
+static ModeSwitch mode_switch[8];
+static int mode_switches;
+static struct MsgPort *input_port;
+static struct IOStdReq *input_req;
+static int input_open;
 static ULONG palette32[1 + 256 * 3 + 1];
 /* An empty sprite in chip RAM: the system pointer hidden while the game
    draws its own (amiga_hide_pointer). */
@@ -195,9 +215,63 @@ static int open_display(int w, int h, char *err, int errlen)
   return 0;
 }
 
+/* The window's mouse moves relative (on) or absolute (off). */
+static void set_delta_mode(int on)
+{
+  struct List *list;
+  struct IntuiMessage *last;
+  if (window == NULL) return;
+  Forbid();
+  ModifyIDCMP(window, on ? (window->IDCMPFlags | IDCMP_DELTAMOVE)
+                         : (window->IDCMPFlags & ~IDCMP_DELTAMOVE));
+  list = &window->UserPort->mp_MsgList;
+  last = (list->lh_TailPred != (struct Node *)list)
+           ? (struct IntuiMessage *)list->lh_TailPred : NULL;
+  Permit();
+  if (last == NULL && mode_switches == 0) {
+    delta_mode = on;
+  } else if (mode_switches < 8) {
+    mode_switch[mode_switches].last_old = last;
+    mode_switch[mode_switches].mode = on;
+    mode_switches++;
+  }
+}
+
+/* The system pointer to x, y of the screen (hidden; the game's pointer
+   is drawn where the game wants it, this keeps the two together). */
+static void pointer_to(int x, int y)
+{
+  struct InputEvent ie;
+  if (!input_open) {
+    if (input_port == NULL) input_port = CreateMsgPort();
+    if (input_port == NULL) return;
+    if (input_req == NULL) {
+      input_req = (struct IOStdReq *)CreateIORequest(input_port,
+                                                      sizeof(*input_req));
+    }
+    if (input_req == NULL) return;
+    if (OpenDevice((CONST_STRPTR)"input.device", 0,
+                   (struct IORequest *)input_req, 0) != 0) {
+      return;
+    }
+    input_open = 1;
+  }
+  memset(&ie, 0, sizeof(ie));
+  ie.ie_Class = IECLASS_POINTERPOS;
+  ie.ie_X = (WORD)(x + (screen != NULL ? screen->LeftEdge : 0));
+  ie.ie_Y = (WORD)(y + (screen != NULL ? screen->TopEdge : 0));
+  input_req->io_Command = IND_WRITEEVENT;
+  input_req->io_Data = (APTR)&ie;
+  input_req->io_Length = sizeof(ie);
+  DoIO((struct IORequest *)input_req);
+}
+
 static void close_display(void)
 {
   amiga_vram_close();
+  hold_on = 0;
+  delta_mode = 0;
+  mode_switches = 0;
   if (window != NULL && blank_pointer != NULL) {
     ClearPointer(window);
   }
@@ -242,6 +316,18 @@ void amiga_screen_close(void)
     timer_port = NULL;
   }
   close_display();
+  if (input_open) {
+    CloseDevice((struct IORequest *)input_req);
+    input_open = 0;
+  }
+  if (input_req != NULL) {
+    DeleteIORequest((struct IORequest *)input_req);
+    input_req = NULL;
+  }
+  if (input_port != NULL) {
+    DeleteMsgPort(input_port);
+    input_port = NULL;
+  }
   if (blank_pointer != NULL) {
     FreeVec(blank_pointer);
     blank_pointer = NULL;
@@ -421,9 +507,42 @@ int amiga_get_event(AmigaEvent *ev)
     UWORD qual = m->Qualifier;
     APTR iaddr = m->IAddress;
     int mx = m->MouseX, my = m->MouseY;
+    int rel = delta_mode;
+    if (mode_switches > 0 && m == mode_switch[0].last_old) {
+      /* The last message of the old mode: the next ones are new. */
+      delta_mode = mode_switch[0].mode;
+      mode_switches--;
+      memmove(&mode_switch[0], &mode_switch[1],
+              mode_switches * sizeof(mode_switch[0]));
+    }
     ReplyMsg((struct Message *)m);
 
     memset(ev, 0, sizeof(*ev));
+    if (hold_on && cls == IDCMP_MOUSEMOVE) {
+      int dx, dy;
+      if (rel) {
+        dx = mx;
+        dy = my;
+      } else {
+        dx = mx - hold_last_x;
+        dy = my - hold_last_y;
+        hold_last_x = mx;
+        hold_last_y = my;
+      }
+      if (dx == 0 && dy == 0) continue;
+      ev->type = AEV_MOVE;
+      ev->x = hold_x;
+      ev->y = hold_y;
+      ev->rel = 1;
+      ev->dx = dx;
+      ev->dy = dy;
+      return 1;
+    }
+    if (rel || hold_on) {
+      /* Relative or held: the place is where the pointer is held. */
+      mx = hold_x;
+      my = hold_y;
+    }
     ev->x = mx;
     ev->y = my;
     if (qual & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) ev->qual |= AQUAL_SHIFT;
@@ -441,8 +560,23 @@ int amiga_get_event(AmigaEvent *ev)
           case SELECTUP:   ev->button = 1; ev->down = 0; left_down = 0; break;
           case MIDDLEDOWN: ev->button = 2; ev->down = 1; mid_down = 1; break;
           case MIDDLEUP:   ev->button = 2; ev->down = 0; mid_down = 0; break;
-          case MENUDOWN:   ev->button = 3; ev->down = 1; right_down = 1; break;
-          case MENUUP:     ev->button = 3; ev->down = 0; right_down = 0; break;
+          case MENUDOWN:
+            ev->button = 3; ev->down = 1; right_down = 1;
+            if (!hold_on) {
+              hold_on = 1;
+              hold_x = hold_last_x = mx;
+              hold_y = hold_last_y = my;
+              set_delta_mode(1);
+            }
+            break;
+          case MENUUP:
+            ev->button = 3; ev->down = 0; right_down = 0;
+            if (hold_on) {
+              hold_on = 0;
+              set_delta_mode(0);
+              pointer_to(hold_x, hold_y);
+            }
+            break;
           default: continue;
         }
         return 1;
@@ -457,6 +591,11 @@ int amiga_get_event(AmigaEvent *ev)
         return 1;
       case IDCMP_ACTIVEWINDOW:
       case IDCMP_INACTIVEWINDOW:
+        if (cls == IDCMP_INACTIVEWINDOW && hold_on) {
+          /* No button-up will come: the pointer free again. */
+          hold_on = 0;
+          set_delta_mode(0);
+        }
         ev->type = AEV_ACTIVE;
         ev->down = cls == IDCMP_ACTIVEWINDOW;
         return 1;

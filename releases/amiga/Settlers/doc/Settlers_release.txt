@@ -6,6 +6,55 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.118 (5.11.2026, wydanie beta)
+-------------------------------
+
+Opcje oryginalu (Options -> Video, na poczatku listy):
+- Pathway scrolling: przy budowie drogi mapa przesuwa sie za jej koncem
+  dokladnie tyle, ile trzeba.
+- Fast mapclick: dwuklik prawym przyciskiem na mapie otwiera okno mapy.
+- Fast building: dwuklik na wolnym miejscu (takze na pniu scietego
+  drzewa) otwiera okno budowy, w miejscu tylko na flage od razu ja
+  stawia, na wlasnej fladze zaczyna od niej droge. Dziala przy samej
+  mapie, gdy nie jest otwarte zadne okno.
+
+Mysz jak w oryginale:
+- Prawy przycisk przytrzymany + ruch: przewijanie mapy bez konca,
+  wskaznik stoi w miejscu wcisniecia (takze z Invert scrolling).
+- Prawy przytrzymany + lewy: na budynku jego okno (u wroga - atak), na
+  przycisku budowy w panelu podglad miejsc budowy (z miejscami na sama
+  flage), na przycisku burzenia burzenie. Sam prawy nie burzy, klawisz
+  2 tez nie.
+- Prawy przycisk nie zamyka okna budowy.
+
+Gra:
+- Po zburzeniu budynku bez drogi znika tez jego flaga.
+- Mapy wielkosci 1 (32x32) i 2 (64x32); wybrana wielkosc zostaje po
+  grze i w ustawieniach.
+- Okno mapy pamieta, co pokazywalo (tereny, drogi, budynki, siatka,
+  powiekszenie).
+- Autosave co 3 i 5 minut (obok 10, 20, 30, 60).
+- Load game: szeroka lista zapisow bez podgladu mapy. Okno Save Game
+  2,5 raza szersze - cale nazwy plikow.
+- Szybki zapis Ctrl+Z: quick-<rrmmdd>_<ggmmss>.save.
+
+Gra LAN:
+- Poczekalnia po polaczeniu: serwer wybiera mape (SMALLER, LARGER,
+  OTHER MAP, SAVED GAME), obaj widza jej podglad i pisza w czacie (Return
+  wysyla); gracz, ktory dolaczyl, ma przyciski CHANGE, AVERAGE, GREAT.
+  START GAME na serwerze. W menu startowym przy LAN game mapa sie nie
+  generuje.
+- Zmiana mapy w menu nie zmienia graczy (drugi gracz zostaje
+  czlowiekiem).
+- Show ping in LAN game (Options -> Advanced): czas odpowiedzi sieci na
+  lewo od FPS.
+- Gdy gra sie konczy (wyjscie gracza, zerwane polaczenie), obie Amigi ja
+  zapisuja: LAN_ERR_<rrmmdd>_<ggmmss>.
+- Gdy gry sie rozejda (OUT OF STEP): zapis obu stron SYNC_ERR_..M / ..S,
+  potem serwer wysyla swoja gre drugiemu graczowi (resync) i obie graja
+  dalej zgodnie. Ctrl+Shift+R - resync na zyczenie.
+
+
 0.117 (4.11.2026, wydanie beta)
 -------------------------------
 
@@ -36,7 +85,7 @@ zapisane klawiszem F10 w chwili bledu.
 
 - Okno budowy idzie za kliknieciem: klikniecie innego miejsca pokazuje
   budynki dla tego miejsca, a klikniecie miejsca, gdzie nic nie da sie
-  zbudowac, zamyka okno. Prawy przycisk myszy zamyka okno budowy.
+  zbudowac, zamyka okno.
 
 
 0.113 (4.11.2026, wydanie beta)

@@ -57,18 +57,30 @@ CONTROLS
 
   mouse                    everything in the game (as in the original)
   double click (empty)     the building window at once; at the start
-                           of a game the castle
+                           of a game the castle; where only a flag
+                           fits - a flag (option Fast building
+                           in Options -> Video)
+  double click (own flag)  a road from that flag (Fast building);
+                           the flag window: right button
+  right double click       the map window (option Fast mapclick)
   click on another site    the building window shows its buildings;
                            where nothing can be built it closes
-  right button             closes the building window
-  right button + move      scroll the map
+  right held + left click  on a building: its window (castle,
+                           lumberjack..., an enemy's: attack); on a
+                           flag: the flag window; on the demolish button
+                           of the panel:
+                           demolishes (the right button alone does not)
+  right button + move      scroll the map; the pointer stays where the
+                           button went down, the map scrolls on and on
+                           (as in the original)
   cursor keys              scroll the map
   Z, mouse wheel           the map magnified: x2 (above 400x300), x3 (800x600
                            and 960x540); none on 640x360;
                            the wheel up/down by a step, Z in turn
   P                        pause (again: continue), PAUSE on the screen
-  1 ... 5                  panel buttons
-  B                        building sites
+  1 ... 5                  panel buttons (not demolishing)
+  B                        building sites (also: the left button on
+                           the build button with the right one held)
   Tab                      next message; in a LAN game: the chat box
   +                        game speed: x1.5 / x2 / x2.5 / x3
   -                        slower, down to x0.5
@@ -104,7 +116,8 @@ Options -> Amiga:
   the system), MC68040 20-50 MHz in steps of 1
 Options -> Advanced:
   Invert scrolling, Large numbers, Autosave, Stock box until occupied,
-  Show FPS (frame counter in the corner)
+  Show FPS (frame counter in the corner),
+  Show ping in LAN game (the network's response time, left of the FPS)
 Options -> Advanced -> VIDEO:
   Sand on new maps (the deserts of new maps: None, 10% of normal
     ... Normal, - + buttons),
@@ -193,6 +206,14 @@ During the game:
   While the chat is open, letters and digits are not keys of the game.
 - When one player leaves the game (or the link breaks), the other sees a
   notice and goes back to the start menu after 4 s.
+- When the games go apart (LAN: OUT OF STEP), both Amigas save the game
+  of the same step: SYNC_ERR_<yymmdd>_<hhmm>M (server) and ...S (the
+  player who joined). Then the server sends its game to the other player
+  (resync): that Amiga stops for a moment, loads it and both go on alike.
+  In the chat: RESYNC DONE.
+- A LAN game saves itself when it ends (a player leaves, the link
+  breaks) - on both Amigas, the file LAN_ERR_<date>_<time of the end> (LAN in the
+  list of saves); go on with it as with any LAN save, below.
 
 Saving and going on:
 - Save with the usual Save box. Saves of LAN games show a yellow LAN in
