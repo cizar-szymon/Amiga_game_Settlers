@@ -1,0 +1,66 @@
+# Zmiany 0.118 (5.11.2026) – lista do dalszych poprawek
+
+Wydanie 0.118 (commit `c62c99e`, łatka Freeserf `0049`). Szczegóły techniczne każdej zmiany:
+`docs/PORTING.md`, sekcja „Zmiany 0.118”.
+
+Stan: ✅ działa (sprawdzone przez użytkownika), ⚠️ nie sprawdzone przed wydaniem albo
+sprawdzone tylko częściowo.
+
+## Opcje oryginału (Options → Video)
+
+| Nr | Zmiana | Stan |
+|---|---|---|
+| 1 | Dwuklik otwiera okno budowy tylko wtedy, gdy widać samą mapę (bez otwartych okien) | ✅ |
+| 2 | Pathway scrolling (mapa idzie za końcem budowanej drogi, tylko tyle, ile trzeba) i Fast building – na początku listy Video | ✅ |
+| 3 | Fast mapclick: dwuklik prawym na mapie otwiera okno mapy | ✅ |
+| 5 | Dwuklik lewym na własnej fladze zaczyna od niej drogę (Fast building) | ✅ |
+| 7 | Dwuklik w miejscu tylko na flagę od razu stawia flagę | ✅ |
+| 14 | Dwuklik na pniu ściętego drzewa otwiera okno budowy | ✅ |
+
+## Mysz jak w oryginale
+
+| Nr | Zmiana | Stan |
+|---|---|---|
+| 4 | Prawy przycisk nie zamyka okna budowy | ✅ |
+| 10 | Podgląd miejsc budowy: lewy przy wciśniętym prawym na przycisku budowy w panelu | ✅ |
+| 11 | Burzenie tylko lewym przy wciśniętym prawym (sam prawy nie burzy) | ✅ |
+| 12 | Klawisz 2 nie burzy | ✅ |
+| 19 | Okno budynku: lewy przy wciśniętym prawym na budynku; dwuklik i sam prawy go nie otwierają | ✅ okno własnych budynków; ⚠️ okno ataku na budynek wroga nie sprawdzone |
+| 21 | Przewijanie prawym bez końca, wskaźnik stoi w miejscu wciśnięcia (też Invert scrolling) | ✅ |
+
+## Gra
+
+| Nr | Zmiana | Stan |
+|---|---|---|
+| 6 | Podgląd miejsc budowy pokazuje też miejsca na samą flagę | ✅ |
+| 8 | Okno mapy pamięta wybory (tereny, drogi, budynki, siatka, skala), także po ponownym uruchomieniu | ✅ |
+| 9 | Autosave: także 3 i 5 min | ✅ |
+| 13 | Po zburzeniu budynku bez drogi znika jego flaga (zmiana zasad gry – w LAN obaj muszą mieć 0.118) | ✅ |
+| 17 | Bez napisu „TEST 0.xxx” w rogu mapy | ✅ |
+| 18 | Mapy wielkości 1 (32×32) i 2 (64×32) | ✅ |
+| 20 | Wybrana wielkość mapy zostaje po wyjściu z gry (osobno nowa gra i LAN) | ✅ |
+| 26 | Load game: szeroka lista zapisów, bez podglądu mapy | ⚠️ |
+| 27 | Szybki zapis Ctrl+Z: krótka nazwa `quick-<rrmmdd>_<ggmmss>.save` (długie nazwy ucinał dysk Amigi i zapis nie był widoczny na liście) | ⚠️ |
+| 28 | Okno Save Game 2,5 raza szersze (całe nazwy plików) | ⚠️ |
+
+## Gra LAN
+
+| Nr | Zmiana | Stan |
+|---|---|---|
+| 15 | Zmiana mapy w menu nie zmienia graczy (drugi gracz zostaje człowiekiem, AI jak ustawione) | ✅ |
+| 16 | Show ping in LAN game (Options → Advanced): ping na lewo od FPS | ✅ |
+| 22 | Poczekalnia po połączeniu: serwer wybiera mapę (SMALLER / LARGER / OTHER MAP / SAVED GAME), obaj widzą podgląd, czat, START GAME na serwerze | ✅ |
+| 23 | W menu startowym przy LAN game mapa się nie generuje (czarne pole z opisem) | ✅ |
+| 24 | Szybkie odpowiedzi gracza, który dołączył: CHANGE / AVERAGE / GREAT | ✅ |
+| 25 | Zapis przy końcu gry LAN (wyjście gracza, zerwane połączenie): `LAN_ERR_<rrmmdd>_<ggmmss>.lan.save` u obu | ⚠️ krótka nazwa nie sprawdzona (długą ucinał dysk Amigi) |
+| 29 | Przy rozjeździe (OUT OF STEP) zapis obu stron `SYNC_ERR_<rrmmdd>_<ggmm>M/S.lan.save`; raport do plików (.txt, wysyłanie do serwera, Ctrl+Shift+D) wyłączony – pójdzie na serwer zgłoszeń | ✅ |
+| 30 | Resync: po rozjeździe gra serwera idzie do drugiego gracza, obie grają dalej zgodnie; Ctrl+Shift+R na życzenie; LANTEST + Ctrl+Shift+X – sztuczny rozjazd do testu | ✅ |
+
+## Do zrobienia / sprawdzenia
+
+- ⚠️ Zmiany 25, 26, 27, 28 – sprawdzić na Amidze.
+- ⚠️ Zmiana 19 – okno ataku na budynek wroga (lewy przy wciśniętym prawym).
+- ✅ Amiga 1 – zaktualizowana do 0.118 (program i szuflada `doc`, 5.11.2026; `Settlers-test` tam nie było).
+- Na Amidze 2 w `freeserf/saves` leżą pliki z uciętymi nazwami (`lanend-1978-…lan.`, `LAN_ERR_1978-01-01_…lan`) – gra ich nie widzi; do zmiany nazwy albo usunięcia (za zgodą).
+- Plan „BUG LAN”: wysyłanie zgłoszeń na serwer użytkownika (RPi4), gdy będzie postawiony; kod przesyłania plików i `tools/lan_diff.py` są gotowe.
+- Uboczne znalezisko: AI przy szukaniu flag do połączenia przegląda zakres według numeru wielkości mapy zamiast liczby pól (`ai-core.cc`, ~linia 1481) – nie zmieniane, bo zmieniłoby grę komputera.
