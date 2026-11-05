@@ -1,0 +1,108 @@
+From 70933311eeb4c4ec96b9c9a8c4b7ba6a8bdee259 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Thu, 5 Nov 2026 21:56:40 +0100
+Subject: [PATCH] 0.119: LAN game - the cursor, the panel and an open box show
+ a command when it is done; the sound of geologist, promotion and road joining
+ by its result
+
+- after the commands of a turn: update_map_cursor_pos (a flag just set can
+  be demolished at once) and the open popup redrawn (sliders and settings
+  move with one click)
+- the sounds of sending a geologist, promoting knights and joining roads
+  at a flag in a LAN game come when the command is done, by its result
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7U35RuKvTQMs84jNJEFhT
+---
+ src/lan-game.cc | 24 +++++++++++++++++++++++-
+ src/popup.cc    | 13 +++++++++++--
+ 2 files changed, 34 insertions(+), 3 deletions(-)
+
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index 8353acf..775c900 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -43,6 +43,7 @@
+ #include "src/log.h"
+ #include "src/game-manager.h"
+ #include "src/viewport.h"
++#include "src/popup.h"
+ 
+ /* The largest screen of a LAN game. */
+ static const unsigned int kMaxWidth = 640;
+@@ -684,12 +685,33 @@ LanGame::before_step() {
+         } else if (c.type == LanCommand::TypeDump) {
+           dump_now = std::max(dump_now, c.a != 0 ? 1 : 0);
+         } else {
+-          c.apply(game.get());
++          bool done = c.apply(game.get());
++          /* The sound of this player's command, now that its result is
++             known (in a game on one computer it comes at the click). */
++          bool mine_cmd = (side == 0) == server;
++          if (mine_cmd && (c.type == LanCommand::TypeSendGeologist ||
++                           c.type == LanCommand::TypePromoteKnights ||
++                           c.type == LanCommand::TypePullRoads)) {
++            Audio::get_instance().enqueue_sfx(
++              done ? Audio::TypeSfxAccepted : Audio::TypeSfxNotAccepted);
++          }
+         }
+       }
+     }
+     while (command_log.size() > 2000) command_log.pop_front();
+   }
++  /* The commands change the map later than the click (the delay of the
++     turns): the cursor and the panel show the site as it is now - a flag
++     just set is a flag (it can be demolished at once), not a free site. */
++  if (game && (!own.empty() || !other.empty())) {
++    interface->update_map_cursor_pos(interface->get_map_cursor_pos());
++    /* An open box shows the new values too (the sliders and the other
++       settings change when the command is done, not at the click). */
++    PopupBox *popup = interface->get_popup_box();
++    if (popup != nullptr && popup->is_displayed()) {
++      popup->set_redraw();
++    }
++  }
+   if (dump_now >= 0) {
+     dump(dump_now == 1);   /* first: the states as they went apart */
+   }
+diff --git a/src/popup.cc b/src/popup.cc
+index 50ec59d..5b6a8b0 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -3104,7 +3104,10 @@ PopupBox::handle_send_geologist() {
+       !interface->command(LanCommand::TypeSendGeologist, pos)) {
+     play_sound(Audio::TypeSfxNotAccepted);
+   } else {
+-    play_sound(Audio::TypeSfxAccepted);
++    /* A LAN game: the sound when the command is done (LanGame). */
++    if (interface->get_lan_game() == nullptr) {
++      play_sound(Audio::TypeSfxAccepted);
++    }
+     interface->close_popup();
+   }
+ }
+@@ -3113,6 +3116,9 @@ void
+ PopupBox::sett_8_train(int number) {
+   int r = interface->command(LanCommand::TypePromoteKnights, 0, number);
+ 
++  if (interface->get_lan_game() != nullptr) {
++    return;  /* the sound when the command is done (LanGame) */
++  }
+   if (r == 0) {
+     play_sound(Audio::TypeSfxNotAccepted);
+   } else {
+@@ -3678,7 +3684,10 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+            interface->get_game()->get_flag(interface->get_player()->temp_index);
+     if ((flag != nullptr) &&
+         interface->command(LanCommand::TypePullRoads, flag->get_position())) {
+-      play_sound(Audio::TypeSfxAccepted);
++      /* A LAN game: the sound when the command is done (LanGame). */
++      if (interface->get_lan_game() == nullptr) {
++        play_sound(Audio::TypeSfxAccepted);
++      }
+     } else {
+       play_sound(Audio::TypeSfxNotAccepted);
+     }
+-- 
+2.45.2.windows.1
+

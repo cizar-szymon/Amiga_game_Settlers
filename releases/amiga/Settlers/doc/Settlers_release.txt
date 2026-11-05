@@ -6,6 +6,17 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.119 (5.11.2026, wydanie beta)
+-------------------------------
+
+- Gra LAN: po kliknieciu kursor, panel i otwarte okno pokazuja zmiane,
+  gdy tylko polecenie sie wykona (ok. 0,2 s): postawiona flaga od razu
+  jest flaga (mozna ja zburzyc), suwaki i przyciski ustawien przestawiaja
+  sie po jednym kliknieciu.
+- Gra LAN: dzwiek przy wyslaniu geologa, awansie na rycerzy i laczeniu
+  drog przy fladze mowi, czy sie udalo.
+
+
 0.118 (5.11.2026, wydanie beta)
 -------------------------------
 

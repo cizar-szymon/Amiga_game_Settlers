@@ -6,6 +6,17 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.119 (5.11.2026, beta release)
+-------------------------------
+
+- LAN game: after a click the cursor, the panel and an open box show the
+  change as soon as the command is done (about 0.2 s): a flag just set is
+  a flag (it can be demolished at once), the sliders and buttons of the
+  settings move with one click.
+- LAN game: the sound of sending a geologist, promoting knights and
+  joining the roads at a flag tells whether it worked.
+
+
 0.118 (5.11.2026, beta release)
 -------------------------------
 

@@ -64,3 +64,13 @@ sprawdzone tylko częściowo.
 - Na Amidze 2 w `freeserf/saves` leżą pliki z uciętymi nazwami (`lanend-1978-…lan.`, `LAN_ERR_1978-01-01_…lan`) – gra ich nie widzi; do zmiany nazwy albo usunięcia (za zgodą).
 - Plan „BUG LAN”: wysyłanie zgłoszeń na serwer użytkownika (RPi4), gdy będzie postawiony; kod przesyłania plików i `tools/lan_diff.py` są gotowe.
 - Uboczne znalezisko: AI przy szukaniu flag do połączenia przegląda zakres według numeru wielkości mapy zamiast liczby pól (`ai-core.cc`, ~linia 1481) – nie zmieniane, bo zmieniłoby grę komputera.
+
+## 0.119 (5.11.2026) – gra LAN, odświeżanie po poleceniach
+
+Wydane na prośbę użytkownika przed jego testem (łatka Freeserf `0050`).
+
+| Nr | Zmiana | Stan |
+|---|---|---|
+| 1 | Po postawieniu flagi kursor i panel pokazują flagę, gdy tylko polecenie się wykona – można ją od razu zburzyć | ⚠️ |
+| 2 | Suwaki i przyciski w oknach ustawień przestawiają się po jednym kliknięciu (okno przerysowane po wykonaniu polecenia) | ⚠️ |
+| 3 | Dźwięk przy wysłaniu geologa, awansie na rycerzy i łączeniu dróg mówi, czy się udało | ⚠️ |
