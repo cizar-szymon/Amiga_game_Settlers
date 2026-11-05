@@ -74,3 +74,15 @@ Wydane na prośbę użytkownika (łatka Freeserf `0050`); potwierdzone przez uż
 | 1 | Po postawieniu flagi kursor i panel pokazują flagę, gdy tylko polecenie się wykona – można ją od razu zburzyć | ✅ |
 | 2 | Suwaki i przyciski w oknach ustawień przestawiają się po jednym kliknięciu (okno przerysowane po wykonaniu polecenia) | ✅ |
 | 3 | Dźwięk przy wysłaniu geologa, awansie na rycerzy i łączeniu dróg mówi, czy się udało | ✅ |
+
+## 0.120 (6.11.2026)
+
+Łatka Freeserf `0051`; wszystko potwierdzone przez użytkownika na Amidze 1 (`Settlers-test`).
+
+| Nr | Zmiana | Stan |
+|---|---|---|
+| 1 | Po zmianie gry (koniec LAN, nowa gra, wczytanie) nie zostaje niewidoczne okno pod mapą – Fast building i Fast mapclick działają od razu, bez Esc | ✅ |
+| 2 | Dwuklik i prawy klik na oknie, panelu, komunikacie nie przechodzą na mapę pod nim (np. suwak nad flagą) | ✅ |
+| 3 | Budowa drogi: zwykły klik na polu innej drogi (w miejscu na flagę) dołącza do niej; dwuklik zaraz potem nie zaczyna nowej drogi | ✅ |
+| 4 | Options → Video: „Dead trees on new maps” (0–100 %), w LAN ustawia serwer; 0.120 nie łączy się z 0.119 | ✅ |
+| – | Kreska czarnych pikseli przy brzegu wody (stała, w obu trybach rysowania) – zostawiona na prośbę użytkownika, opis w `PORTING.md`, zapis `water-line.save` na Amidze 1 | ⚠️ otwarte |

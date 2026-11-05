@@ -116,6 +116,8 @@ Options -> Advanced -> VIDEO:
   Sand on new maps (ilosc pustyn na nowych mapach: None, 10% of normal
     ... Normal, przyciski - +),
   Rocks on new maps (brazowe skaly na nowych mapach, tak samo),
+  Dead trees on new maps (suche drzewa na nowych mapach, tak samo;
+    w grze LAN ustawia je serwer),
   More kinds of trees (odbite drzewa i brzozy, tylko wyglad),
   Wild boars (dziki wsrod drzew)
 

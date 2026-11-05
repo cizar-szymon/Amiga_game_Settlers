@@ -13,8 +13,8 @@ card and a 68040/68060, at up to 800×600. It is a port of
 game (GPL-3.0), with a native Amiga backend (no SDL): an 8-bit Picasso96 screen,
 Paula sound, the game's own music module and the original Amiga graphics.
 
-**Current version: 0.119 (beta, 5.11.2026)** – the archive is
-[`releases/amiga/Settlers-0.119.zip`](releases/amiga/Settlers-0.119.zip)
+**Current version: 0.120 (beta, 6.11.2026)** – the archive is
+[`releases/amiga/Settlers-0.120.zip`](releases/amiga/Settlers-0.120.zip)
 (the same files unpacked: [`releases/amiga/Settlers`](releases/amiga/Settlers)).
 
 ![The game at 640×480 on a 68060](docs/shots/v1.png)
@@ -48,7 +48,7 @@ Paula sound, the game's own music module and the original Amiga graphics.
 
 ## Getting started
 
-1. Unpack the archive to your hard disk, e.g. `UnZip Settlers-0.119.zip -d Work:Games`.
+1. Unpack the archive to your hard disk, e.g. `UnZip Settlers-0.120.zip -d Work:Games`.
 2. Copy from the original disks to `Settlers/data/amiga`:
    from disk 3 `gfxheader`, `gfxfast`, `gfxchip`, `sounds`, `extro`;
    from disk 2 `gfxpics`, `music`.

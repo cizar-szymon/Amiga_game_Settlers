@@ -6,6 +6,22 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.120 (6.11.2026, beta release)
+-------------------------------
+
+- Options -> Video: "Dead trees on new maps" - the dead trees of new
+  maps (None, 10% of normal ... Normal). In a LAN game the server sets
+  it, both sides have the same map.
+- Building a road: a normal click on a tile of another road, where a flag
+  may stand, joins the new road to it (a flag is set there).
+- A double click and the right button on a box or on the panel work in
+  it only, never on the map under it.
+- A new game, loading a saved game and the end of a LAN game close the
+  boxes and messages of the game before; Fast building and Fast mapclick
+  work at once.
+- LAN game: both sides need version 0.120.
+
+
 0.119 (5.11.2026, beta release)
 -------------------------------
 

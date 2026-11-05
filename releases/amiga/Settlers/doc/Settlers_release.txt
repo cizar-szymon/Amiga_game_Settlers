@@ -6,6 +6,21 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.120 (6.11.2026, wydanie beta)
+-------------------------------
+
+- Options -> Video: "Dead trees on new maps" - ilosc suchych drzew na
+  nowych mapach (None, 10% of normal ... Normal). W grze LAN ustawia ja
+  serwer, obie strony maja te sama mape.
+- Budowa drogi: zwykly klik na polu innej drogi, w miejscu, gdzie mozna
+  postawic flage, laczy nowa droge z tamta (stawia tam flage).
+- Dwuklik i prawy przycisk na oknie albo na panelu dzialaja tylko w nim,
+  nigdy na mapie pod spodem.
+- Nowa gra, wczytanie zapisu i koniec gry LAN zamykaja okna i komunikaty
+  poprzedniej gry; Fast building i Fast mapclick dzialaja od razu.
+- Gra LAN: obie strony musza miec wersje 0.120.
+
+
 0.119 (5.11.2026, wydanie beta)
 -------------------------------
 

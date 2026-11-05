@@ -122,6 +122,8 @@ Options -> Advanced -> VIDEO:
   Sand on new maps (the deserts of new maps: None, 10% of normal
     ... Normal, - + buttons),
   Rocks on new maps (the brown boulders of new maps, the same way),
+  Dead trees on new maps (the dead trees of new maps, the same way;
+    in a LAN game the server sets it),
   More kinds of trees (mirrored trees and birches, only the look),
   Wild boars (boars among the trees)
 
