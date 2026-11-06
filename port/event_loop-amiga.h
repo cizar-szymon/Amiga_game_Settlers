@@ -48,6 +48,9 @@ class EventLoopAmiga : public EventLoop {
      repeats next (0: no more in this press), how many times it did. */
   unsigned int hold_next;
   int hold_count;
+  /* The press of the left button was used (a hint): its release is no
+     click, it closes the hint. */
+  bool press_used;
   std::string stats_lines[4];
   std::string fps_text;
   std::string message_text;

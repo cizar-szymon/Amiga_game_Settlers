@@ -6,6 +6,24 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.123 (6.11.2026, wydanie beta)
+-------------------------------
+
+- Options -> Video: "Terraforming wasteland" (domyslnie wyl.) - zmiana
+  nieuzytkow: lesnicy sadza drzewa najpierw na piasku, a piasek wokol
+  nowego drzewa (pole drzewa i 6 sasiednich, do samej granicy pustyni)
+  zmienia sie na stale w trawe, na ktorej mozna budowac; drwale
+  najpierw scinaja suche drzewa (kilka uderzen, drzewo znika, bez
+  drewna); kamieniarze rozbijaja brazowe skaly (bez kamienia). Dziala
+  w nowych grach i w biezacej grze, zapisuje sie z gra; w grze LAN
+  ustawienie serwera.
+- Options -> Video: lewy przycisk przytrzymany na nazwie opcji pokazuje
+  jej opis, puszczenie go zamyka.
+- Przy budowie drogi mapa zawsze przesuwa sie za jej koncem (Pathway
+  scrolling nie ma juz w oknie Video).
+- Gra LAN: obie strony musza miec wersje 0.123.
+
+
 0.122 (6.11.2026, wydanie beta)
 -------------------------------
 

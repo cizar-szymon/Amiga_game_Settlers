@@ -6,6 +6,23 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.123 (6.11.2026, beta release)
+-------------------------------
+
+- Options -> Video: "Terraforming wasteland" (off at first): foresters
+  plant trees on sand first, and the sand around a new tree (its place
+  and the 6 around it, up to the very edge of the desert) turns to grass
+  for good, where buildings may stand; lumberjacks fell dead trees first
+  (a few strokes, the tree is gone, no lumber); stonecutters break the
+  brown boulders (no stone). New games and the game now, kept with the
+  game; in a LAN game the server's setting.
+- Options -> Video: the left button held on the name of an option shows
+  what it does, letting go closes it.
+- While a road is built the map always follows its end (Pathway
+  scrolling is no longer in the Video box).
+- LAN game: both sides need version 0.123.
+
+
 0.122 (6.11.2026, beta release)
 -------------------------------
 

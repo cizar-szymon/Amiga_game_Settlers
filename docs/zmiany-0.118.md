@@ -75,6 +75,17 @@ Wydane na prośbę użytkownika (łatka Freeserf `0050`); potwierdzone przez uż
 | 2 | Suwaki i przyciski w oknach ustawień przestawiają się po jednym kliknięciu (okno przerysowane po wykonaniu polecenia) | ✅ |
 | 3 | Dźwięk przy wysłaniu geologa, awansie na rycerzy i łączeniu dróg mówi, czy się udało | ✅ |
 
+## 0.123 (6.11.2026)
+
+Łatka Freeserf `0054`.
+
+| Nr | Zmiana | Stan |
+|---|---|---|
+| 1 | Options → Video „Terraforming wasteland” (wył.): leśnik sadzi najpierw na piasku, piasek wokół drzewa (7 pól + pas do granicy) → trawa na stałe | ✅ |
+| 2 | Pathway scrolling usunięte z okna Video, zawsze włączone | ✅ wydane |
+| 3 | Terraforming: drwal najpierw suche drzewa (2 uderzenia, znika, bez drewna), kamieniarz rozbija brązowe skały (bez kamienia); w LAN ustawienie serwera | ✅ |
+| 4 | Podpowiedzi opcji Video: lewy przycisk na nazwie opcji – opis, puszczenie zamyka | ✅ wydane |
+
 ## 0.122 (6.11.2026)
 
 Łatka Freeserf `0053`.

@@ -119,6 +119,7 @@ Options -> Advanced:
   Show FPS (frame counter in the corner),
   Show ping in LAN game (the network's response time, left of the FPS)
 Options -> Advanced -> VIDEO:
+  (The left button held on the name of an option: what it does.)
   Sand on new maps (the deserts of new maps: None, 10% of normal
     ... Normal, - + buttons),
   Rocks on new maps (the brown boulders of new maps, the same way),
@@ -126,6 +127,11 @@ Options -> Advanced -> VIDEO:
     in a LAN game the server sets it),
   More kinds of trees (mirrored trees and birches, only the look),
   Wild boars (boars among the trees)
+  Terraforming wasteland (off at first): foresters plant trees on sand
+    first, the sand around a new tree turns to grass for good;
+    lumberjacks fell dead trees too (first, no lumber from them),
+    stonecutters break the brown boulders (no stone); new games and the
+    game now, in a LAN game the server's)
 
 Settings are kept in Settlers.ini next to the game, saved games in the
 freeserf drawer.

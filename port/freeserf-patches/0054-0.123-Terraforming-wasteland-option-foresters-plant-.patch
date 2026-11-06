@@ -1,0 +1,890 @@
+From 5459ed101348a0954f2a289b078cd7bec1346c10 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Fri, 6 Nov 2026 22:27:01 +0100
+Subject: [PATCH] 0.123: Terraforming wasteland option (foresters plant on sand
+ that turns to grass, lumberjacks clear dead trees, stonecutters break
+ boulders), hints of the Video options, pathway scrolling always on
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7U35RuKvTQMs84jNJEFhT
+---
+ src/advanced-box.cc | 126 +++++++++++++++++++++++++++++++++++++++-----
+ src/advanced-box.h  |   8 +++
+ src/event_loop.cc   |  24 +++++++++
+ src/event_loop.h    |   7 +++
+ src/game-init.cc    |   1 +
+ src/game.cc         |  60 +++++++++++++++++++++
+ src/game.h          |   9 ++++
+ src/gui.cc          |   9 +++-
+ src/gui.h           |   3 ++
+ src/interface.cc    |  15 +++++-
+ src/interface.h     |   6 +++
+ src/lan-sync.cc     |  14 +++--
+ src/map.cc          |  14 +++++
+ src/map.h           |   3 ++
+ src/mission.cc      |   3 ++
+ src/mission.h       |   3 ++
+ src/serf.cc         | 113 ++++++++++++++++++++++++++++++++++-----
+ 17 files changed, 382 insertions(+), 36 deletions(-)
+
+diff --git a/src/advanced-box.cc b/src/advanced-box.cc
+index a9336ef..b073a48 100644
+--- a/src/advanced-box.cc
++++ b/src/advanced-box.cc
+@@ -22,6 +22,7 @@
+ #include "src/advanced-box.h"
+ 
+ #include <string>
++#include <vector>
+ 
+ #include "src/interface.h"
+ #include "src/popup.h"
+@@ -91,6 +92,9 @@ typedef struct Option {
+   void (Interface::*change)();
+   /* A value with - and + buttons: change is +, this is -. */
+   void (Interface::*decrease)();
++  /* What the option does: shown while the left button is held on its
++     label (the Video box). */
++  const char *hint;
+ } Option;
+ 
+ static std::string
+@@ -182,31 +186,53 @@ static const Option options[] = {
+ 
+ /* The Video box: what the map looks like. */
+ static const Option video_options[] = {
+-  /* Options of the original game, first and in its order: the map follows
+-     the road being built; a double special click on the map opens the map
+-     window; a double click on a building site the choice of buildings. */
+-  { N_("Pathway scrolling"), &Interface::get_pathway_scrolling, nullptr,
+-    &Interface::switch_pathway_scrolling },
++  /* Options of the original game, first and in its order: a double
++     special click on the map opens the map window; a double click on a
++     building site the choice of buildings. (Pathway scrolling of the
++     original - the map follows the road being built - is always on.) */
+   { N_("Fast mapclick"), &Interface::get_fast_mapclick, nullptr,
+-    &Interface::switch_fast_mapclick },
++    &Interface::switch_fast_mapclick, nullptr,
++    N_("An option of the original. A double click with the right mouse "
++       "button on the map opens the map window.") },
+   { N_("Fast building"), &Interface::get_fast_building, nullptr,
+-    &Interface::switch_fast_building },
++    &Interface::switch_fast_building, nullptr,
++    N_("An option of the original. A double click on a free building "
++       "site opens the choice of buildings at once.") },
+   /* Less desert on new maps (not missions). */
+   { N_("Sand on new maps"), nullptr, sand_text, &Interface::more_sand,
+-    &Interface::less_sand },
++    &Interface::less_sand,
++    N_("How much desert new maps get: None, 10% of normal ... Normal. "
++       "Not the missions. In a LAN game the setting of the server counts.") },
+   /* Fewer brown boulders on new maps. */
+   { N_("Rocks on new maps"), nullptr, rocks_text, &Interface::more_rocks,
+-    &Interface::less_rocks },
++    &Interface::less_rocks,
++    N_("How many brown boulders new maps get, the same way. They stand in "
++       "the way of roads and buildings. In a LAN game the server's "
++       "setting counts.") },
+   /* Fewer dead trees on new maps (they stand in the way of buildings and
+-     no woodcutter fells them). */
++     no woodcutter fells them, but with Terraforming wasteland). */
+   { N_("Dead trees on new maps"), nullptr, dead_trees_text,
+-    &Interface::more_dead_trees, &Interface::less_dead_trees },
++    &Interface::more_dead_trees, &Interface::less_dead_trees,
++    N_("How many dead trees new maps get, the same way. They stand in the "
++       "way of buildings. In a LAN game the server's setting counts.") },
+   /* Mirrored trees and birches, only the picture. */
+   { N_("More kinds of trees"), &Interface::get_tree_variety, nullptr,
+-    &Interface::switch_tree_variety },
++    &Interface::switch_tree_variety, nullptr,
++    N_("Mirrored trees and birches among the trees of the map. Only the "
++       "picture: the game stays the same.") },
+   /* A few dark brown pigs among trees, with their sounds. */
+   { N_("Wild boars"), &Interface::get_wild_boars, nullptr,
+-    &Interface::switch_wild_boars },
++    &Interface::switch_wild_boars, nullptr,
++    N_("A few dark brown wild boars among the trees, with their sounds. "
++       "Only the picture: the game stays the same.") },
++  /* Terraforming wasteland: the foresters plant on sand (the sand around a
++     new tree is grass), the lumberjacks fell dead trees too (first). */
++  { N_("Terraforming wasteland"), &Interface::get_terraforming, nullptr,
++    &Interface::switch_terraforming, nullptr,
++    N_("Foresters plant on sand first, the sand around a new tree turns "
++       "to grass for good. Lumberjacks fell dead trees first (no lumber), "
++       "stonecutters break the brown boulders (no stone). New games and "
++       "the game now; in a LAN game the server's setting counts.") },
+ };
+ 
+ /* Width of the value texts, right aligned to the check boxes. */
+@@ -232,7 +258,8 @@ static const PageInfo pages[] = {
+ 
+ AdvancedBox::AdvancedBox(Interface *_interface)
+   : interface(_interface)
+-  , page(PageAdvanced) {
++  , page(PageAdvanced)
++  , hint(-1) {
+   opaque = true;
+   set_size(kWidth, pages[PageAdvanced].height);
+ }
+@@ -313,6 +340,77 @@ AdvancedBox::internal_draw() {
+     draw_small_button(frame, audio_x, exit_y, kPageButtonWidth, "AUDIO");
+   }
+   frame->draw_sprite(exit_x, exit_y, Data::AssetIcon, 60);  // Exit
++
++  if (hint >= 0 && hint < info.count && options[hint].hint != nullptr) {
++    draw_hint(_(options[hint].label), _(options[hint].hint), first_y);
++  }
++}
++
++/* The hint of an option: its label and what it does, words wrapped, in a
++   dark frame over the rows of the box. */
++void
++AdvancedBox::draw_hint(const std::string &label, const std::string &text,
++                       int top) {
++  int x = 12, w = width - 24;
++  std::vector<std::string> lines;
++  std::string line, word;
++  std::string all = text + " ";
++  for (char c : all) {
++    if (c != ' ') {
++      word += c;
++      continue;
++    }
++    if (word.empty()) continue;
++    std::string next = line.empty() ? word : line + " " + word;
++    if (frame->get_string_width(next) > w - 12 && !line.empty()) {
++      lines.push_back(line);
++      line = word;
++    } else {
++      line = next;
++    }
++    word.clear();
++  }
++  if (!line.empty()) lines.push_back(line);
++  int h = 10 + 12 + 10 * static_cast<int>(lines.size()) + 6;
++  frame->fill_rect(x, top, w, h, Color(0x00, 0x33, 0x1a));
++  frame->draw_rect(x, top, w, h, Color::green);
++  frame->draw_string(x + 6, top + 6, label, Color(0xdd, 0xdd, 0x00),
++                     Color::black);
++  int y = top + 6 + 14;
++  for (const std::string &l : lines) {
++    frame->draw_string(x + 6, y, l, Color::green, Color::black);
++    y += 10;
++  }
++}
++
++/* The left button down on the label of an option of the Video box: its
++   hint, until the button goes up. */
++bool
++AdvancedBox::handle_press(int x, int y) {
++  if (page != PageVideo) return false;
++  const PageInfo &info = pages[page];
++  int first_y = (info.title != nullptr) ? kTitledFirstRowY : kFirstRowY;
++  for (int i = 0; i < info.count; i++) {
++    int row_y = first_y + i * kRowHeight;
++    int label_w = frame != nullptr ?
++      frame->get_string_width(_(info.options[i].label)) : 160;
++    if (info.options[i].hint != nullptr &&
++        y >= row_y && y < row_y + kCheckSize &&
++        x >= kLabelX - 4 && x < kLabelX + label_w + 4) {
++      hint = i;
++      set_redraw();
++      return true;
++    }
++  }
++  return false;
++}
++
++bool
++AdvancedBox::handle_release() {
++  if (hint < 0) return false;
++  hint = -1;
++  set_redraw();
++  return true;
+ }
+ 
+ bool
+diff --git a/src/advanced-box.h b/src/advanced-box.h
+index 953a077..027c1e6 100644
+--- a/src/advanced-box.h
++++ b/src/advanced-box.h
+@@ -22,6 +22,8 @@
+ #ifndef SRC_ADVANCED_BOX_H_
+ #define SRC_ADVANCED_BOX_H_
+ 
++#include <string>
++
+ #include "src/gui.h"
+ 
+ class Interface;
+@@ -48,6 +50,9 @@ class AdvancedBox : public GuiObject {
+  protected:
+   Interface *interface;
+   Page page;
++  /* The option whose hint shows (the left button held on its label), -1:
++     none. */
++  int hint;
+ 
+  public:
+   explicit AdvancedBox(Interface *interface);
+@@ -57,6 +62,9 @@ class AdvancedBox : public GuiObject {
+   void set_page(Page page);
+   virtual void internal_draw();
+   virtual bool handle_click_left(int x, int y);
++  virtual bool handle_press(int x, int y);
++  virtual bool handle_release();
++  void draw_hint(const std::string &label, const std::string &text, int top);
+ };
+ 
+ #endif  // SRC_ADVANCED_BOX_H_
+diff --git a/src/event_loop.cc b/src/event_loop.cc
+index 6792b57..a1f8bff 100644
+--- a/src/event_loop.cc
++++ b/src/event_loop.cc
+@@ -105,6 +105,30 @@ EventLoop::notify_hold(int x, int y) {
+   return notify_handlers(&event);
+ }
+ 
++bool
++EventLoop::notify_press(int x, int y) {
++  Event event;
++  event.type = Event::TypePress;
++  event.x = x;
++  event.y = y;
++  event.dx = 0;
++  event.dy = 0;
++  event.button = Event::ButtonLeft;
++  return notify_handlers(&event);
++}
++
++bool
++EventLoop::notify_release() {
++  Event event;
++  event.type = Event::TypeRelease;
++  event.x = 0;
++  event.y = 0;
++  event.dx = 0;
++  event.dy = 0;
++  event.button = Event::ButtonLeft;
++  return notify_handlers(&event);
++}
++
+ bool
+ EventLoop::notify_key_pressed(unsigned char key, unsigned char morifier) {
+   Event event;
+diff --git a/src/event_loop.h b/src/event_loop.h
+index f938b73..e33d1cf 100644
+--- a/src/event_loop.h
++++ b/src/event_loop.h
+@@ -40,6 +40,11 @@ class Event {
+     /* The left button held down still at x, y: the + and - buttons of
+        the boxes repeat their click (the handler says if it used it). */
+     TypeHold,
++    /* The left button went down at x, y (a hint shown while it is held;
++       the handler says if it used it - then the release is no click). */
++    TypePress,
++    /* The left button went up after a press that was used. */
++    TypeRelease,
+   } Type;
+ 
+   typedef enum Button {
+@@ -128,6 +133,8 @@ class EventLoop {
+   bool notify_dbl_click(int x, int y, Event::Button button);
+   bool notify_drag(int x, int y, int dx, int dy, Event::Button button);
+   bool notify_hold(int x, int y);
++  bool notify_press(int x, int y);
++  bool notify_release();
+   bool notify_key_pressed(unsigned char key, unsigned char morifier);
+   bool notify_resize(unsigned int width, unsigned int height);
+   bool notify_invalidate();
+diff --git a/src/game-init.cc b/src/game-init.cc
+index b9dcbe2..1eee44e 100644
+--- a/src/game-init.cc
++++ b/src/game-init.cc
+@@ -464,6 +464,7 @@ void
+ GameInitBox::handle_action(int action) {
+   switch (action) {
+     case ActionStartGame: {
++      mission->set_terraforming(interface->get_terraforming());
+       if (is_custom()) {
+         mission->set_sand_percent(interface->get_sand_percent());
+         mission->set_rock_percent(interface->get_rock_percent());
+diff --git a/src/game.cc b/src/game.cc
+index 3f3e80b..a15903c 100644
+--- a/src/game.cc
++++ b/src/game.cc
+@@ -58,6 +58,7 @@ Game::Game()
+   , military_leader(-1)
+   , winning_player(-1)
+   , game_end_pending(false)
++  , terraforming(false)
+   , ai_game() {
+   players = Players(this);
+   flags = Flags(this);
+@@ -113,6 +114,53 @@ Game::~Game() {
+   players.clear();
+ }
+ 
++static bool
++is_sand(Map::Terrain t) {
++  return t >= Map::TerrainDesert0 && t <= Map::TerrainDesert2;
++}
++
++/* The sand of the two triangles of a place to grass (the plain grass the
++   foresters plant on). */
++static void
++green_place(Map *map, MapPos pos) {
++  Map::Terrain up = map->type_up(pos), down = map->type_down(pos);
++  if (!is_sand(up) && !is_sand(down)) return;
++  map->set_types(pos, is_sand(up) ? Map::TerrainGrass1 : up,
++                 is_sand(down) ? Map::TerrainGrass1 : down);
++}
++
++/* A tree planted at pos turns the sand around it to grass: the place and
++   the 6 around it; and of those 2 steps away the ones with land that is
++   not sand right behind them (a strip of sand one place wide would stay
++   between the new grass and the edge of the desert: it goes too). The
++   spiral goes ring by ring: 0, 1-6, 7-18, 19-36. */
++void
++Game::green_sand_around(MapPos pos) {
++  static const unsigned int kRing2End = 7, kRing3End = 19;
++  for (unsigned int off = 0; off < kRing2End; off++) {
++    green_place(map.get(), map->pos_add_spirally(pos, off));
++  }
++  for (unsigned int off = kRing2End; off < kRing3End; off++) {
++    MapPos p = map->pos_add_spirally(pos, off);
++    if (!is_sand(map->type_up(p)) && !is_sand(map->type_down(p))) continue;
++    bool edge = false;
++    for (Direction d : cycle_directions_cw()) {
++      MapPos q = map->move(p, d);
++      /* Outside the 2 rings, and some of it not sand. */
++      bool inside = false;
++      for (unsigned int k = 0; k < kRing3End && !inside; k++) {
++        inside = map->pos_add_spirally(pos, k) == q;
++      }
++      if (!inside && (!is_sand(map->type_up(q)) ||
++                      !is_sand(map->type_down(q)))) {
++        edge = true;
++        break;
++      }
++    }
++    if (edge) green_place(map.get(), p);
++  }
++}
++
+ /* Clear the serf request bit of all flags and buildings.
+    This allows the flag or building to try and request a
+    serf again. */
+@@ -3122,6 +3170,17 @@ operator >> (SaveReaderText &reader, Game &game) {
+     game_reader->value("game_end_pending") >> pending;
+     game.game_end_pending = (pending != 0);
+   }
++  game.terraforming = false;  /* saves without it: as the original */
++  if (game_reader->has_value("terraforming")) {
++    int on = 0;
++    game_reader->value("terraforming") >> on;
++    game.terraforming = (on != 0);
++  } else if (game_reader->has_value("forester_sand")) {
++    /* The test version 0.123 named it so. */
++    int on = 0;
++    game_reader->value("forester_sand") >> on;
++    game.terraforming = (on != 0);
++  }
+ 
+   Map::UpdateState update_state;
+   int x, y;
+@@ -3263,6 +3322,7 @@ operator << (SaveWriterText &writer, Game &game) {
+   writer.value("inventory_schedule_counter") <<
+     game.inventory_schedule_counter;
+   writer.value("game_end_pending") << (game.game_end_pending ? 1 : 0);
++  writer.value("terraforming") << (game.terraforming ? 1 : 0);
+   writer.value("map.gold_morale_factor") << game.map_gold_morale_factor;
+   writer.value("player_score_leader") <<
+     ((game.land_leader >= 0 ? BIT(game.land_leader) : 0) |
+diff --git a/src/game.h b/src/game.h
+index 8204e6f..727b671 100644
+--- a/src/game.h
++++ b/src/game.h
+@@ -119,6 +119,11 @@ class Game {
+   int military_leader;
+   int winning_player;
+   bool game_end_pending;
++  /* Terraforming wasteland (an option, off: as the original): foresters
++     plant on sand too and the sand around a new tree turns to grass for
++     good; lumberjacks fell dead trees too, first. In the saves; a LAN game
++     has the server's. */
++  bool terraforming;
+ 
+   /* Work fields of the computer players. */
+   GameAI ai_game;
+@@ -157,6 +162,10 @@ class Game {
+     game_end_pending = true;
+   }
+   bool is_game_end_pending() const { return game_end_pending; }
++  bool get_terraforming() const { return terraforming; }
++  void set_terraforming(bool on) { terraforming = on; }
++  /* A tree planted at pos (terraforming): the sand around it is grass. */
++  void green_sand_around(MapPos pos);
+   void clear_game_end_pending() { game_end_pending = false; }
+   unsigned int get_const_tick() const { return const_tick; }
+   unsigned int get_gold_morale_factor() const { return map_gold_morale_factor; }
+diff --git a/src/gui.cc b/src/gui.cc
+index 388092a..2e22880 100644
+--- a/src/gui.cc
++++ b/src/gui.cc
+@@ -135,7 +135,8 @@ GuiObject::handle_event(const Event *event) {
+   if (event->type == Event::TypeClick ||
+       event->type == Event::TypeDoubleClick ||
+       event->type == Event::TypeDrag ||
+-      event->type == Event::TypeHold) {
++      event->type == Event::TypeHold ||
++      event->type == Event::TypePress) {
+     event_x = event->x - x;
+     event_y = event->y - y;
+     if (event_x < 0 || event_y < 0 ||
+@@ -212,6 +213,12 @@ GuiObject::handle_event(const Event *event) {
+     case Event::TypeHold:
+       result = handle_hold(event_x, event_y);
+       break;
++    case Event::TypePress:
++      result = handle_press(event_x, event_y);
++      break;
++    case Event::TypeRelease:
++      result = handle_release();
++      break;
+     default:
+       break;
+   }
+diff --git a/src/gui.h b/src/gui.h
+index ef4ac8c..30c4e83 100644
+--- a/src/gui.h
++++ b/src/gui.h
+@@ -73,6 +73,9 @@ class GuiObject : public EventLoop::Handler {
+   virtual bool handle_drag(int dx, int dy) { return true; }
+   /* The left button held at x, y (auto repeat): true when it was used. */
+   virtual bool handle_hold(int x, int y) { return false; }
++  /* The left button down at x, y / up again (hints): true when used. */
++  virtual bool handle_press(int x, int y) { return false; }
++  virtual bool handle_release() { return false; }
+   virtual bool handle_key_pressed(char key, int modifier) { return false; }
+   virtual bool handle_focus_loose() { return false; }
+ 
+diff --git a/src/interface.cc b/src/interface.cc
+index 3a9fff6..3025c70 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -77,6 +77,7 @@ Interface::Interface()
+   sand_percent = 100;
+   tree_variety = true;
+   wild_boars = true;
++  terraforming = false;
+   fast_building = true;
+   fast_mapclick = true;
+   pathway_scrolling = true;
+@@ -243,9 +244,10 @@ Interface::apply_settings() {
+   stock_box_occupied = settings.get("advanced", "stock_box_occupied", false);
+   tree_variety = settings.get("advanced", "tree_variety", true);
+   wild_boars = settings.get("advanced", "wild_boars", true);
++  terraforming = settings.get("advanced", "terraforming", false);
+   fast_building = settings.get("options", "fast_building", true);
+   fast_mapclick = settings.get("options", "fast_mapclick", true);
+-  pathway_scrolling = settings.get("options", "pathway_scrolling", true);
++  pathway_scrolling = true;  /* always (no longer in the Video box) */
+   minimap_options.ownership = std::max(0, std::min(2,
+     settings.get("map_window", "ownership", minimap_options.ownership)));
+   minimap_options.roads = settings.get("map_window", "roads",
+@@ -311,9 +313,9 @@ Interface::store_settings() {
+   settings.set("advanced", "stock_box_occupied", stock_box_occupied);
+   settings.set("advanced", "tree_variety", tree_variety);
+   settings.set("advanced", "wild_boars", wild_boars);
++  settings.set("advanced", "terraforming", terraforming);
+   settings.set("options", "fast_building", fast_building);
+   settings.set("options", "fast_mapclick", fast_mapclick);
+-  settings.set("options", "pathway_scrolling", pathway_scrolling);
+   settings.set("map_window", "ownership", minimap_options.ownership);
+   settings.set("map_window", "roads", minimap_options.roads);
+   settings.set("map_window", "advanced", minimap_options.advanced);
+@@ -1463,6 +1465,15 @@ Interface::less_rocks() {
+   rock_percent = (rock_percent >= 10) ? rock_percent - 10 : 0;
+ }
+ 
++void
++Interface::switch_terraforming() {
++  terraforming = !terraforming;
++  /* The game now too, not a LAN game (both sides must have the same). */
++  if (game && !lan_game) {
++    game->set_terraforming(terraforming);
++  }
++}
++
+ void
+ Interface::more_dead_trees() {
+   dead_tree_percent = std::min(100u, dead_tree_percent + 10);
+diff --git a/src/interface.h b/src/interface.h
+index 4320737..a5aaaf6 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -134,6 +134,10 @@ class Interface : public GuiObject, public GameManager::Handler {
+   bool tree_variety;
+   /* Wild boars among trees (only the picture and sounds). */
+   bool wild_boars;
++  /* Terraforming wasteland (foresters on sand, lumberjacks on dead
++     trees): new games, and the game
++     now unless it is a LAN game (the server's from its start). */
++  bool terraforming;
+   /* Options of the original game (its Options box). Fast building: a
+      double click on a building site opens the choice of buildings.
+      Pathway scrolling: the map follows the end of the road being built.
+@@ -241,6 +245,8 @@ class Interface : public GuiObject, public GameManager::Handler {
+   void switch_tree_variety() { tree_variety = !tree_variety; }
+   bool get_wild_boars() const { return wild_boars; }
+   void switch_wild_boars() { wild_boars = !wild_boars; }
++  bool get_terraforming() const { return terraforming; }
++  void switch_terraforming();
+   bool get_fast_building() const { return fast_building; }
+   void switch_fast_building() { fast_building = !fast_building; }
+   bool get_fast_mapclick() const { return fast_mapclick; }
+diff --git a/src/lan-sync.cc b/src/lan-sync.cc
+index 254b67a..3508340 100644
+--- a/src/lan-sync.cc
++++ b/src/lan-sync.cc
+@@ -30,10 +30,10 @@
+ #include "src/player.h"
+ 
+ /* The version of SETUP. */
+-static const int kSetupVersion = 5;
++static const int kSetupVersion = 6;
+ 
+-/* "5 <map size> <random base> <seed> <delay turns> <sand %> <rocks %>
+-   <dead trees %> <players>" and for each player "<face> <r> <g> <b> <intelligence> <supplies> <reproduction>". */
++/* "6 <map size> <random base> <seed> <delay turns> <sand %> <rocks %>
++   <dead trees %> <foresters on sand 0/1> <players>" and for each player "<face> <r> <g> <b> <intelligence> <supplies> <reproduction>". */
+ std::string
+ lan_encode_setup(PGameInfo mission, const Random &seed,
+                  unsigned int delay) {
+@@ -43,6 +43,7 @@ lan_encode_setup(PGameInfo mission, const Random &seed,
+     << std::string(seed) << ' ' << delay << ' '
+     << mission->get_sand_percent() << ' ' << mission->get_rock_percent()
+     << ' ' << mission->get_dead_tree_percent()
++    << ' ' << (mission->get_terraforming() ? 1 : 0)
+     << ' ' << mission->get_player_count();
+   for (size_t i = 0; i < mission->get_player_count(); i++) {
+     PPlayerInfo p = mission->get_player(i);
+@@ -64,11 +65,13 @@ lan_decode_setup(const std::string &data, Random *seed,
+   size_t count = 0;
+   std::string base, seed_text;
+   unsigned int turns = 0, sand = 100, rocks = 100, dead_trees = 100;
++  unsigned int terraforming = 0;
+   s >> version >> map_size >> base >> seed_text >> turns >> sand >> rocks
+-    >> dead_trees >> count;
++    >> dead_trees >> terraforming >> count;
+   if (!s || version != kSetupVersion || base.size() != 16 ||
+       seed_text.size() != 16 || turns < 1 || turns > 16 || sand > 100 ||
+-      rocks > 100 || dead_trees > 100 || count < 2 || count > 4) {
++      rocks > 100 || dead_trees > 100 || terraforming > 1 || count < 2 ||
++      count > 4) {
+     return nullptr;
+   }
+   PGameInfo mission = std::make_shared<GameInfo>(Random(base));
+@@ -76,6 +79,7 @@ lan_decode_setup(const std::string &data, Random *seed,
+   mission->set_sand_percent(sand);
+   mission->set_rock_percent(rocks);
+   mission->set_dead_tree_percent(dead_trees);
++  mission->set_terraforming(terraforming != 0);
+   mission->remove_all_players();
+   for (size_t i = 0; i < count; i++) {
+     unsigned int face, r, g, b, intelligence, supplies, reproduction;
+diff --git a/src/map.cc b/src/map.cc
+index 0631516..bdad2f2 100644
+--- a/src/map.cc
++++ b/src/map.cc
+@@ -396,6 +396,20 @@ Map::set_height(MapPos pos, int height) {
+   }
+ }
+ 
++void
++Map::set_types(MapPos pos, Terrain up, Terrain down) {
++  landscape_tiles[pos].type_up = up;
++  landscape_tiles[pos].type_down = down;
++  for (Handler *handler : change_handlers) {
++    handler->on_height_changed(pos);
++  }
++  for (Direction d : cycle_directions_cw()) {
++    for (Handler *handler : change_handlers) {
++      handler->on_height_changed(move(pos, d));
++    }
++  }
++}
++
+ void
+ Map::paths_changed(MapPos pos) {
+   for (Handler *handler : change_handlers) {
+diff --git a/src/map.h b/src/map.h
+index 0eaa344..526d17e 100644
+--- a/src/map.h
++++ b/src/map.h
+@@ -390,6 +390,9 @@ class Map {
+   unsigned int get_height(MapPos pos) const {
+     return landscape_tiles[pos].height; }
+ 
++  /* The terrain of the two triangles of a place changed in the game (the
++     foresters on sand): drawn again like a change of the height. */
++  void set_types(MapPos pos, Terrain up, Terrain down);
+   Terrain type_up(MapPos pos) const { return landscape_tiles[pos].type_up; }
+   Terrain type_down(MapPos pos) const { return landscape_tiles[pos].type_down; }
+   bool types_within(MapPos pos, Terrain low, Terrain high);
+diff --git a/src/mission.cc b/src/mission.cc
+index f134d28..79047b7 100644
+--- a/src/mission.cc
++++ b/src/mission.cc
+@@ -387,6 +387,7 @@ GameInfo::GameInfo(const Random &_random_base)
+   , sand_percent(100)
+   , rock_percent(100)
+   , dead_tree_percent(100)
++  , terraforming(false)
+   , name(_random_base)
+   , game_type(Game::GameTypeOnePlayer)
+   , level(0) {
+@@ -398,6 +399,7 @@ GameInfo::GameInfo(const GameInfo::Mission *mission_preset)
+   , sand_percent(100)
+   , rock_percent(100)
+   , dead_tree_percent(100)
++  , terraforming(false)
+   , game_type(Game::GameTypeMission)
+   , level(0) {
+   map_size = 3;
+@@ -542,6 +544,7 @@ GameInfo::instantiate() {
+     return nullptr;
+   }
+   game->set_game_type(game_type, level);
++  game->set_terraforming(terraforming);
+ 
+   /* Initialize player and build initial castle */
+   for (PPlayerInfo player_info : players) {
+diff --git a/src/mission.h b/src/mission.h
+index a0dab1c..52c615a 100644
+--- a/src/mission.h
++++ b/src/mission.h
+@@ -111,6 +111,7 @@ class GameInfo {
+   unsigned int sand_percent;
+   unsigned int rock_percent;
+   unsigned int dead_tree_percent;
++  bool terraforming;
+   PlayerInfos players;
+   std::string name;
+   int game_type;  /* Game::GameType */
+@@ -132,6 +133,8 @@ class GameInfo {
+   unsigned int get_rock_percent() const { return rock_percent; }
+   void set_rock_percent(unsigned int percent) { rock_percent = percent; }
+   unsigned int get_dead_tree_percent() const { return dead_tree_percent; }
++  bool get_terraforming() const { return terraforming; }
++  void set_terraforming(bool on) { terraforming = on; }
+   void set_dead_tree_percent(unsigned int percent) {
+     dead_tree_percent = percent; }
+   void set_game_random(const Random &random) {
+diff --git a/src/serf.cc b/src/serf.cc
+index 5336ff9..acf7f83 100644
+--- a/src/serf.cc
++++ b/src/serf.cc
+@@ -34,6 +34,14 @@
+ #include "src/inventory.h"
+ #include "src/savegame.h"
+ 
++/* The brown boulders (Rocks on new maps): Terraforming wasteland lets the
++   stonecutters break them (no stone from them). */
++static bool
++is_boulder(int obj) {
++  return obj == Map::ObjectSandstone0 || obj == Map::ObjectSandstone1 ||
++         obj == Map::ObjectStone || obj == Map::ObjectSandstone3;
++}
++
+ #define set_state(new_state)  \
+   Log::Verbose["serf"] << "serf " << index  \
+                        << " (" << Serf::get_type_name(get_type()) << "): " \
+@@ -2422,12 +2430,16 @@ Serf::handle_serf_free_walking_state_dest_reached() {
+         s.free_walking.dist_col = s.free_walking.neg_dist1;
+         s.free_walking.dist_row = s.free_walking.neg_dist2;
+         int obj = map->get_obj(pos);
+-        if (obj >= Map::ObjectTree0 &&
+-            obj <= Map::ObjectPine7) {
++        /* A dead tree too (Terraforming wasteland), felled as a tree. */
++        bool dead = obj == Map::ObjectDeadTree && game->get_terraforming();
++        if ((obj >= Map::ObjectTree0 &&
++             obj <= Map::ObjectPine7) || dead) {
+           set_state(StateLogging);
+           s.free_walking.neg_dist1 = 0;
+           s.free_walking.neg_dist2 = 0;
+           if (obj < 16) s.free_walking.neg_dist1 = -1;
++          /* -2: felled as a tree, then gone, no lumber. */
++          if (dead) s.free_walking.neg_dist1 = -2;
+           animation = 116;
+           counter = counter_from_animation[animation];
+         } else {
+@@ -2455,8 +2467,9 @@ Serf::handle_serf_free_walking_state_dest_reached() {
+         MapPos new_pos = map->move_up_left(pos);
+         int obj = map->get_obj(new_pos);
+         if (!map->has_serf(new_pos) &&
+-            obj >= Map::ObjectStone0 &&
+-            obj <= Map::ObjectStone7) {
++            ((obj >= Map::ObjectStone0 &&
++              obj <= Map::ObjectStone7) ||
++             (is_boulder(obj) && game->get_terraforming()))) {
+           counter = 0;
+           start_walking(DirectionUpLeft, 32, 1);
+ 
+@@ -3087,6 +3100,23 @@ Serf::handle_serf_logging_state() {
+   while (counter < 0) {
+     s.free_walking.neg_dist2 += 1;
+ 
++    if (s.free_walking.neg_dist1 == -2) {
++      /* A dead tree (Terraforming wasteland): a few strokes, then it is
++         gone - not the falling of a tree with leaves; no lumber. */
++      if (s.free_walking.neg_dist2 < 3) {
++        animation = 116;
++        counter += counter_from_animation[animation];
++        continue;
++      }
++      game->get_map()->set_object(pos, Map::ObjectNone, -1);
++      set_state(StateFreeWalking);
++      counter = 0;
++      s.free_walking.neg_dist1 = -128;
++      s.free_walking.neg_dist2 = 0;
++      clear_obstacle();
++      return;
++    }
++
+     int new_obj = -1;
+     if (s.free_walking.neg_dist1 != 0) {
+       new_obj = Map::ObjectFelledTree0 + s.free_walking.neg_dist2 - 1;
+@@ -3121,7 +3151,22 @@ Serf::handle_serf_planning_logging_state() {
+     int dist = (game->random_int() & 0x7f) + 1;
+     MapPos pos_ = game->get_map()->pos_add_spirally(pos, dist);
+     int obj = game->get_map()->get_obj(pos_);
+-    if (obj >= Map::ObjectTree0 && obj <= Map::ObjectPine7) {
++    if (game->get_terraforming()) {
++      /* Terraforming wasteland: a dead tree first - a few more places,
++         the first one with a dead tree; none - the place drawn first. */
++      for (int i = 0; i < 8; i++) {
++        int d = (game->random_int() & 0x7f) + 1;
++        MapPos p = game->get_map()->pos_add_spirally(pos, d);
++        if (game->get_map()->get_obj(p) == Map::ObjectDeadTree) {
++          dist = d;
++          pos_ = p;
++          obj = Map::ObjectDeadTree;
++          break;
++        }
++      }
++    }
++    if ((obj >= Map::ObjectTree0 && obj <= Map::ObjectPine7) ||
++        (obj == Map::ObjectDeadTree && game->get_terraforming())) {
+       set_state(StateReadyToLeave);
+       s.leaving_building.field_B = Map::get_spiral_pattern()[2 * dist] - 1;
+       s.leaving_building.dest = Map::get_spiral_pattern()[2 * dist + 1] - 1;
+@@ -3148,12 +3193,44 @@ Serf::handle_serf_planning_planting_state() {
+   while (counter < 0) {
+     int dist = (game->random_int() & 0x7f) + 1;
+     MapPos pos_ = map->pos_add_spirally(pos, dist);
++    /* The plain grass; with Terraforming wasteland the sand
++       too (it turns to grass at the planting). */
++    bool sand = game->get_terraforming();
++    auto plantable = [sand](Map::Terrain t) {
++      return t == Map::TerrainGrass1 ||
++             (sand && t >= Map::TerrainDesert0 && t <= Map::TerrainDesert2);
++    };
++    auto is_sand = [](Map::Terrain t) {
++      return t >= Map::TerrainDesert0 && t <= Map::TerrainDesert2;
++    };
++    auto free_place = [&](MapPos p) {
++      return map->paths(p) == 0 && map->get_obj(p) == Map::ObjectNone &&
++             plantable(map->type_up(p)) && plantable(map->type_down(p)) &&
++             plantable(map->type_up(map->move_up_left(p))) &&
++             plantable(map->type_down(map->move_up_left(p)));
++    };
++    if (sand) {
++      /* The sand first: a few more places, the first one with sand (it
++         turns green); none - the place drawn first, as without it. */
++      for (int i = 0; i < 8; i++) {
++        int d = (game->random_int() & 0x7f) + 1;
++        MapPos p = map->pos_add_spirally(pos, d);
++        if (free_place(p) &&
++            (is_sand(map->type_up(p)) || is_sand(map->type_down(p)) ||
++             is_sand(map->type_up(map->move_up_left(p))) ||
++             is_sand(map->type_down(map->move_up_left(p))))) {
++          dist = d;
++          pos_ = p;
++          break;
++        }
++      }
++    }
+     if (map->paths(pos_) == 0 &&
+         map->get_obj(pos_) == Map::ObjectNone &&
+-        map->type_up(pos_) == Map::TerrainGrass1 &&
+-        map->type_down(pos_) == Map::TerrainGrass1 &&
+-        map->type_up(map->move_up_left(pos_)) == Map::TerrainGrass1 &&
+-        map->type_down(map->move_up_left(pos_)) == Map::TerrainGrass1) {
++        plantable(map->type_up(pos_)) &&
++        plantable(map->type_down(pos_)) &&
++        plantable(map->type_up(map->move_up_left(pos_))) &&
++        plantable(map->type_down(map->move_up_left(pos_)))) {
+       set_state(StateReadyToLeave);
+       s.leaving_building.field_B = Map::get_spiral_pattern()[2 * dist] - 1;
+       s.leaving_building.dest = Map::get_spiral_pattern()[2 * dist + 1] - 1;
+@@ -3194,6 +3271,9 @@ Serf::handle_serf_planting_state() {
+ 
+     if (map->paths(pos) == 0 && map->get_obj(pos) == Map::ObjectNone) {
+       map->set_object(pos, new_obj, -1);
++      if (game->get_terraforming()) {
++        game->green_sand_around(pos);
++      }
+     }
+ 
+     s.free_walking.neg_dist2 = -s.free_walking.neg_dist2 - 1;
+@@ -3212,7 +3292,8 @@ Serf::handle_serf_planning_stonecutting() {
+     int dist = (game->random_int() & 0x7f) + 1;
+     MapPos pos_ = map->pos_add_spirally(pos, dist);
+     int obj = map->get_obj(map->move_up_left(pos_));
+-    if (obj >= Map::ObjectStone0 && obj <= Map::ObjectStone7 &&
++    if (((obj >= Map::ObjectStone0 && obj <= Map::ObjectStone7) ||
++         (is_boulder(obj) && game->get_terraforming())) &&
+         can_pass_map_pos(pos_)) {
+       set_state(StateReadyToLeave);
+       s.leaving_building.field_B = Map::get_spiral_pattern()[2 * dist] - 1;
+@@ -3268,9 +3349,11 @@ Serf::handle_serf_stonecutting_state() {
+ 
+   while (counter < 0) {
+     if (s.free_walking.neg_dist1 != 1) {
++      /* 3: a boulder was broken - no stone to carry home. */
++      bool boulder = s.free_walking.neg_dist1 == 3;
+       set_state(StateFreeWalking);
+       s.free_walking.neg_dist1 = -128;
+-      s.free_walking.neg_dist2 = 1;
++      s.free_walking.neg_dist2 = boulder ? 0 : 1;
+       clear_obstacle();
+       counter = 0;
+       return;
+@@ -3283,9 +3366,11 @@ Serf::handle_serf_stonecutting_state() {
+     }
+ 
+     /* Decrement stone quantity or remove entirely if this
+-       was the last piece. */
++       was the last piece. A boulder (Terraforming wasteland) goes at once
++       and gives no stone. */
+     int obj = map->get_obj(pos);
+-    if (obj <= Map::ObjectStone6) {
++    bool boulder = is_boulder(obj);
++    if (!boulder && obj <= Map::ObjectStone6) {
+       map->set_object(pos, (Map::Object)(obj + 1), -1);
+     } else {
+       map->set_object(pos, Map::ObjectNone, -1);
+@@ -3295,7 +3380,7 @@ Serf::handle_serf_stonecutting_state() {
+     start_walking(DirectionDownRight, 24, 1);
+     tick = game->get_tick();
+ 
+-    s.free_walking.neg_dist1 = 2;
++    s.free_walking.neg_dist1 = boulder ? 3 : 2;
+   }
+ }
+ 
+-- 
+2.45.2.windows.1
+

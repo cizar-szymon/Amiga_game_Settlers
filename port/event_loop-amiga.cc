@@ -101,6 +101,7 @@ EventLoopAmiga::EventLoopAmiga()
   , last_click_y(0)
   , hold_next(0)
   , hold_count(0)
+  , press_used(false)
   , message_until(0) {
   start_ms = static_cast<unsigned int>(amiga_now_ms());
   for (int i = 0; i < 4; i++) {
@@ -195,6 +196,10 @@ EventLoopAmiga::handle_event(const AmigaEvent &ev) {
           hold_next = get_ticks() + HOLD_DELAY;
           if (hold_next == 0) hold_next = 1;
           hold_count = 0;
+          /* A hint under the pointer (the options of the Video box). */
+          press_used = !buttons_down[Event::ButtonRight] &&
+                       notify_press(ev.x, ev.y);
+          if (press_used) hold_next = 0;
         } else {
           hold_next = 0;  /* Both buttons: no repeat. */
         }
@@ -205,6 +210,20 @@ EventLoopAmiga::handle_event(const AmigaEvent &ev) {
       buttons_down[b] = 0;
       int x = ev.x;
       int y = ev.y;
+      if (b == Event::ButtonLeft && press_used) {
+        /* The hint goes; the release is no click. */
+        press_used = false;
+        hold_next = 0;
+        hold_count = 0;
+        notify_release();
+        if (drag_button == b) {
+          drag_button = 0;
+          dragged = false;
+          drag_dist = 0;
+        }
+        last_click[b] = 0;
+        break;
+      }
       if (b == Event::ButtonLeft) {
         bool repeated = hold_count > 0;
         hold_next = 0;

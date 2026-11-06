@@ -113,6 +113,7 @@ Options -> Advanced:
   Show FPS (licznik klatek w rogu ekranu),
   Show ping in LAN game (czas odpowiedzi sieci w grze LAN, na lewo od FPS)
 Options -> Advanced -> VIDEO:
+  (Lewy przycisk przytrzymany na nazwie opcji: opis, co robi.)
   Sand on new maps (ilosc pustyn na nowych mapach: None, 10% of normal
     ... Normal, przyciski - +),
   Rocks on new maps (brazowe skaly na nowych mapach, tak samo),
@@ -120,6 +121,11 @@ Options -> Advanced -> VIDEO:
     w grze LAN ustawia je serwer),
   More kinds of trees (odbite drzewa i brzozy, tylko wyglad),
   Wild boars (dziki wsrod drzew)
+  Terraforming wasteland (zmiana nieuzytkow, domyslnie wyl.): lesnicy
+    sadza drzewa najpierw na piasku, piasek wokol nowego drzewa zmienia
+    sie na stale w trawe; drwale scinaja tez suche drzewa (najpierw, bez
+    drewna z nich), kamieniarze rozbijaja brazowe skaly (bez kamienia);
+    nowe gry i biezaca gra, w grze LAN ustawienie serwera)
 
 Ustawienia zapisuja sie w pliku Settlers.ini obok gry, zapisy gier
 w szufladzie freeserf.
