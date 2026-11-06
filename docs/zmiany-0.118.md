@@ -75,6 +75,15 @@ Wydane na prośbę użytkownika (łatka Freeserf `0050`); potwierdzone przez uż
 | 2 | Suwaki i przyciski w oknach ustawień przestawiają się po jednym kliknięciu (okno przerysowane po wykonaniu polecenia) | ✅ |
 | 3 | Dźwięk przy wysłaniu geologa, awansie na rycerzy i łączeniu dróg mówi, czy się udało | ✅ |
 
+## 0.122 (6.11.2026)
+
+Łatka Freeserf `0053`.
+
+| Nr | Zmiana | Stan |
+|---|---|---|
+| 1 | Gra LAN: Quit → YES → pod spodem „Do you want to save the game?” (YES – okno Save LAN, potem koniec; NO – koniec); żadna strona nie robi `LAN_ERR`; druga strona: „The server/player … ended the game.” (QUIT nie ginie już razem z zamknięciem połączenia) | ✅ |
+| 2 | Nazwy LAN na początku PLAYER 1 / PLAYER 2, wpisane zostają | ✅ wydane (bez osobnego testu) |
+
 ## 0.121 (6.11.2026)
 
 Łatka Freeserf `0052`; testy rozjazdu LAN na gałęzi `lan-desync` (boty, sumy całego stanu, Amiga 1 + WinUAE, `lansim` na PC).

@@ -6,6 +6,20 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.122 (6.11.2026, wydanie beta)
+-------------------------------
+
+- Gra LAN, Quit -> "Do you want to quit this game?" YES: pod spodem
+  pytanie "Do you want to save the game?" - YES otwiera okno Save gry
+  LAN, po zapisie gra sie konczy; NO konczy gre bez zapisu. Druga
+  Amiga pokazuje "The server ... ended the game." albo "The player ...
+  ended the game.". Zadna strona nie robi wtedy zapisu LAN_ERR_...
+  (robi go tylko przy zerwanym polaczeniu).
+- Gra LAN: nazwy na poczatku PLAYER 1 (serwer) i PLAYER 2 (dolaczajacy);
+  wpisane zostaja na nastepne uruchomienia.
+- Gra LAN: obie strony musza miec wersje 0.122.
+
+
 0.121 (6.11.2026, wydanie beta)
 -------------------------------
 

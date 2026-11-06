@@ -6,6 +6,20 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.122 (6.11.2026, beta release)
+-------------------------------
+
+- LAN game, Quit -> "Do you want to quit this game?" YES: under it the
+  question "Do you want to save the game?" - YES opens the Save box of
+  the LAN game, the game ends after the save; NO ends the game without
+  a save. The other Amiga shows "The server ... ended the game." or
+  "The player ... ended the game.". Neither side makes a LAN_ERR_...
+  save then (only when the link is lost).
+- LAN game: the names are PLAYER 1 (server) and PLAYER 2 (the one who
+  joins) at first; typed ones stay for the next runs.
+- LAN game: both sides need version 0.122.
+
+
 0.121 (6.11.2026, beta release)
 -------------------------------
 

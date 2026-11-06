@@ -57,7 +57,9 @@ class LanLinkAmiga : public LanLink {
 
  protected:
   bool start();
-  void forget_peer();
+  /* keep_received: the frames already here stay for the game (the end of
+     the link: a QUIT came before it). */
+  void forget_peer(bool keep_received = false);
 };
 
 #endif  // PORT_LAN_AMIGA_H_

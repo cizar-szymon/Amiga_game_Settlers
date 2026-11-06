@@ -1,0 +1,316 @@
+From 2a9d213b303e34e6b073b2e41eb6ac110b97e25a Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Fri, 6 Nov 2026 20:05:16 +0100
+Subject: [PATCH] 0.122: LAN game - Quit asks to save (the Save box, then the
+ end), no LAN_ERR save of a game ended on purpose on either side, names PLAYER
+ 1 and PLAYER 2 at first
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7U35RuKvTQMs84jNJEFhT
+---
+ src/lan-box.cc  |  4 +--
+ src/lan-box.h   |  4 +--
+ src/lan-game.cc | 18 ++++++++---
+ src/lan-game.h  | 12 +++++++-
+ src/popup.cc    | 79 ++++++++++++++++++++++++++++++++++++++++---------
+ src/popup.h     |  5 ++++
+ 6 files changed, 99 insertions(+), 23 deletions(-)
+
+diff --git a/src/lan-box.cc b/src/lan-box.cc
+index 7cfde1e..1d9bfaf 100644
+--- a/src/lan-box.cc
++++ b/src/lan-box.cc
+@@ -245,8 +245,8 @@ LanBox::LanBox(Interface *_interface, PGameInfo _mission)
+   : interface(_interface)
+   , mission(_mission)
+   , view(ViewChoose)
+-  , server_name_field(make_name_field("server_name", "MASTER"))
+-  , player_name_field(make_name_field("player_name", "SLAVE"))
++  , server_name_field(make_name_field("server_name", "PLAYER 1"))
++  , player_name_field(make_name_field("player_name", "PLAYER 2"))
+   , address_field(new TextInput())
+   , port(LanLink::kDefaultPort)
+   , port_in_use(LanLink::kDefaultPort)
+diff --git a/src/lan-box.h b/src/lan-box.h
+index c4d0cb1..6d9dc77 100644
+--- a/src/lan-box.h
++++ b/src/lan-box.h
+@@ -67,8 +67,8 @@ class LanBox : public GuiObject {
+   View view;
+   std::string own_address;
+   /* The names in a LAN game, kept in the settings: of a server (players
+-     looking for one see it, MASTER at first) and of a player who joins
+-     (the server shows it, SLAVE at first). */
++     looking for one see it, PLAYER 1 at first) and of a player who joins
++     (the server shows it, PLAYER 2 at first). */
+   std::unique_ptr<TextInput> server_name_field;
+   std::unique_ptr<TextInput> player_name_field;
+   std::unique_ptr<TextInput> address_field;
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index 5215acd..fe150aa 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -81,6 +81,8 @@ LanGame::LanGame(Interface *_interface, LanLink *_link, bool _server,
+   , gone(false)
+   , other_quit(false)
+   , end_saved(false)
++  , left_on_purpose(false)
++  , other_left_on_purpose(false)
+   , end_seen(false)
+   , peer_name(_link != nullptr ? _link->get_peer_name() : "")
+   , save_sent(0)
+@@ -106,7 +108,7 @@ LanGame::LanGame(Interface *_interface, LanLink *_link, bool _server,
+   /* The name this side gave in the LAN box. */
+   own_name = Settings::get_instance().get(
+     "lan", server ? "server_name" : "player_name",
+-    std::string(server ? "MASTER" : "SLAVE"));
++    std::string(server ? "PLAYER 1" : "PLAYER 2"));
+ }
+ 
+ LanGame::~LanGame() {
+@@ -119,7 +121,8 @@ LanGame::~LanGame() {
+     /* The other side learns that this one left (sent before the BYE of
+        close()). */
+     if (!gone && !other_quit) {
+-      link->send(MessageQuit, std::string());
++      link->send(MessageQuit, left_on_purpose ? std::string("purpose")
++                                              : std::string());
+     }
+     link->close();
+   }
+@@ -212,6 +215,9 @@ LanGame::receive() {
+       receive_resync(type, data);
+     } else if (type == MessageQuit) {
+       other_quit = true;
++      /* "purpose": the player ended the game on purpose (asked whether to
++         save it); nothing to save here. */
++      other_left_on_purpose = data == "purpose";
+     } else if (type == MessageSum) {
+       std::istringstream s(data);
+       unsigned int step = 0;
+@@ -520,7 +526,7 @@ LanGame::receive_file(int type, const std::string &data) {
+ 
+ bool
+ LanGame::save_at_end() {
+-  if (end_saved) return false;
++  if (end_saved || left_on_purpose || other_left_on_purpose) return false;
+   end_saved = true;
+   PGame game = interface->get_game();
+   /* Not before the game went (a saved game still coming). */
+@@ -555,7 +561,11 @@ LanGame::other_side_ended() {
+                                       : peer_name;
+   /* Both sides end: the game of one player alone would no longer be the
+      LAN game (a save of it could not go on together). */
+-  if (other_quit) {
++  if (other_left_on_purpose) {
++    /* The other player chose to end it (Quit, asked whether to save). */
++    notice = std::string(server ? "The player " : "The server ") + who +
++             " ended the game.";
++  } else if (other_quit) {
+     notice = who + (server ? " left the game." : " ended the game.");
+   } else {
+     notice = "The connection to " + who + " is lost.";
+diff --git a/src/lan-game.h b/src/lan-game.h
+index d7a8ae7..d73cc2f 100644
+--- a/src/lan-game.h
++++ b/src/lan-game.h
+@@ -57,7 +57,8 @@ class LanGame {
+     MessageSetup = 0,  /* START GAME: the settings of the game */
+     MessageSum = 1,    /* step and checksum */
+     MessageTurn = 2,   /* turn, more frames follow, commands */
+-    MessageQuit = 3,   /* the player left the game (exit, quit) */
++    MessageQuit = 3,   /* the player left the game (exit, quit); "purpose":
++                          ended on purpose, the other side saves nothing */
+     /* A saved game, from the server: "<size> <checksum> <delay>",
+        then its bytes in pieces, then the end. */
+     MessageSaveBegin = 4,
+@@ -125,6 +126,12 @@ class LanGame {
+   bool other_quit;
+   /* The game was saved when it ended (save_at_end). */
+   bool end_saved;
++  /* This player quit on purpose (Quit, then saved or not): no LAN_ERR
++     save on this side. */
++  bool left_on_purpose;
++  /* The other player quit on purpose (its QUIT says so): no LAN_ERR save
++     here either. */
++  bool other_left_on_purpose;
+   /* gone or other_quit seen: the notice is up. */
+   bool end_seen;
+   std::string peer_name;
+@@ -200,6 +207,9 @@ class LanGame {
+   /* What is wrong with the connection now, "" if nothing. */
+   std::string problem_text();
+   bool is_server() const { return server; }
++  /* The player quits on purpose: the game is not saved at its end here
++     (the player was asked whether to save it). */
++  void leave_on_purpose() { left_on_purpose = true; }
+   /* A key for the chat: Tab opens and closes it, while open it takes the
+      letters (Return sends the line). false: the key is not for it. */
+   bool handle_chat_key(char key, int modifier);
+diff --git a/src/popup.cc b/src/popup.cc
+index 5f43863..00afabf 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -205,6 +205,8 @@ typedef enum Action {
+   ACTION_SETT_5_6_BOTTOM,
+   ACTION_QUIT_CONFIRM,
+   ACTION_QUIT_CANCEL,
++  ACTION_LAN_QUIT_SAVE,
++  ACTION_LAN_QUIT_NO_SAVE,
+   ACTION_NO_SAVE_QUIT_CONFIRM,
+   ACTION_SHOW_QUIT,
+   ActionShowOptions,
+@@ -330,6 +332,8 @@ PopupBox::PopupBox(Interface *_interface)
+   , text_shadow(false) {
+   interface = _interface;
+   opaque = true;
++  lan_save_ask = false;
++  quit_after_save = false;
+   repeat_click = false;
+   repeat_used = false;
+ 
+@@ -1995,6 +1999,16 @@ PopupBox::draw_quit_confirm_box() {
+   } else {
+     draw_green_centered(10, _("Do you want\nto quit\nthis game?"));
+   }
++  if (lan_save_ask) {
++    /* A LAN game, YES given: the answer stays, the next question comes
++       under it, its buttons elsewhere (a double click on YES does not
++       answer it too). */
++    draw_green_centered_at(36, 45, _("Yes"));
++    draw_green_centered(72, _("Do you want\nto save\nthe game?"));
++    draw_green_centered_at(36, 108, _("Yes"));
++    draw_green_centered_at(112, 108, _("No"));
++    return;
++  }
+   /* Over the buttons. */
+   draw_green_centered_at(36, 45, _("Yes"));
+   draw_green_centered_at(112, 45, _("No"));
+@@ -3595,20 +3609,27 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     move_sett_5_6_item(0, 1);
+     break;
+   case ACTION_QUIT_CONFIRM:
+-//    if (0/* TODO suggest save game*/) {
+-//      set_box(TypeNoSaveQuitConfirm);
+-//    } else {
+-      play_sound(Audio::TypeSfxAhhh);
+-      if (interface->is_quit_program()) {
+-        EventLoop::get_instance().quit();
+-      } else {
+-        /* Exit: to the start menu, not out of the program (its Quit
+-           button, Shift+Esc and Ctrl+Q quit it). */
+-        interface->exit_to_start_menu();
+-      }
+-//    }
++    if (interface->get_lan_game() != nullptr) {
++      /* A LAN game: first whether to save it (the player ends it on
++         purpose, so no LAN_ERR save of the end). */
++      lan_save_ask = true;
++      set_redraw();
++      break;
++    }
++    quit_game(interface);
++    break;
++  case ACTION_LAN_QUIT_SAVE:
++    /* The Save box of the LAN game; the game ends after the save. */
++    lan_save_ask = false;
++    quit_after_save = true;
++    handle_action(ACTION_SHOW_SAVE, 0, 0);
++    break;
++  case ACTION_LAN_QUIT_NO_SAVE:
++    lan_save_ask = false;
++    quit_game(interface);
+     break;
+   case ACTION_QUIT_CANCEL:
++    lan_save_ask = false;
+     interface->close_popup();
+     break;
+   case ACTION_NO_SAVE_QUIT_CONFIRM:
+@@ -3958,7 +3979,10 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     std::string file_path = file_list->get_folder_path() + "/" + file_name;
+     if (GameStore::get_instance().save(file_path,
+                                        interface->get_game().get())) {
+-      interface->close_popup();
++      bool quit = quit_after_save;
++      Interface *iface = interface;
++      iface->close_popup();  /* deletes this box */
++      if (quit) quit_game(iface);
+     }
+     break;
+   }
+@@ -3968,6 +3992,24 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+   }
+ }  // NOLINT(readability/fn_size)
+ 
++/* The player ends the game (Quit -> YES, and in a LAN game after the
++   question whether to save it): out of the program, or to the start
++   menu. A LAN game is left on purpose: no LAN_ERR save here. */
++void
++PopupBox::quit_game(Interface *iface) {
++  if (iface->get_lan_game() != nullptr) {
++    iface->get_lan_game()->leave_on_purpose();
++  }
++  Audio::get_instance().enqueue_sfx(Audio::TypeSfxAhhh);
++  if (iface->is_quit_program()) {
++    EventLoop::get_instance().quit();
++  } else {
++    /* Exit: to the start menu, not out of the program (its Quit
++       button, Shift+Esc and Ctrl+Q quit it). */
++    iface->exit_to_start_menu();
++  }
++}
++
+ /* Generic handler for clicks in popup boxes. */
+ int
+ PopupBox::handle_clickmap(int x_, int y_, const int clkmap[]) {
+@@ -4375,7 +4417,14 @@ PopupBox::handle_quit_confirm_click(int cx, int cy) {
+     ACTION_QUIT_CANCEL, 88, 45, 32, 8,
+     -1
+   };
+-  handle_clickmap(cx, cy, clkmap);
++  /* The question whether to save the LAN game, under the first one (the
++     buttons of the first one do nothing then). */
++  const int save_clkmap[] = {
++    ACTION_LAN_QUIT_SAVE, 8, 108, 32, 8,
++    ACTION_LAN_QUIT_NO_SAVE, 88, 108, 32, 8,
++    -1
++  };
++  handle_clickmap(cx, cy, lan_save_ask ? save_clkmap : clkmap);
+ }
+ 
+ void
+@@ -4839,6 +4888,8 @@ void PopupBox::hide() {
+ 
+ void
+ PopupBox::set_box(Type box_) {
++  if (box_ != TypeQuitConfirm) lan_save_ask = false;
++  if (box_ != TypeLoadSave) quit_after_save = false;
+   bool wide = (box == TypeLoadSave) != (box_ == TypeLoadSave);
+   box = box_;
+   if (wide) {
+diff --git a/src/popup.h b/src/popup.h
+index 83300ae..d381fd6 100644
+--- a/src/popup.h
++++ b/src/popup.h
+@@ -155,6 +155,10 @@ class PopupBox : public GuiObject {
+   Type box;
+ 
+   bool special_click;  // The current click is a special click
++  /* A LAN game, Quit -> YES: the box asks whether to save the game;
++     YES -> the Save box, and the game ends after the save. */
++  bool lan_save_ask;
++  bool quit_after_save;
+   /* The left button is held (auto repeat): only the + and - buttons act,
+      repeat_used says one did. */
+   bool repeat_click;
+@@ -272,6 +276,7 @@ class PopupBox : public GuiObject {
+   void set_inventory_serf_mode(int mode);
+ 
+   void handle_action(int action, int x, int y);
++  static void quit_game(Interface *iface);
+   static bool is_repeat_action(int action);
+   int handle_clickmap(int x, int y, const int clkmap[]);
+ 
+-- 
+2.45.2.windows.1
+

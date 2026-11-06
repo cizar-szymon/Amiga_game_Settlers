@@ -42,11 +42,11 @@ LanLinkAmiga::start() {
 }
 
 void
-LanLinkAmiga::forget_peer() {
+LanLinkAmiga::forget_peer(bool keep_received) {
   peer_name.clear();
   peer_address.clear();
   ping_ms = -1;
-  received.clear();
+  if (!keep_received) received.clear();
 }
 
 bool
@@ -105,6 +105,7 @@ LanLinkAmiga::poll() {
         }
         break;
       case NEV_PEER:
+        received.clear();  /* nothing of an earlier player */
         peer_name = ev.text1;
         peer_address = ev.text2;
         state = StateConnected;
@@ -112,7 +113,11 @@ LanLinkAmiga::poll() {
       case NEV_LOST:
         message = ev.text1;
         Log::Warn["lan"] << "Link lost: " << ev.text1;
-        forget_peer();
+        /* What came before the end stays for the game: the QUIT of a
+           player who left comes together with the close of the link
+           (cleared, it looked like a lost link: "connection lost" and a
+           LAN_ERR save after a player ended the game on purpose). */
+        forget_peer(true);
         state = server ? StateServing : StateIdle;
         break;
       case NEV_PING:

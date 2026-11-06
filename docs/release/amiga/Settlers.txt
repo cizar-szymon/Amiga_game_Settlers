@@ -145,7 +145,7 @@ Zakladajacy gre (MASTER):
 2. Ustaw mape jak w New game: rozmiar, liczba losowa, gracze komputerowi
    (gracz 1 to Ty, gracz 2 - drugi czlowiek). Piasek i skaly na mapie:
    Options -> Advanced -> VIDEO; obowiazuja ustawienia zakladajacego.
-3. Start -> START SERVER. Wpisz nazwe serwera (MASTER), w razie
+3. Start -> START SERVER. Wpisz nazwe serwera (PLAYER 1), w razie
    potrzeby port (Port, 6810) i kliknij RUN SERVER - serwer oglasza sie
    w sieci. Okno pokazuje adres Amigi w sieci lokalnej (Server address)
    i adres w internecie (Internet address, "..." w trakcie sprawdzania,
@@ -158,7 +158,7 @@ Dolaczajacy (SLAVE):
 2. SEARCH szuka serwerow w sieci przez 3 s; kliknij serwer na liscie
    albo wpisz jego adres IP w pole "Server address". Przez VPN i miedzy
    sieciami szukanie nie dziala - wpisz adres.
-3. Wpisz swoja nazwe (Your name, SLAVE), port serwera (Port, 6810)
+3. Wpisz swoja nazwe (Your name, PLAYER 2), port serwera (Port, 6810)
    i kliknij CONNECT.
 4. Czekaj, az zakladajacy wystartuje gre - gra zacznie sie sama.
 

@@ -153,7 +153,7 @@ The one who sets up the game (MASTER):
 2. Set up the map as in New game: size, random number, computer players
    (player 1 is you, player 2 the other person). Sand and rocks of the
    map: Options -> Advanced -> VIDEO; the settings of this side count.
-3. Start -> START SERVER. Type the name of the server (MASTER), the port
+3. Start -> START SERVER. Type the name of the server (PLAYER 1), the port
    if needed (Port, 6810) and click RUN SERVER - the server announces
    itself in the network. The box shows the address of the Amiga in the
    local network (Server address) and on the internet (Internet address,
@@ -166,7 +166,7 @@ The one who joins (SLAVE):
 2. SEARCH looks for servers in the network for 3 s; click a server in
    the list or type its IP address into "Server address". Through a VPN
    and between networks the search does not work - type the address.
-3. Type your name (Your name, SLAVE), the port of the server (Port,
+3. Type your name (Your name, PLAYER 2), the port of the server (Port,
    6810) and click CONNECT.
 4. Wait for the server to start the game - it begins by itself.
 
