@@ -6,6 +6,31 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.121 (6.11.2026, beta release)
+-------------------------------
+
+- LAN game: both Amigas count the game the same way also after a resync
+  and in a saved LAN game (new buildings, flags and serfs get the same
+  numbers on both sides); what is on the screen does not change the
+  game; demolishing a building that is no longer there (a second click,
+  a fire) does nothing.
+- The + and - buttons of the game boxes (attack, knights of the military
+  buildings, castle knights, the arrows of the transport priorities)
+  repeat while the left mouse button is held.
+- Save Game: a name of at most 25 letters (21 in a LAN game), what the
+  Amiga disk keeps with .save.
+- Saves of normal and of LAN games apart: Load game and Save Game of a
+  normal game list the normal saves, Save Game of a LAN game and LAN box
+  -> LOAD GAME the LAN saves.
+- LAN box: wider (whole save names), the rows further apart, a LOAD GAME
+  button; there DELETE with a YES / NO question, Shift click marks
+  several saves to delete at once; INTERNET GAME - a game through a
+  server on the internet (being made, not working yet).
+- The save at a sync error of a LAN game: SYNC_<yymmdd>_<hhmmss>M/S, the
+  time with seconds.
+- LAN game: both sides need version 0.121.
+
+
 0.120 (6.11.2026, beta release)
 -------------------------------
 

@@ -75,6 +75,26 @@ Wydane na prośbę użytkownika (łatka Freeserf `0050`); potwierdzone przez uż
 | 2 | Suwaki i przyciski w oknach ustawień przestawiają się po jednym kliknięciu (okno przerysowane po wykonaniu polecenia) | ✅ |
 | 3 | Dźwięk przy wysłaniu geologa, awansie na rycerzy i łączeniu dróg mówi, czy się udało | ✅ |
 
+## 0.121 (6.11.2026)
+
+Łatka Freeserf `0052`; testy rozjazdu LAN na gałęzi `lan-desync` (boty, sumy całego stanu, Amiga 1 + WinUAE, `lansim` na PC).
+
+| Nr | Zmiana | Stan |
+|---|---|---|
+| 1 | Save Game: nazwa najwyżej 25 znaków (LAN 21) – dysk ucinał dłuższe | ⏳ do sprawdzenia |
+| 2 | Zapis przy rozjeździe: `SYNC_<rrmmdd>_<ggmmss>M/S` (z sekundami) | ⏳ do sprawdzenia |
+| 3 | Przyciski + i − powtarzają się przy przytrzymaniu | ✅ |
+| 4 | Zapisy zwykłe i LAN osobno (Load game, Save Game, okno LAN) | ✅ |
+| 5 | Okno LAN: SAVED GAME → LOAD GAME | ✅ |
+| 6 | Okno serwera LAN: wiersze rzadziej | ✅ |
+| 7 | Okno LAN → LOAD GAME: DELETE z pytaniem | ✅ |
+| 8 | Shift+klik: kilka zapisów, kasowanie naraz | ✅ |
+| 9 | Okno LAN szersze, całe nazwy zapisów; widok INTERNET GAME (nieczynny) | ✅ |
+| 10 | LAN: najmniejszy wolny numer nowych obiektów – gry zgodne po resyncu i z zapisu | ✅ Amiga 1 + WinUAE (14 min bez różnic, resync co minutę) |
+| 11 | Rysowanie mapy nie zmienia gry (dźwięki, ogień) | ✅ jak 10 |
+| 12 | Spóźnione „zburz” nie wywraca gry; EINTR nie zrywa połączenia | ✅ `lansim` PC |
+| – | Zerwanie połączenia przy resyncu tylko z WinUAE (ECONNRESET) | ⚠️ otwarte – sprawdzić na dwóch Amigach |
+
 ## 0.120 (6.11.2026)
 
 Łatka Freeserf `0051`; wszystko potwierdzone przez użytkownika na Amidze 1 (`Settlers-test`).

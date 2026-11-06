@@ -121,7 +121,7 @@ docs/PORTING.md, rozdzial "Gra LAN".
 Koniec gry do testu: opcja LANTEST, w grze LAN Ctrl+Shift+W - gracz
 tego komputera wygrywa od razu (u obu).
 Rozjazd do testu: opcja LANTEST, Ctrl+Shift+X - tylko ta gra losuje
-jedna liczbe wiecej; po kilku s OUT OF STEP, zapisy SYNC_ERR i resync.
+jedna liczbe wiecej; po kilku s OUT OF STEP, zapisy SYNC_ i resync.
 Ctrl+Shift+R (bez LANTEST): resync na zyczenie.
 
 Testy: lansim (ta sama gra bez sieci; -l dwie gry w lockstepie, -s/-r

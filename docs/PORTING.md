@@ -1456,7 +1456,7 @@ test: Amiga 1 `WorkSD:Games/Settlers/Settlers-test` (Amiga 2 niedostępna 5.11.2
 | 4 | Prośba użytkownika: opcja w Video na **suche drzewa**. „Dead trees on new maps” (0–100 %, co 10, jak piasek i skały): generator stawia tylko tyle % suchych drzew oryginału (`create_random_object_clusters`, liczby losowe pobierane jak bez opcji). Tylko nowe mapy (nie misje). Nie ukrywanie na obrazie: suche drzewo zajmuje pole (`SpaceFilled`), drwal go nie ścina – niewidoczne zostałoby przeszkodą. Ustawienie `[advanced] dead_trees`; w LAN idzie w SETUP od serwera (`kSetupVersion` 5: 0.120 nie połączy się z 0.119). Okno Video 224 px. | `map-generator.cc/.h`, `game.cc/.h`, `mission.cc/.h`, `lan-sync.cc`, `interface.cc/.h`, `advanced-box.cc`, `game-init.cc/.h`, `lan-box.cc` | ✅ Amiga 1 (użytkownik): suchych drzew nie ma |
 | – | Zgłoszenie użytkownika, **nie poprawione** (użytkownik: „zostaw ten glitch”): przy brzegu wody stała przerywana kreska czarnych pikseli, 1 px wysokości, ok. 18 px szerokości, na lądzie tuż przy wodzie (F9: x 398–415, y 187; po przewinięciu ten sam wzór). Taka sama przy `RENDER=VRAM` i `RENDER=FAST`, na dwóch zrzutach co 3 s identyczna – nie fale (animowane), nie wskaźnik, nie pamięć karty. Prawdopodobnie piksele, których nie pokrywa żaden trójkąt terenu na granicy woda–ląd (maski Amigi, `draw_triangle_up/down`). Zapis do odtworzenia: Amiga 1 `freeserf/saves/water-line.save`. | – | otwarte |
 
-## Zmiany 0.121 (seria poprawek, TEST)
+## Zmiany 0.121 (seria poprawek, wydanie 6.11.2026; łatka Freeserf 0052)
 
 Seria jak 0.118: numerowane, commit na prośbę użytkownika. `SETTLERS_VERSION "0.121"`, `SETTLERS_LABEL "TEST"`;
 test: Amiga 1 / Amiga 2 `WorkSD:Games/Settlers/Settlers-test`.

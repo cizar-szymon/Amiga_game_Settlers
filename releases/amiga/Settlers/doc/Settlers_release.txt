@@ -6,6 +6,30 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.121 (6.11.2026, wydanie beta)
+-------------------------------
+
+- Gra LAN: obie Amigi licza gre tak samo takze po resyncu i w grze
+  z zapisu LAN (nowe budynki, flagi i postacie maja po obu stronach te
+  same numery); to, co widac na ekranie, nie zmienia gry; zburzenie
+  budynku, ktorego juz nie ma (drugie klikniecie, pozar), nic nie robi.
+- Przyciski + i - w oknach gry (atak, obsada budynkow wojskowych,
+  rycerze w zamku, strzalki priorytetow transportu) powtarzaja sie przy
+  przytrzymaniu lewego przycisku myszy.
+- Save Game: nazwa najwyzej 25 znakow (w grze LAN 21), tyle miesci dysk
+  Amigi razem z .save.
+- Zapisy zwyklych gier i gier LAN sa osobno: Load game i Save Game
+  w zwyklej grze pokazuja zwykle zapisy, Save Game w grze LAN i okno
+  LAN -> LOAD GAME - zapisy LAN.
+- Okno LAN: szersze (cale nazwy zapisow), wiersze rzadziej, przycisk
+  LOAD GAME; w nim DELETE z pytaniem YES / NO, Shift+klik zaznacza
+  kilka zapisow do skasowania naraz; INTERNET GAME - gra przez serwer
+  w internecie (w przygotowaniu, jeszcze nieczynna).
+- Zapis przy rozjezdzie gier LAN: SYNC_<rrmmdd>_<ggmmss>M/S, godzina
+  z sekundami.
+- Gra LAN: obie strony musza miec wersje 0.121.
+
+
 0.120 (6.11.2026, wydanie beta)
 -------------------------------
 
@@ -76,7 +100,7 @@ Gra LAN:
   lewo od FPS.
 - Gdy gra sie konczy (wyjscie gracza, zerwane polaczenie), obie Amigi ja
   zapisuja: LAN_ERR_<rrmmdd>_<ggmmss>.
-- Gdy gry sie rozejda (OUT OF STEP): zapis obu stron SYNC_ERR_..M / ..S,
+- Gdy gry sie rozejda (OUT OF STEP): zapis obu stron SYNC_..M / ..S,
   potem serwer wysyla swoja gre drugiemu graczowi (resync) i obie graja
   dalej zgodnie. Ctrl+Shift+R - resync na zyczenie.
 

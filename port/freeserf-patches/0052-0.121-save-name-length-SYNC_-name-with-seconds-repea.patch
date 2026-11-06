@@ -1,0 +1,1520 @@
+From 81791637ea8832065339e1e84f4e790dff59fd24 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Fri, 6 Nov 2026 18:56:15 +0100
+Subject: [PATCH] 0.121: save name length, SYNC_ name with seconds, +/- repeat
+ while held, normal and LAN saves apart, LAN box (LOAD GAME, wider, delete
+ several saves, INTERNET GAME view), LAN games stay in step (lowest free
+ object index, the map view no longer changes the game, a late demolish does
+ nothing)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7U35RuKvTQMs84jNJEFhT
+---
+ src/event_loop.cc |  15 +++-
+ src/event_loop.h  |   8 +-
+ src/game-init.cc  |  35 +++++----
+ src/game.cc       |   8 +-
+ src/gui.cc        |   9 ++-
+ src/gui.h         |   4 +
+ src/interface.cc  |   9 +--
+ src/interface.h   |   3 -
+ src/lan-box.cc    | 191 +++++++++++++++++++++++++++++++++++++---------
+ src/lan-box.h     |  19 ++---
+ src/lan-game.cc   |  10 +--
+ src/lan-game.h    |   4 +-
+ src/list.cc       |  75 +++++++++++++++---
+ src/list.h        |  27 ++++++-
+ src/objects.h     |  11 ++-
+ src/popup.cc      |  63 ++++++++++++++-
+ src/popup.h       |   8 ++
+ src/viewport.cc   | 148 ++++++++++++++++++-----------------
+ src/viewport.h    |  20 +++++
+ 19 files changed, 496 insertions(+), 171 deletions(-)
+
+diff --git a/src/event_loop.cc b/src/event_loop.cc
+index 8ee25bc..6792b57 100644
+--- a/src/event_loop.cc
++++ b/src/event_loop.cc
+@@ -61,12 +61,13 @@ EventLoop::notify_handlers(Event *event) {
+ }
+ 
+ bool
+-EventLoop::notify_click(int x, int y, Event::Button button) {
++EventLoop::notify_click(int x, int y, Event::Button button, int modifier) {
+   Event event;
+   event.type = Event::TypeClick;
+   event.x = x;
+   event.y = y;
+   event.button = button;
++  event.modifier = modifier;
+   return notify_handlers(&event);
+ }
+ 
+@@ -92,6 +93,18 @@ EventLoop::notify_drag(int x, int y, int dx, int dy, Event::Button button) {
+   return notify_handlers(&event);
+ }
+ 
++bool
++EventLoop::notify_hold(int x, int y) {
++  Event event;
++  event.type = Event::TypeHold;
++  event.x = x;
++  event.y = y;
++  event.dx = 0;
++  event.dy = 0;
++  event.button = Event::ButtonLeft;
++  return notify_handlers(&event);
++}
++
+ bool
+ EventLoop::notify_key_pressed(unsigned char key, unsigned char morifier) {
+   Event event;
+diff --git a/src/event_loop.h b/src/event_loop.h
+index 03642ef..f938b73 100644
+--- a/src/event_loop.h
++++ b/src/event_loop.h
+@@ -37,6 +37,9 @@ class Event {
+     TypeDraw,
+     /* The pictures kept by the GUI objects were lost. */
+     TypeInvalidate,
++    /* The left button held down still at x, y: the + and - buttons of
++       the boxes repeat their click (the handler says if it used it). */
++    TypeHold,
+   } Type;
+ 
+   typedef enum Button {
+@@ -54,6 +57,8 @@ class Event {
+   int dx, dy;
+   Type type;
+   Button button;
++  /* The keys held at a click: 1 Ctrl, 2 Shift, 4 Alt (as a key's). */
++  int modifier = 0;
+ };
+ 
+ class Frame;
+@@ -119,9 +124,10 @@ class EventLoop {
+ 
+   bool notify_handlers(Event *event);
+ 
+-  bool notify_click(int x, int y, Event::Button button);
++  bool notify_click(int x, int y, Event::Button button, int modifier = 0);
+   bool notify_dbl_click(int x, int y, Event::Button button);
+   bool notify_drag(int x, int y, int dx, int dy, Event::Button button);
++  bool notify_hold(int x, int y);
+   bool notify_key_pressed(unsigned char key, unsigned char morifier);
+   bool notify_resize(unsigned int width, unsigned int height);
+   bool notify_invalidate();
+diff --git a/src/game-init.cc b/src/game-init.cc
+index ec71f00..b9dcbe2 100644
+--- a/src/game-init.cc
++++ b/src/game-init.cc
+@@ -41,7 +41,6 @@
+ #include "src/list.h"
+ #include "src/game-manager.h"
+ #include "src/event_loop.h"
+-#include "src/lan-box.h"
+ #include "src/audio.h"
+ #include "src/popup.h"
+ #include "src/translation.h"
+@@ -162,9 +161,15 @@ GameInitBox::GameInitBox(Interface *interface)
+      long names, e.g. LAN_ERR_<date>_<time>, are seen whole; a choice no
+      longer reads the save). */
+   file_list->set_size(320, 160);
++  /* The saves of normal games; those of LAN games are in the LAN box
++     (LOAD GAME). */
++  file_list->set_show(ListSavedFiles::ShowNormal);
++  file_list->set_multi(true);
+   file_list->set_displayed(false);
+   file_list->set_selection_handler([this](const std::string &item) {
+-    this->set_redraw();  /* "Load LAN game" or "Load game" */
++    /* DELETE can be used; its question is for the saves chosen then. */
++    delete_asked = false;
++    this->set_redraw();
+   });
+   file_list->set_open_handler([this](const std::string &) {
+     this->start_requested = true;
+@@ -361,11 +366,12 @@ GameInitBox::internal_draw() {
+     case GameLoad: {
+       draw_box_icon(5, 0, 316);  // Game type
+ 
+-      draw_box_string(10, 2, file_list->is_selected_lan() ? "Load LAN game"
+-                                                           : _("Load game"));
++      draw_box_string(10, 2, _("Load game"));
+       /* DELETE, and after it the question with YES and NO. */
+       if (delete_asked) {
+-        draw_box_string(10, 18, "Delete the save?");
++        size_t n = file_list->get_marked().size();
++        draw_box_string(10, 18, (n > 1) ? "Delete " + std::to_string(n) +
++                                          " saves?" : "Delete the save?");
+         draw_text_button(frame, kYesX, kDeleteY, kYesNoWidth, "YES");
+         draw_text_button(frame, kNoX, kDeleteY, kYesNoWidth, "NO");
+       } else {
+@@ -469,12 +475,6 @@ GameInitBox::handle_action(int action) {
+       }
+       if (game_type == GameLoad) {
+         std::string path = file_list->get_selected();
+-        /* A saved LAN game goes on as a LAN game: this Amiga the server,
+-           the other one joins and gets the save. */
+-        if (LanBox::is_lan_save(path) && Interface::lan_link != nullptr) {
+-          interface->open_lan_box_with_save(lan_mission, path);
+-          return;
+-        }
+         if (!GameManager::get_instance().load_game(path)) {
+           return;
+         }
+@@ -602,14 +602,17 @@ GameInitBox::handle_action(int action) {
+       }
+       break;
+     case ActionDeleteYes: {
+-      std::string path = file_list->get_selected();
++      /* The marked saves (Shift click), or the selected one. */
++      std::vector<std::string> paths = file_list->get_marked();
+       delete_asked = false;
+-      if (!path.empty() && std::remove(path.c_str()) == 0) {
+-        play_sound(Audio::TypeSfxAhhh);
++      bool all = !paths.empty();
++      for (const std::string &path : paths) {
++        if (std::remove(path.c_str()) != 0) all = false;
++      }
++      play_sound(all ? Audio::TypeSfxAhhh : Audio::TypeSfxNotAccepted);
++      if (!paths.empty()) {
+         file_list->refresh();
+         minimap->set_displayed(false);  /* until a save is chosen */
+-      } else {
+-        play_sound(Audio::TypeSfxNotAccepted);
+       }
+       break;
+     }
+diff --git a/src/game.cc b/src/game.cc
+index 74e6247..3f3e80b 100644
+--- a/src/game.cc
++++ b/src/game.cc
+@@ -2016,7 +2016,13 @@ Game::demolish_building_(MapPos pos) {
+ /* Demolish building at pos. */
+ bool
+ Game::demolish_building(MapPos pos, Player *player) {
+-  Building *building = buildings[map->get_obj_index(pos)];
++  /* No building there (any more): in a LAN game the command is done two
++     turns after the click - the building may be gone (burnt, demolished
++     by a click before); the index of an empty place is 0, the dummy
++     building of player 1, which was "demolished" then: building 0 gone,
++     a hole at the start of the list, a crash. */
++  Building *building = get_building_at_pos(pos);
++  if (building == nullptr || building->get_index() == 0) return false;
+ 
+   if (building->get_owner() != player->get_index()) return false;
+   if (building->is_burning()) return false;
+diff --git a/src/gui.cc b/src/gui.cc
+index 41c3b1d..388092a 100644
+--- a/src/gui.cc
++++ b/src/gui.cc
+@@ -47,6 +47,7 @@ GuiObject::GuiObject() {
+   drag_rest_x = 0.f;
+   drag_button = 0;
+   drag_rest_y = 0.f;
++  click_modifier = 0;
+   displayed = false;
+   enabled = true;
+   redraw = true;
+@@ -133,7 +134,8 @@ GuiObject::handle_event(const Event *event) {
+   int event_y = event->y;
+   if (event->type == Event::TypeClick ||
+       event->type == Event::TypeDoubleClick ||
+-      event->type == Event::TypeDrag) {
++      event->type == Event::TypeDrag ||
++      event->type == Event::TypeHold) {
+     event_x = event->x - x;
+     event_y = event->y - y;
+     if (event_x < 0 || event_y < 0 ||
+@@ -166,6 +168,7 @@ GuiObject::handle_event(const Event *event) {
+   internal_event.dx = event->dx;
+   internal_event.dy = event->dy;
+   internal_event.button = event->button;
++  internal_event.modifier = event->modifier;
+ 
+   /* Find the corresponding float element if any */
+   FloatList::reverse_iterator fl = floats.rbegin();
+@@ -177,6 +180,7 @@ GuiObject::handle_event(const Event *event) {
+   }
+ 
+   bool result = false;
++  click_modifier = event->modifier;
+   switch (event->type) {
+     case Event::TypeClick:
+       if (event->button == Event::ButtonLeft) {
+@@ -205,6 +209,9 @@ GuiObject::handle_event(const Event *event) {
+     case Event::TypeKeyPressed:
+       result = handle_key_pressed(event->dx, event->dy);
+       break;
++    case Event::TypeHold:
++      result = handle_hold(event_x, event_y);
++      break;
+     default:
+       break;
+   }
+diff --git a/src/gui.h b/src/gui.h
+index d449b1f..ef4ac8c 100644
+--- a/src/gui.h
++++ b/src/gui.h
+@@ -40,6 +40,8 @@ class GuiObject : public EventLoop::Handler {
+      height * zoom of the parent. */
+   float zoom;
+   float drag_rest_x, drag_rest_y;
++  /* The keys held at the click being handled (Event::modifier). */
++  int click_modifier;
+   /* The button of the drag being handled; 0 for the cursor keys of the
+      Amiga port, which scroll by drags too. */
+   int drag_button;
+@@ -69,6 +71,8 @@ class GuiObject : public EventLoop::Handler {
+   virtual bool handle_dbl_click(int x, int y, Event::Button button) {
+     return false; }
+   virtual bool handle_drag(int dx, int dy) { return true; }
++  /* The left button held at x, y (auto repeat): true when it was used. */
++  virtual bool handle_hold(int x, int y) { return false; }
+   virtual bool handle_key_pressed(char key, int modifier) { return false; }
+   virtual bool handle_focus_loose() { return false; }
+ 
+diff --git a/src/interface.cc b/src/interface.cc
+index d59c07b..3a9fff6 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -398,13 +398,6 @@ Interface::close_platform_box() {
+   layout();
+ }
+ 
+-void
+-Interface::open_lan_box_with_save(PGameInfo mission,
+-                                  const std::string &path) {
+-  open_lan_box(mission);
+-  lan_box->go_on_with_save(path);
+-}
+-
+ void
+ Interface::open_lan_box(PGameInfo mission) {
+   close_lan_box();
+@@ -1799,7 +1792,7 @@ Interface::handle_key_pressed(char key, int modifier) {
+     case 'x':
+     case 'X':
+       /* LANTEST: this side's game goes apart from the other one (one more
+-         random number, here only): OUT OF STEP, SYNC_ERR, the resync. */
++         random number, here only): OUT OF STEP, the SYNC_ save, the resync. */
+       if (lan_test_keys && lan_game && game && (modifier & 3) == 3) {
+         game->random_int();
+         lan_game->note("LANTEST: THIS GAME GOES APART");
+diff --git a/src/interface.h b/src/interface.h
+index 907dbdf..4320737 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -327,9 +327,6 @@ class Interface : public GuiObject, public GameManager::Handler {
+   /* The box of a LAN game (the Start button of a LAN game in the start
+      box), with the settings of the start box. */
+   void open_lan_box(PGameInfo mission);
+-  /* The LAN box as a server going on with a saved LAN game (Load game
+-     of the start box with a save of two people). */
+-  void open_lan_box_with_save(PGameInfo mission, const std::string &path);
+   /* The network of a LAN game, given by the platform; none: nullptr. */
+   static LanLink *lan_link;
+   /* LANTEST (the port's option): Ctrl+Shift+W in a LAN game - this
+diff --git a/src/lan-box.cc b/src/lan-box.cc
+index 2ffcbe8..7cfde1e 100644
+--- a/src/lan-box.cc
++++ b/src/lan-box.cc
+@@ -21,6 +21,8 @@
+ 
+ #include "src/lan-box.h"
+ 
++#include <cstdio>
++#include <cstring>
+ #include <fstream>
+ #include <sstream>
+ #include <string>
+@@ -56,35 +58,53 @@ static const int kFieldWidth = 132;
+ static const int kPortWidth = 48;
+ 
+ /* Choose */
+-static const int kServerButtonY = 56;
+-static const int kJoinButtonY = 104;
+-/* Server: rows of 9 pixels from kServerRowsY, then the buttons */
++static const int kServerButtonY = 52;
++static const int kJoinButtonY = 98;
++static const int kInternetButtonY = 144;
++/* Internet: the game server, the name, the buttons */
++static const int kInternetRowsY = 52;
++static const int kInternetButtonsY = 110;
++static const int kInternetBackY = 150;
++/* Server: rows of 11 pixels from kServerRowsY (a field of 10 over a
++   row, a pixel to the next), then the buttons */
+ static const int kServerRowsY = 38;
+-static const int kServerRowStep = 9;
++static const int kServerRowStep = 11;
+ static const int kServerPortRow = 3;
+-static const int kRunY = 140;
+-static const int kCancelY = 159;
++static const int kRunY = 162;
++static const int kCancelY = 181;
+ /* Joined: rows of 10 pixels */
+ static const int kRowsY = 40;
+ /* Join: the list of servers, the name, the address and the buttons */
+-static const int kListX = 16, kListY = 34, kListW = 320, kListH = 50;
++static const int kListX = 16, kListY = 34, kListW = LanBox::kWidth - 32;
++static const int kListH = 50;
+ static const int kListRows = 6;
+ static const int kSearchX = 16, kSearchY = 88, kSearchW = 80;
+ static const int kJoinNameY = 110;
+ static const int kAddressY = 122;
+ static const int kJoinPortY = 134;
+ static const int kJoinButtonsY = 150;
+-static const int kMessageY = 180;
++static const int kMessageY = 202;
++/* The saved game view: DELETE between USE GAME and BACK, its question
++   under them. */
++static const int kDeleteWidth = 80;
++static const int kDeleteX = (LanBox::kWidth - kDeleteWidth) / 2;
++static const int kYesNoWidth = 38;
++static const int kYesX = LanBox::kWidth / 2 - kYesNoWidth - 2;
++static const int kNoX = LanBox::kWidth / 2 + 2;
++static const int kQuestionY = 172;
++static const int kYesNoY = 182;
+ /* The lobby (kLobbyHeight): the map on the left, the game on the right,
+    the chat under them, the buttons at the bottom. */
+ static const int kMapX = 16, kMapY = 22, kMapSize = 128;
+-static const int kInfoX = 152, kInfoValueX = 240, kInfoY = 24;
++static const int kInfoX = 152, kInfoValueX = 224, kInfoY = 24;
++/* The longest name of a save (30 letters on the disk, less .lan.save). */
++static const size_t kSaveNameShown = 21;
+ static const int kInfoStep = 10;
+ static const int kHalfWidth = 88;
+ static const int kInfoLeftX = 152, kInfoRightX = 248;
+ static const int kSizeButtonsY = 82;
+ static const int kMapButtonsY = 102;
+-static const int kChatX = 16, kChatY = 156, kChatW = 320;
++static const int kChatX = 16, kChatY = 156, kChatW = LanBox::kWidth - 32;
+ static const size_t kChatRows = 5;
+ static const int kChatFieldY = 204;
+ static const int kLobbyButtonsY = 222;
+@@ -133,6 +153,21 @@ chat_clean(const std::string &s, size_t max) {
+   return r;
+ }
+ 
++/* The name of a save as the lists show it: the file without .save and
++   .lan. */
++static std::string
++save_display_name(const std::string &file) {
++  std::string n = file;
++  const char *const ends[] = { ".save", ".lan" };
++  for (const char *e : ends) {
++    size_t l = strlen(e);
++    if (n.size() > l && n.compare(n.size() - l, l, e) == 0) {
++      n.resize(n.size() - l);
++    }
++  }
++  return n;
++}
++
+ /* Digits and dots of an IPv4 address. */
+ static bool
+ address_filter(const char key, TextInput *text_input) {
+@@ -238,7 +273,15 @@ LanBox::LanBox(Interface *_interface, PGameInfo _mission)
+   chat_field->set_filter(chat_filter);
+   chat_field->set_displayed(false);
+   add_float(chat_field.get(), kChatX, kChatFieldY);
++  delete_asked = false;
+   save_list->set_size(kListW, 96);
++  /* Another save chosen: DELETE can be used, its question is gone. */
++  save_list->set_selection_handler([this](const std::string &) {
++    delete_asked = false;
++    set_redraw();
++  });
++  save_list->set_show(ListSavedFiles::ShowLan);  /* .lan.save only */
++  save_list->set_multi(true);  /* Shift click: several to delete */
+   save_list->set_open_handler([this](const std::string &path) {
+     if (use_saved_game(path)) {
+       set_view(ViewServer);
+@@ -310,6 +353,7 @@ LanBox::set_view(View _view) {
+   take_port();
+   view = _view;
+   message.clear();
++  delete_asked = false;
+   show_fields();
+   if (view == ViewServer && link() != nullptr) {
+     /* The internet address: asked once a run, from here only. */
+@@ -468,8 +512,13 @@ LanBox::update() {
+         s >> lobby_save_size;
+         std::string name;
+         std::getline(s, name);
+-        lobby_save_name = chat_clean(name.size() > 0 ? name.substr(1) : name,
+-                                     15);
++        /* The letters of the font and _ (in the names of saves). */
++        std::string clean;
++        for (char c : (name.size() > 0 ? name.substr(1) : name)) {
++          if (clean.size() >= kSaveNameShown) break;
++          if (chat_letter(c) || c == '_') clean += c;
++        }
++        lobby_save_name = clean;
+         if (lobby_save_name.empty()) lobby_save_name = "?";
+         preview_map.reset();
+       }
+@@ -519,23 +568,6 @@ LanBox::receive_save(int type, const std::string &data) {
+   }
+ }
+ 
+-void
+-LanBox::go_on_with_save(const std::string &path) {
+-  set_view(ViewServer);
+-  use_saved_game(path);
+-  set_redraw();
+-}
+-
+-bool
+-LanBox::is_lan_save(const std::string &path) {
+-  Game game;
+-  if (path.empty() || !GameStore::get_instance().load(path, &game)) {
+-    return false;
+-  }
+-  Player *other = game.get_player(1);
+-  return other != nullptr && !other->is_ai();
+-}
+-
+ bool
+ LanBox::use_saved_game(const std::string &path) {
+   Game game;
+@@ -550,7 +582,8 @@ LanBox::use_saved_game(const std::string &path) {
+   }
+   save_path = path;
+   size_t slash = path.find_last_of("/\\:");
+-  save_name = (slash == std::string::npos) ? path : path.substr(slash + 1);
++  save_name = save_display_name((slash == std::string::npos)
++                                ? path : path.substr(slash + 1));
+   save_map_size = game.get_map()->get_size();
+   send_lobby();
+   return true;
+@@ -718,7 +751,7 @@ LanBox::draw_lobby() {
+     { "Server", (server ? own : other).substr(0, 12) },
+     { "Player 2", (server ? other : own).substr(0, 12) },
+     { "Response", ping_text() },
+-    { game_label, game_value.substr(0, 12) },
++    { game_label, game_value.substr(0, kSaveNameShown) },
+     { "AI", ai_value },
+   };
+   int y = kInfoY;
+@@ -736,7 +769,7 @@ LanBox::draw_lobby() {
+     draw_text_button(kInfoLeftX, kMapButtonsY, kHalfWidth, "OTHER MAP",
+                      !saved);
+     draw_text_button(kInfoRightX, kMapButtonsY, kHalfWidth,
+-                     saved ? "NEW MAP" : "SAVED GAME");
++                     saved ? "NEW MAP" : "LOAD GAME");
+   } else {
+     frame->draw_string(kInfoX, kSizeButtonsY + 4, "The server chooses",
+                        Color::green, Color::black);
+@@ -926,7 +959,32 @@ LanBox::internal_draw() {
+       draw_text_button(kButtonX, kJoinButtonY, kButtonWidth, "JOIN SERVER");
+       draw_centered(kJoinButtonY + 20, "Find the server or type");
+       draw_centered(kJoinButtonY + 30, "its address and connect.");
++      draw_text_button(kButtonX, kInternetButtonY, kButtonWidth,
++                       "INTERNET GAME");
++      draw_centered(kInternetButtonY + 20, "Both connect to the game server,");
++      draw_centered(kInternetButtonY + 30, "no router to set up.");
+       break;
++    case ViewInternet: {
++      /* The game server on the internet (to come): its address from the
++         settings ([lan] relay = host:port). */
++      std::string relay = Settings::get_instance().get("lan", "relay",
++                                                       std::string());
++      draw_centered(26, "A game over the game server");
++      const std::string rows[][2] = {
++        { "Game server", relay.empty() ? "not set yet" : relay },
++        { "Your name", player_name_field->get_text() },
++      };
++      draw_rows(kInternetRowsY, rows, sizeof(rows) / sizeof(rows[0]),
++                kServerRowStep);
++      draw_centered(kInternetRowsY + 30, "Coming soon: the game server");
++      draw_centered(kInternetRowsY + 40, "is being made.");
++      draw_text_button(kLeftButtonX, kInternetButtonsY, kButtonWidth,
++                       "NEW GAME", false);
++      draw_text_button(kRightButtonX, kInternetButtonsY, kButtonWidth,
++                       "JOIN GAME", false);
++      draw_text_button(kButtonX, kInternetBackY, kButtonWidth, "BACK");
++      break;
++    }
+     case ViewServer: {
+       bool running = state == LanLink::StateServing ||
+                      state == LanLink::StateConnected;
+@@ -975,7 +1033,7 @@ LanBox::internal_draw() {
+       draw_text_button(kRightButtonX, kRunY, kButtonWidth, "START GAME",
+                        joined);
+       draw_text_button(kLeftButtonX, kCancelY, kButtonWidth,
+-                       saved ? "NEW MAP" : "SAVED GAME");
++                       saved ? "NEW MAP" : "LOAD GAME");
+       draw_text_button(kRightButtonX, kCancelY, kButtonWidth, "CANCEL");
+       break;
+     }
+@@ -983,7 +1041,16 @@ LanBox::internal_draw() {
+       frame->draw_string(kListX, 24, "Go on with a saved game", Color::green,
+                          Color::black);
+       draw_text_button(kLeftButtonX, kJoinButtonsY, kButtonWidth, "USE GAME");
++      draw_text_button(kDeleteX, kJoinButtonsY, kDeleteWidth, "DELETE",
++                       !save_list->get_selected().empty() && !delete_asked);
+       draw_text_button(kRightButtonX, kJoinButtonsY, kButtonWidth, "BACK");
++      if (delete_asked) {
++        size_t n = save_list->get_marked().size();
++        draw_centered(kQuestionY, (n > 1) ? "Delete " + std::to_string(n) +
++                                            " saves?" : "Delete the save?");
++        draw_text_button(kYesX, kYesNoY, kYesNoWidth, "YES");
++        draw_text_button(kNoX, kYesNoY, kYesNoWidth, "NO");
++      }
+       break;
+     case ViewJoin: {
+       bool searching = state == LanLink::StateSearching;
+@@ -1031,7 +1098,8 @@ LanBox::internal_draw() {
+         { "Your address", own_address.empty() ? "-" : own_address },
+         { "Response", ping_text() },
+       };
+-      draw_rows(kRowsY + 20, rows, sizeof(rows) / sizeof(rows[0]));
++      draw_rows(kRowsY + 20, rows, sizeof(rows) / sizeof(rows[0]),
++                kServerRowStep);
+       draw_text_button(kButtonX, kCancelY, kButtonWidth, "DISCONNECT");
+       break;
+     }
+@@ -1081,6 +1149,24 @@ LanBox::handle_click_left(int x, int y) {
+                         kButtonHeight)) {
+         play_sound(Audio::TypeSfxClick);
+         set_view(ViewJoin);
++      } else if (inside(x, y, kButtonX, kInternetButtonY, kButtonWidth,
++                        kButtonHeight)) {
++        play_sound(Audio::TypeSfxClick);
++        set_view(ViewInternet);
++      }
++      break;
++    case ViewInternet:
++      if (inside(x, y, kLeftButtonX, kInternetButtonsY, kButtonWidth,
++                 kButtonHeight) ||
++          inside(x, y, kRightButtonX, kInternetButtonsY, kButtonWidth,
++                 kButtonHeight)) {
++        play_sound(Audio::TypeSfxNotAccepted);
++        message = "The game server is not ready yet.";
++        set_redraw();
++      } else if (inside(x, y, kButtonX, kInternetBackY, kButtonWidth,
++                        kButtonHeight)) {
++        play_sound(Audio::TypeSfxClick);
++        set_view(ViewChoose);
+       }
+       break;
+     case ViewServer:
+@@ -1190,8 +1276,41 @@ LanBox::handle_click_left(int x, int y) {
+       }
+       break;
+     case ViewLoad:
+-      if (inside(x, y, kLeftButtonX, kJoinButtonsY, kButtonWidth,
+-                 kButtonHeight)) {
++      if (delete_asked &&
++          inside(x, y, kYesX, kYesNoY, kYesNoWidth, kButtonHeight)) {
++        /* YES: the marked saves (Shift click), or the selected one, are
++           deleted from the disk. */
++        std::vector<std::string> paths = save_list->get_marked();
++        delete_asked = false;
++        bool all = !paths.empty();
++        for (const std::string &path : paths) {
++          if (std::remove(path.c_str()) != 0) all = false;
++        }
++        if (all) {
++          play_sound(Audio::TypeSfxAhhh);
++        } else {
++          play_sound(Audio::TypeSfxNotAccepted);
++          message = "A save was not deleted.";
++        }
++        if (!paths.empty()) save_list->refresh();
++        set_redraw();
++      } else if (delete_asked &&
++                 inside(x, y, kNoX, kYesNoY, kYesNoWidth, kButtonHeight)) {
++        play_sound(Audio::TypeSfxClick);
++        delete_asked = false;
++        set_redraw();
++      } else if (inside(x, y, kDeleteX, kJoinButtonsY, kDeleteWidth,
++                        kButtonHeight)) {
++        if (save_list->get_selected().empty() || delete_asked) {
++          play_sound(Audio::TypeSfxNotAccepted);
++        } else {
++          play_sound(Audio::TypeSfxClick);
++          delete_asked = true;
++          message.clear();
++          set_redraw();
++        }
++      } else if (inside(x, y, kLeftButtonX, kJoinButtonsY, kButtonWidth,
++                        kButtonHeight)) {
+         if (use_saved_game(save_list->get_selected())) {
+           play_sound(Audio::TypeSfxClick);
+           set_view(ViewServer);
+diff --git a/src/lan-box.h b/src/lan-box.h
+index d86b240..c4d0cb1 100644
+--- a/src/lan-box.h
++++ b/src/lan-box.h
+@@ -43,10 +43,10 @@ class Minimap;
+    joins it: a server found in the network or an address typed in. */
+ class LanBox : public GuiObject {
+  public:
+-  /* Wide enough for a label, a gap and an address on one row; still
+-     fits a 400x300 screen. */
+-  static const int kWidth = 352;
+-  static const int kHeight = 216;
++  /* Wide enough for a label, a gap and the name of a save (21 letters)
++     on one row; the whole width of a 400x300 screen. */
++  static const int kWidth = 400;
++  static const int kHeight = 236;
+   /* Connected, before START GAME: the map, the chat (fits 400x300). */
+   static const int kLobbyHeight = 264;
+ 
+@@ -56,7 +56,10 @@ class LanBox : public GuiObject {
+     ViewServer,
+     ViewJoin,
+     ViewJoined,  /* connected to a server, waiting for it to start */
+-    ViewLoad     /* the server chooses a saved game to go on with */
++    ViewLoad,    /* the server chooses a saved game to go on with */
++    /* Both players connect to the game server on the internet (no
++       address of a router needed); to come, the server is being made. */
++    ViewInternet
+   } View;
+ 
+   Interface *interface;
+@@ -84,6 +87,8 @@ class LanBox : public GuiObject {
+   /* The saved game the server goes on with ("": a new map), its map. */
+   std::unique_ptr<ListSavedFiles> save_list;
+   std::string save_path;
++  /* DELETE of the saved game view clicked: YES or NO asked. */
++  bool delete_asked;
+   std::string save_name;
+   unsigned int save_map_size;
+   /* The saved game coming from the server. */
+@@ -120,10 +125,6 @@ class LanBox : public GuiObject {
+ 
+   /* With every update of the interface: the network. */
+   void update();
+-  /* The server view with this saved game chosen. */
+-  void go_on_with_save(const std::string &path);
+-  /* A save of a LAN game: player 2 in it is a person. */
+-  static bool is_lan_save(const std::string &path);
+   /* Return: the line of the chat goes to the other player. */
+   void handle_return();
+   /* A line of the chat to the other player (and into the own chat). */
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index 23fdc6c..5215acd 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -239,7 +239,7 @@ LanGame::receive() {
+ /* The report of a sync error as files: the .txt of the commands next to
+    the save, and the files of the player who joined sent to the server.
+    Off for now - reports will go to a server of their own, not to the
+-   players' Amigas (user, 5.11.2026); the SYNC_ERR save stays. */
++   players' Amigas (user, 5.11.2026); the SYNC_ save stays. */
+ static const bool kReportFiles = false;
+ 
+ void
+@@ -248,17 +248,17 @@ LanGame::dump(bool sync_error) {
+   if (!game || dumped_at == steps) return;
+   dumped_at = steps;
+   /* The names fit an Amiga disk with .lan.save (FFS: 30 letters):
+-     SYNC_ERR_<yymmdd>_<hhmm><M|S> (the clock of this Amiga at the
+-     error), LAN_DUMP_<step>_<M|S>. */
++     SYNC_<yymmdd>_<hhmmss><M|S> (the clock of this Amiga at the error,
++     28 letters), LAN_DUMP_<step>_<M|S>. */
+   std::string base;
+   if (sync_error) {
+     std::time_t now = std::time(nullptr);
+     struct tm *at = std::localtime(&now);
+     char when[16] = "0";
+     if (at != nullptr) {
+-      std::strftime(when, sizeof(when), "%y%m%d_%H%M", at);
++      std::strftime(when, sizeof(when), "%y%m%d_%H%M%S", at);
+     }
+-    base = std::string("SYNC_ERR_") + when + (server ? "M" : "S");
++    base = std::string("SYNC_") + when + (server ? "M" : "S");
+   } else {
+     base = "LAN_DUMP_" + std::to_string(steps) + (server ? "_M" : "_S");
+   }
+diff --git a/src/lan-game.h b/src/lan-game.h
+index e6c9216..d7a8ae7 100644
+--- a/src/lan-game.h
++++ b/src/lan-game.h
+@@ -213,7 +213,7 @@ class LanGame {
+  protected:
+   /* TypeDump at the start of a turn: the game and the command log to the
+      saves folder, the player who joined sends both to the server. Out of
+-     step: SYNC_ERR_<yymmdd>_<hhmm><M|S>; asked for (Ctrl+Shift+D):
++     step: SYNC_<yymmdd>_<hhmmss><M|S>; asked for (Ctrl+Shift+D):
+      LAN_DUMP_<step>_<M|S>. */
+   void dump(bool sync_error);
+   /* TypeResync at the start of a turn: the server sends its game; the
+@@ -227,7 +227,7 @@ class LanGame {
+   void receive_file(int type, const std::string &data);
+   /* The game ends (the other player left, the connection is lost, or
+      this one leaves): a save of it, once, to go on with later (a LAN
+-     save: SAVED GAME in the LAN box). true: saved. */
++     save: LOAD GAME in the LAN box). true: saved. */
+   bool save_at_end();
+   void receive();
+   void send_turn(unsigned int turn, const std::vector<LanCommand> &cmds);
+diff --git a/src/list.cc b/src/list.cc
+index 815594e..d7ff245 100644
+--- a/src/list.cc
++++ b/src/list.cc
+@@ -26,16 +26,28 @@
+ 
+ ListSavedFiles::ListSavedFiles()
+   : GuiObject()
+-  , save_game(&GameStore::get_instance()) {
++  , show(ShowAll)
++  , save_game(&GameStore::get_instance())
++  , multi(false) {
+   color_focus = Color(0x00, 0x8b, 0x47);
+   color_text = Color::green;
+   color_background = Color::black;
+ 
+-  items = save_game->get_saved_games();
++  read_items();
+   first_visible_item = 0;
+   selected_item = -1;
+ }
+ 
++void
++ListSavedFiles::read_items() {
++  items.clear();
++  for (const GameStore::SaveInfo &info : save_game->get_saved_games()) {
++    if (show == ShowAll || info.lan == (show == ShowLan)) {
++      items.push_back(info);
++    }
++  }
++}
++
+ static const int kBarWidth = 9;
+ 
+ std::string
+@@ -48,21 +60,31 @@ ListSavedFiles::get_selected() const {
+   return file_path;
+ }
+ 
++std::vector<std::string>
++ListSavedFiles::get_marked() const {
++  std::vector<std::string> paths;
++  if (marked.empty()) {
++    std::string path = get_selected();
++    if (!path.empty()) paths.push_back(path);
++    return paths;
++  }
++  for (int item : marked) {
++    if (item >= 0 && item < static_cast<int>(items.size())) {
++      paths.push_back(items[item].path);
++    }
++  }
++  return paths;
++}
++
+ void
+ ListSavedFiles::refresh() {
+-  items = save_game->get_saved_games();
++  marked.clear();
++  read_items();
+   first_visible_item = 0;
+   selected_item = -1;
+   set_redraw();
+ }
+ 
+-bool
+-ListSavedFiles::is_selected_lan() const {
+-  return selected_item >= 0 &&
+-         selected_item < static_cast<int>(items.size()) &&
+-         items[selected_item].lan;
+-}
+-
+ int
+ ListSavedFiles::visible_rows() const {
+   return (height - 6 + 8) / 9;
+@@ -96,7 +118,8 @@ ListSavedFiles::internal_draw() {
+   unsigned int item = first_visible_item;
+   for (int ly = 0; (ly < (height - 6)) && (item < items.size()); ly += 9) {
+     Color tc = color_text;
+-    bool selected = static_cast<int>(item) == selected_item;
++    bool selected = marked.empty() ? static_cast<int>(item) == selected_item
++                                   : marked.count(static_cast<int>(item)) > 0;
+     if (selected) {
+       frame->fill_rect(2, ly + 2, text_width - 4, 9, Color::green);
+       tc = Color::black;
+@@ -142,6 +165,36 @@ ListSavedFiles::handle_click_left(int cx, int cy) {
+     return true;
+   }
+   cy -= 3;
++  if (cy >= 0 && multi && (click_modifier & 3) != 0) {
++    /* Shift or Ctrl: this save marked or not, the others stay; the one
++       selected before is marked too. */
++    int row = first_visible_item + (cy / 9);
++    if (row >= static_cast<int>(items.size())) return true;
++    if (marked.empty() && selected_item >= 0) marked.insert(selected_item);
++    if (marked.count(row) > 0) {
++      marked.erase(row);
++      if (selected_item == row) {
++        selected_item = marked.empty() ? -1 : *marked.begin();
++      }
++    } else {
++      marked.insert(row);
++      selected_item = row;
++    }
++    if (marked.size() == 1) {
++      marked.clear();  /* One: a normal selection. */
++    }
++    set_redraw();
++    if (selection_handler != nullptr) {
++      selection_handler(get_selected());
++    }
++    return true;
++  }
++  if (cy >= 0 && !marked.empty()) {
++    /* A click: one save again. */
++    marked.clear();
++    selected_item = -1;
++    set_redraw();
++  }
+   if (cy >= 0) {
+     cy = first_visible_item + (cy / 9);
+     if ((selected_item != cy) && (cy >= 0) &&
+diff --git a/src/list.h b/src/list.h
+index c84a8b7..61ad481 100644
+--- a/src/list.h
++++ b/src/list.h
+@@ -27,10 +27,24 @@
+ #include <functional>
+ 
+ #include "src/gui.h"
++#include <set>
++#include <string>
++#include <vector>
++
+ #include "src/savegame.h"
+ 
+ class ListSavedFiles : public GuiObject {
++ public:
++  /* Which saves the list has: all, those of normal games, of LAN games
++     (.lan.save). */
++  typedef enum Show {
++    ShowAll,
++    ShowNormal,
++    ShowLan
++  } Show;
++
+  protected:
++  Show show;
+   Color color_focus;
+   Color color_text;
+   Color color_background;
+@@ -39,6 +53,10 @@ class ListSavedFiles : public GuiObject {
+   std::vector<GameStore::SaveInfo> items;
+   unsigned int first_visible_item;
+   int selected_item;
++  /* Shift (or Ctrl) click: several saves marked (to delete them), when
++     the list allows it. */
++  bool multi;
++  std::set<int> marked;
+   std::function<void(const std::string&)> selection_handler;
+   std::function<void(const std::string&)> open_handler;
+ 
+@@ -53,13 +71,18 @@ class ListSavedFiles : public GuiObject {
+     open_handler = handler;
+   }
+   std::string get_selected() const;
+-  /* The selected save is one of a LAN game. */
+-  bool is_selected_lan() const;
++  /* Shift or Ctrl click marks several saves (on, off), a click one. */
++  void set_multi(bool _multi) { multi = _multi; marked.clear(); }
++  /* The marked saves, or the selected one; none: empty. */
++  std::vector<std::string> get_marked() const;
+   /* The saves read again, none selected (a save was deleted). */
+   void refresh();
++  /* Only these saves in the list (read again, none selected). */
++  void set_show(Show _show) { show = _show; refresh(); }
+   std::string get_folder_path() const { return save_game->get_folder_path(); }
+ 
+  protected:
++  void read_items();
+   /* The rows that fit, and whether there are more (a scroll bar). */
+   int visible_rows() const;
+   bool scrollable() const;
+diff --git a/src/objects.h b/src/objects.h
+index c93bc32..0bb3677 100644
+--- a/src/objects.h
++++ b/src/objects.h
+@@ -97,8 +97,15 @@ class Collection {
+     T *new_object = nullptr;
+ 
+     if (!free_object_indexes.empty()) {
+-      new_index = free_object_indexes.front();
+-      free_object_indexes.pop_front();
++      /* The lowest free index, not the first one freed: it depends on the
++         state of the game alone, not on the order things went - a game
++         read from a save (the free indexes in order) and the game it was
++         saved from (in the order they were freed) give a new building,
++         flag or serf the same index (LAN: resync, a saved LAN game). */
++      FObjects::iterator low = std::min_element(free_object_indexes.begin(),
++                                                free_object_indexes.end());
++      new_index = *low;
++      free_object_indexes.erase(low);
+       new_object = new T(game, new_index);
+       objects[new_index] = new_object;
+     } else {
+diff --git a/src/popup.cc b/src/popup.cc
+index c490aab..5f43863 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -330,6 +330,8 @@ PopupBox::PopupBox(Interface *_interface)
+   , text_shadow(false) {
+   interface = _interface;
+   opaque = true;
++  repeat_click = false;
++  repeat_used = false;
+ 
+   current_sett_5_item = 8;
+   current_sett_6_item = 15;
+@@ -3915,6 +3917,14 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     /* The list and the name over the width of the wide box. */
+     file_list->set_size(kSaveBoxWidth - 24, 100);
+     file_field->set_size(kSaveBoxWidth - 24, 10);
++    /* No longer than an Amiga disk keeps (FFS: 30 letters) with the
++       .save added, .lan.save in a LAN game: the disk cut longer names
++       and the save was not in the list (no .save at the end). */
++    file_field->set_max_length(
++      kMaxFileName - ((interface->get_lan_game() != nullptr) ? 9 : 5));
++    /* The saves of this kind of game only: LAN or normal. */
++    file_list->set_show((interface->get_lan_game() != nullptr) ?
++                        ListSavedFiles::ShowLan : ListSavedFiles::ShowNormal);
+     file_list->set_displayed(true);
+     file_field->set_displayed(true);
+     file_field->set_focused();  /* The name is typed at once. */
+@@ -3939,6 +3949,12 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+         file_name.find(lan + ".save") == std::string::npos) {
+       file_name.insert(file_name.size() - 5, lan);
+     }
++    if (file_name.size() > kMaxFileName) {
++      /* Longer than the disk keeps (a name chosen in the list, then
++         .lan added): refused. */
++      play_sound(Audio::TypeSfxNotAccepted);
++      break;
++    }
+     std::string file_path = file_list->get_folder_path() + "/" + file_name;
+     if (GameStore::get_instance().save(file_path,
+                                        interface->get_game().get())) {
+@@ -3958,9 +3974,14 @@ PopupBox::handle_clickmap(int x_, int y_, const int clkmap[]) {
+   while (clkmap[0] >= 0) {
+     if (clkmap[1] <= x_ && x_ < clkmap[1] + clkmap[3] &&
+         clkmap[2] <= y_ && y_ < clkmap[2] + clkmap[4]) {
++      Action action = (Action)clkmap[0];
++      if (repeat_click) {
++        /* The button held: only the + and - buttons repeat. */
++        if (!is_repeat_action(action)) return -1;
++        repeat_used = true;
++      }
+       play_sound(Audio::TypeSfxClick);
+ 
+-      Action action = (Action)clkmap[0];
+       handle_action(action, x_-clkmap[1], y_-clkmap[2]);
+       return 0;
+     }
+@@ -4592,6 +4613,46 @@ PopupBox::handle_save_clk(int cx, int cy) {
+   handle_clickmap(cx, cy, clkmap);
+ }
+ 
++/* The + and - buttons (and the priority arrows): they repeat while the
++   left button is held on them. */
++bool
++PopupBox::is_repeat_action(int action) {
++  switch (action) {
++    case ACTION_ATTACKING_KNIGHTS_DEC:
++    case ACTION_ATTACKING_KNIGHTS_INC:
++    case ACTION_SETT_5_6_UP:
++    case ACTION_SETT_5_6_DOWN:
++    case ACTION_SETT_8_CASTLE_DEF_DEC:
++    case ACTION_SETT_8_CASTLE_DEF_INC:
++      return true;
++    default:
++      return action >= ACTION_KNIGHT_LEVEL_CLOSEST_MIN_DEC &&
++             action <= ACTION_KNIGHT_LEVEL_FARTHEST_MAX_INC;
++  }
++}
++
++/* The left button held still (auto repeat): the click again, on the
++   + and - buttons only; the boxes that have them. */
++bool
++PopupBox::handle_hold(int cx, int cy) {
++  switch (box) {
++    case TypeStartAttack:
++    case TypeStartAttackRedraw:
++    case TypeKnightLevel:
++    case TypeSett5:
++    case TypeSett6:
++    case TypeSett8:
++      break;
++    default:
++      return false;
++  }
++  repeat_click = true;
++  repeat_used = false;
++  handle_click_left(cx, cy);
++  repeat_click = false;
++  return repeat_used;
++}
++
+ /* A special click (right button) is handled like a click with the
+    special click flag set, where the original has a special action. */
+ bool
+diff --git a/src/popup.h b/src/popup.h
+index 57f4601..83300ae 100644
+--- a/src/popup.h
++++ b/src/popup.h
+@@ -38,6 +38,8 @@ class PopupBox : public GuiObject {
+  public:
+   /* The Save box: 2.5 times the width of a popup. */
+   static const int kSaveBoxWidth = 360;
++  /* The longest name of a file on an Amiga disk (FFS). */
++  static const size_t kMaxFileName = 30;
+ 
+   typedef enum Type {
+     TypeNone = 0,
+@@ -153,6 +155,10 @@ class PopupBox : public GuiObject {
+   Type box;
+ 
+   bool special_click;  // The current click is a special click
++  /* The left button is held (auto repeat): only the + and - buttons act,
++     repeat_used says one did. */
++  bool repeat_click;
++  bool repeat_used;
+   /* The texts have a black shadow, on the green backgrounds as in the
+      advanced box. */
+   bool text_shadow;
+@@ -266,6 +272,7 @@ class PopupBox : public GuiObject {
+   void set_inventory_serf_mode(int mode);
+ 
+   void handle_action(int action, int x, int y);
++  static bool is_repeat_action(int action);
+   int handle_clickmap(int x, int y, const int clkmap[]);
+ 
+   void handle_box_close_clk(int x, int y);
+@@ -312,6 +319,7 @@ class PopupBox : public GuiObject {
+   virtual void internal_draw();
+   virtual bool handle_click_left(int x, int y);
+   virtual bool handle_click_right(int x, int y);
++  virtual bool handle_hold(int x, int y);
+ };
+ 
+ #endif  // SRC_POPUP_H_
+diff --git a/src/viewport.cc b/src/viewport.cc
+index e244f4f..b2f80da 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -911,10 +911,15 @@ Viewport::draw_unharmed_building(Building *building, int lx, int ly) {
+       break;
+     case Building::TypeMill:
+       if (building->is_active()) {
+-        if ((interface->get_game()->get_tick() >> 4) & 3) {
+-          building->stop_playing_sfx();
+-        } else if (!building->is_playing_sfx()) {
+-          building->start_playing_sfx();
++        /* The sound once in each turn of the wheel. Kept here, not in the
++           building (playing_sfx): the map view of one player must not
++           change the game - in a LAN game the other side would differ
++           (its saves, and the weaponsmith and the mines read that bit). */
++        unsigned int phase = (interface->get_game()->get_tick() >> 4) & 3;
++        unsigned int index = building->get_index();
++        if (phase != 0) {
++          mill_sfx.erase(index);
++        } else if (mill_sfx.insert(index).second) {
+           play_map_sound(Audio::TypeSfxMillGrinding);
+         }
+         draw_shadow_and_building_sprite(lx, ly, map_building_sprite[type] +
+@@ -934,11 +939,11 @@ Viewport::draw_unharmed_building(Building *building, int lx, int ly) {
+       draw_shadow_and_building_sprite(lx, ly, map_building_sprite[type]);
+       if (building->is_active()) {
+         int i = (interface->get_game()->get_tick() >> 3) & 7;
+-        if (i == 0 || (i == 7 && !building->is_playing_sfx())) {
+-          building->start_playing_sfx();
++        if (i == 0 || (i == 7 && !building_sfx(building))) {
++          set_building_sfx(building, true);
+           play_map_sound(Audio::TypeSfxGoldBoils);
+         } else if (i != 7) {
+-          building->stop_playing_sfx();
++          set_building_sfx(building, false);
+         }
+ 
+         draw_game_sprite(lx+6, ly-32, 128+i);
+@@ -968,11 +973,11 @@ Viewport::draw_unharmed_building(Building *building, int lx, int ly) {
+       draw_shadow_and_building_sprite(lx, ly, map_building_sprite[type]);
+       if (building->is_active()) {
+         int i = (interface->get_game()->get_tick() >> 3) & 7;
+-        if (i == 0 || (i == 7 && !building->is_playing_sfx())) {
+-          building->start_playing_sfx();
++        if (i == 0 || (i == 7 && !building_sfx(building))) {
++          set_building_sfx(building, true);
+           play_map_sound(Audio::TypeSfxGoldBoils);
+         } else if (i != 7) {
+-          building->stop_playing_sfx();
++          set_building_sfx(building, false);
+         }
+ 
+         draw_game_sprite(lx-7, ly-33, 128+i);
+@@ -1205,19 +1210,20 @@ Viewport::draw_burning_building(Building *building, int lx, int ly) {
+ 
+   /* Play sound effect. */
+   if (((building->get_burning_counter() >> 3) & 3) == 3 &&
+-      !building->is_playing_sfx()) {
+-    building->start_playing_sfx();
++      !building_sfx(building)) {
++    set_building_sfx(building, true);
+     play_map_sound(Audio::TypeSfxBurning);
+   } else {
+-    building->stop_playing_sfx();
++    set_building_sfx(building, false);
+   }
+ 
++  /* The fire as it is now; the game counts it down (update_buildings),
++     the map view only reads it - a view must not change the game (LAN). */
+   uint16_t delta = interface->get_game()->get_tick() - building->get_tick();
+-  building->set_tick(interface->get_game()->get_tick());
++  unsigned int counter = building->get_burning_counter();
+ 
+-  if (building->get_burning_counter() >= delta) {
+-    building->decrease_burning_counter(delta);  // TODO(jonls): this is also
+-                                                // done in update_buildings().
++  if (counter >= delta) {
++    counter -= delta;
+     draw_unharmed_building(building, lx, ly);
+ 
+     int type = 0;
+@@ -1226,7 +1232,7 @@ Viewport::draw_burning_building(Building *building, int lx, int ly) {
+       type = building->get_type();
+     }
+ 
+-    int offset = ((building->get_burning_counter() >> 3) & 7) ^ 7;
++    int offset = ((counter >> 3) & 7) ^ 7;
+     const int *anim = building_burn_animation +
+                       building_anim_offset_from_type[type];
+     while (anim[0] >= 0) {
+@@ -1234,8 +1240,6 @@ Viewport::draw_burning_building(Building *building, int lx, int ly) {
+       offset = (offset + 3) & 7;
+       anim += 3;
+     }
+-  } else {
+-    building->set_burning_counter(0);
+   }
+ }
+ 
+@@ -1601,12 +1605,12 @@ Viewport::serf_get_body(Serf *serf) {
+     break;
+   case Serf::TypeSailor:
+     if (serf->get_state() == Serf::StateTransporting && t < 0x80) {
+-      if (((t & 7) == 4 && !serf->playing_sfx()) ||
++      if (((t & 7) == 4 && !serf_sfx(serf)) ||
+           (t & 7) == 3) {
+-        serf->start_playing_sfx();
++        set_serf_sfx(serf, true);
+         play_map_sound(Audio::TypeSfxRowing);
+       } else {
+-        serf->stop_playing_sfx();
++        set_serf_sfx(serf, false);
+       }
+     }
+ 
+@@ -1615,12 +1619,12 @@ Viewport::serf_get_body(Serf *serf) {
+         serf->get_state() == Serf::StateLostSailor ||
+         serf->get_state() == Serf::StateFreeSailing) {
+       if (t < 0x80) {
+-        if (((t & 7) == 4 && !serf->playing_sfx()) ||
++        if (((t & 7) == 4 && !serf_sfx(serf)) ||
+             (t & 7) == 3) {
+-          serf->start_playing_sfx();
++          set_serf_sfx(serf, true);
+           play_map_sound(Audio::TypeSfxRowing);
+         } else {
+-          serf->stop_playing_sfx();
++          set_serf_sfx(serf, false);
+         }
+       }
+       t += 0x200;
+@@ -1634,13 +1638,13 @@ Viewport::serf_get_body(Serf *serf) {
+     if (t < 0x80) {
+       t += 0x300;
+     } else if (t == 0x83 || t == 0x84) {
+-      if (t == 0x83 || !serf->playing_sfx()) {
+-        serf->start_playing_sfx();
++      if (t == 0x83 || !serf_sfx(serf)) {
++        set_serf_sfx(serf, true);
+         play_map_sound(Audio::TypeSfxDigging);
+       }
+       t += 0x380;
+     } else {
+-      serf->stop_playing_sfx();
++      set_serf_sfx(serf, false);
+       t += 0x380;
+     }
+     break;
+@@ -1648,13 +1652,13 @@ Viewport::serf_get_body(Serf *serf) {
+     if (t < 0x80) {
+       t += 0x500;
+     } else if ((t & 7) == 4 || (t & 7) == 5) {
+-      if ((t & 7) == 4 || !serf->playing_sfx()) {
+-        serf->start_playing_sfx();
++      if ((t & 7) == 4 || !serf_sfx(serf)) {
++        set_serf_sfx(serf, true);
+         play_map_sound(Audio::TypeSfxHammerBlow);
+       }
+       t += 0x580;
+     } else {
+-      serf->stop_playing_sfx();
++      set_serf_sfx(serf, false);
+       t += 0x580;
+     }
+     break;
+@@ -1675,9 +1679,9 @@ Viewport::serf_get_body(Serf *serf) {
+       } else {
+         t += 0xb00;
+       }
+-    } else if ((t == 0x86 && !serf->playing_sfx()) ||
++    } else if ((t == 0x86 && !serf_sfx(serf)) ||
+          t == 0x85) {
+-      serf->start_playing_sfx();
++      set_serf_sfx(serf, true);
+       play_map_sound(Audio::TypeSfxAxBlow);
+       /* TODO Dangerous reference to unknown state vars.
+          It is probably free walking. */
+@@ -1687,7 +1691,7 @@ Viewport::serf_get_body(Serf *serf) {
+       }
+       t += 0xe80;
+     } else if (t != 0x86) {
+-      serf->stop_playing_sfx();
++      set_serf_sfx(serf, false);
+       t += 0xe80;
+     }
+     break;
+@@ -1703,12 +1707,12 @@ Viewport::serf_get_body(Serf *serf) {
+     } else {
+       /* player_num += 4; ??? */
+       if (t == 0xb3 || t == 0xbb || t == 0xc3 || t == 0xcb ||
+-          (!serf->playing_sfx() && (t == 0xb7 || t == 0xbf ||
++          (!serf_sfx(serf) && (t == 0xb7 || t == 0xbf ||
+                 t == 0xc7 || t == 0xcf))) {
+-        serf->start_playing_sfx();
++        set_serf_sfx(serf, true);
+         play_map_sound(Audio::TypeSfxSawing);
+       } else if (t != 0xb7 && t != 0xbf && t != 0xc7 && t != 0xcf) {
+-        serf->stop_playing_sfx();
++        set_serf_sfx(serf, false);
+       }
+       t += 0x1580;
+     }
+@@ -1724,24 +1728,24 @@ Viewport::serf_get_body(Serf *serf) {
+       } else {
+         t += 0xd00;
+       }
+-    } else if (t == 0x85 || (t == 0x86 && !serf->playing_sfx())) {
+-      serf->start_playing_sfx();
++    } else if (t == 0x85 || (t == 0x86 && !serf_sfx(serf))) {
++      set_serf_sfx(serf, true);
+       play_map_sound(Audio::TypeSfxPickBlow);
+       t += 0x1280;
+     } else if (t != 0x86) {
+-      serf->stop_playing_sfx();
++      set_serf_sfx(serf, false);
+       t += 0x1280;
+     }
+     break;
+   case Serf::TypeForester:
+     if (t < 0x80) {
+       t += 0xe00;
+-    } else if (t == 0x86 || (t == 0x87 && !serf->playing_sfx())) {
+-      serf->start_playing_sfx();
++    } else if (t == 0x86 || (t == 0x87 && !serf_sfx(serf))) {
++      set_serf_sfx(serf, true);
+       play_map_sound(Audio::TypeSfxPlanting);
+       t += 0x1080;
+     } else if (t != 0x87) {
+-      serf->stop_playing_sfx();
++      set_serf_sfx(serf, false);
+       t += 0x1080;
+     }
+     break;
+@@ -1845,11 +1849,11 @@ Viewport::serf_get_body(Serf *serf) {
+     } else {
+       /* edi10 += 4; */
+       if ((t == 0xb2 || t == 0xba || t == 0xc2 || t == 0xca) &&
+-          !serf->playing_sfx()) {
+-        serf->start_playing_sfx();
++          !serf_sfx(serf)) {
++        set_serf_sfx(serf, true);
+         play_map_sound(Audio::TypeSfxBackswordBlow);
+       } else if (t != 0xb2 && t != 0xba && t != 0xc2 && t != 0xca) {
+-        serf->stop_playing_sfx();
++        set_serf_sfx(serf, false);
+       }
+       t += 0x3780;
+     }
+@@ -1867,12 +1871,12 @@ Viewport::serf_get_body(Serf *serf) {
+       /* TODO access to state without state check */
+       if (serf->get_free_walking_neg_dist1() == 0) {
+         t += 0x3d80;
+-      } else if (t == 0x83 || (t == 0x84 && !serf->playing_sfx())) {
+-        serf->start_playing_sfx();
++      } else if (t == 0x83 || (t == 0x84 && !serf_sfx(serf))) {
++        set_serf_sfx(serf, true);
+         play_map_sound(Audio::TypeSfxMowing);
+         t += 0x3e80;
+       } else if (t != 0x83 && t != 0x84) {
+-        serf->stop_playing_sfx();
++        set_serf_sfx(serf, false);
+         t += 0x3e80;
+       }
+     }
+@@ -1915,13 +1919,13 @@ Viewport::serf_get_body(Serf *serf) {
+         t += 0x4e00;
+       }
+     } else if (t == 0x84 || t == 0x85) {
+-      if (t == 0x84 || !serf->playing_sfx()) {
+-        serf->start_playing_sfx();
++      if (t == 0x84 || !serf_sfx(serf)) {
++        set_serf_sfx(serf, true);
+         play_map_sound(Audio::TypeSfxWoodHammering);
+       }
+       t += 0x4e80;
+     } else {
+-      serf->stop_playing_sfx();
++      set_serf_sfx(serf, false);
+       t += 0x4e80;
+     }
+     break;
+@@ -1947,14 +1951,14 @@ Viewport::serf_get_body(Serf *serf) {
+       }
+     } else {
+       /* edi10 += 4; */
+-      if (t == 0x83 || (t == 0xb2 && !serf->playing_sfx())) {
+-        serf->start_playing_sfx();
++      if (t == 0x83 || (t == 0xb2 && !serf_sfx(serf))) {
++        set_serf_sfx(serf, true);
+         play_map_sound(Audio::TypeSfxSawing);
+-      } else if (t == 0x87 || (t == 0xb6 && !serf->playing_sfx())) {
+-        serf->start_playing_sfx();
++      } else if (t == 0x87 || (t == 0xb6 && !serf_sfx(serf))) {
++        set_serf_sfx(serf, true);
+         play_map_sound(Audio::TypeSfxWoodHammering);
+       } else if (t != 0xb2 && t != 0xb6) {
+-        serf->stop_playing_sfx();
++        set_serf_sfx(serf, false);
+       }
+       t += 0x5880;
+     }
+@@ -1974,11 +1978,11 @@ Viewport::serf_get_body(Serf *serf) {
+       }
+     } else {
+       /* edi10 += 4; */
+-      if (t == 0x83 || (t == 0x84 && !serf->playing_sfx())) {
+-        serf->start_playing_sfx();
++      if (t == 0x83 || (t == 0x84 && !serf_sfx(serf))) {
++        set_serf_sfx(serf, true);
+         play_map_sound(Audio::TypeSfxMetalHammering);
+       } else if (t != 0x84) {
+-        serf->stop_playing_sfx();
++        set_serf_sfx(serf, false);
+       }
+       t += 0x5280;
+     }
+@@ -1987,19 +1991,19 @@ Viewport::serf_get_body(Serf *serf) {
+     if (t < 0x80) {
+       t += 0x3900;
+     } else if (t == 0x83 || t == 0x84 || t == 0x86) {
+-      if (t == 0x83 || !serf->playing_sfx()) {
+-        serf->start_playing_sfx();
++      if (t == 0x83 || !serf_sfx(serf)) {
++        set_serf_sfx(serf, true);
+         play_map_sound(Audio::TypeSfxGeologistSampling);
+       }
+       t += 0x4c80;
+     } else if (t == 0x8c || t == 0x8d) {
+-      if (t == 0x8c || !serf->playing_sfx()) {
+-        serf->start_playing_sfx();
++      if (t == 0x8c || !serf_sfx(serf)) {
++        set_serf_sfx(serf, true);
+         play_map_sound(Audio::TypeSfxResourceFound);
+       }
+       t += 0x4c80;
+     } else {
+-      serf->stop_playing_sfx();
++      set_serf_sfx(serf, false);
+       t += 0x4c80;
+     }
+     break;
+@@ -2016,9 +2020,9 @@ Viewport::serf_get_body(Serf *serf) {
+       if (serf->get_state() == Serf::StateKnightAttacking ||
+           serf->get_state() == Serf::StateKnightAttackingFree) {
+         if (serf->get_counter() >= 24 || serf->get_counter() < 8) {
+-          serf->stop_playing_sfx();
+-        } else if (!serf->playing_sfx()) {
+-          serf->start_playing_sfx();
++          set_serf_sfx(serf, false);
++        } else if (!serf_sfx(serf)) {
++          set_serf_sfx(serf, true);
+           if (serf->get_attacking_field_D() == 0 ||
+               serf->get_attacking_field_D() == 4) {
+             play_map_sound(Audio::TypeSfxFight01);
+@@ -2038,13 +2042,13 @@ Viewport::serf_get_body(Serf *serf) {
+   }
+     break;
+   case Serf::TypeDead:
+-    if ((!serf->playing_sfx() &&
++    if ((!serf_sfx(serf) &&
+          (t == 2 || t == 5)) ||
+         (t == 1 || t == 4)) {
+-      serf->start_playing_sfx();
++      set_serf_sfx(serf, true);
+       play_map_sound(Audio::TypeSfxSerfDying);
+     } else {
+-      serf->stop_playing_sfx();
++      set_serf_sfx(serf, false);
+     }
+     t += 0x8700;
+     break;
+diff --git a/src/viewport.h b/src/viewport.h
+index 181bff1..6bd297f 100644
+--- a/src/viewport.h
++++ b/src/viewport.h
+@@ -25,10 +25,12 @@
+ #include <map>
+ #include <unordered_map>
+ #include <memory>
++#include <set>
+ 
+ #include "src/gui.h"
+ #include "src/map.h"
+ #include "src/building.h"
++#include "src/serf.h"
+ 
+ class Interface;
+ class DataSource;
+@@ -207,6 +209,24 @@ class Viewport : public GuiObject, public Map::Handler {
+      that ended the road being built (it joined a road or a flag) - the
+      double click of it would begin a new road at the flag there. */
+   int road_end_clicks;
++  /* The mills whose sound played in this turn of the wheel. */
++  std::set<unsigned int> mill_sfx;
++  /* The sounds of the map view, by serf and building index: kept here, not
++     in the serfs and buildings (their sound bits), as a view of one player
++     must not change the game - in a LAN game the other side would differ
++     (its saves, the sums). */
++  std::set<unsigned int> serf_sfx_on;
++  std::set<unsigned int> building_sfx_on;
++  bool serf_sfx(const Serf *serf) const {
++    return serf_sfx_on.count(serf->get_index()) != 0; }
++  void set_serf_sfx(const Serf *serf, bool on) {
++    if (on) serf_sfx_on.insert(serf->get_index());
++    else serf_sfx_on.erase(serf->get_index()); }
++  bool building_sfx(const Building *building) const {
++    return building_sfx_on.count(building->get_index()) != 0; }
++  void set_building_sfx(const Building *building, bool on) {
++    if (on) building_sfx_on.insert(building->get_index());
++    else building_sfx_on.erase(building->get_index()); }
+   virtual bool handle_drag(int x, int y);
+ 
+   Frame *get_tile_frame(unsigned int tid, int tc, int tr);
+-- 
+2.45.2.windows.1
+
