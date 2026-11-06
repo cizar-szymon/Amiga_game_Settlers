@@ -685,8 +685,17 @@ static void read_peer(void)
 {
   long n = recv(peer_fd, in_buf + in_len, sizeof(in_buf) - in_len, 0);
   if (n <= 0) {
-    if (n < 0 && Errno() == EWOULDBLOCK) return;
-    drop_peer("Disconnected.");
+    long e = (n < 0) ? Errno() : 0;
+    char why[32];
+    /* EINTR: a signal of the task came during recv (the game wakes this
+       process), not the end of the connection. */
+    if (n < 0 && (e == EWOULDBLOCK || e == EINTR)) return;
+    if (n == 0) {
+      snprintf(why, sizeof(why), "Disconnected (closed).");
+    } else {
+      snprintf(why, sizeof(why), "Disconnected (error %ld).", e);
+    }
+    drop_peer(why);
     return;
   }
   count_bytes_in += n;

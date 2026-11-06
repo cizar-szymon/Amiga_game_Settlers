@@ -5,6 +5,8 @@
 
 #include "port/lan-amiga.h"
 
+#include "src/log.h"
+
 #include "port/amiga_net.h"
 #include "port/settlers_version.h"
 
@@ -69,6 +71,7 @@ LanLinkAmiga::poll() {
         break;
       case NEV_ERROR:
         message = ev.text1;
+        Log::Warn["lan"] << "Link error: " << ev.text1;
         /* What was asked for is off, unless a server only turned away a
            player (another version). */
         if (ev.value != 0) {
@@ -108,6 +111,7 @@ LanLinkAmiga::poll() {
         break;
       case NEV_LOST:
         message = ev.text1;
+        Log::Warn["lan"] << "Link lost: " << ev.text1;
         forget_peer();
         state = server ? StateServing : StateIdle;
         break;
