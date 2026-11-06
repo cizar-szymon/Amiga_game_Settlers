@@ -44,6 +44,10 @@ class EventLoopAmiga : public EventLoop {
   int drag_dist;
   unsigned int last_click[4];
   int last_click_x, last_click_y;
+  /* Auto repeat of the + and - buttons: the left button held, when it
+     repeats next (0: no more in this press), how many times it did. */
+  unsigned int hold_next;
+  int hold_count;
   std::string stats_lines[4];
   std::string fps_text;
   std::string message_text;
@@ -60,6 +64,7 @@ class EventLoopAmiga : public EventLoop {
  protected:
   void handle_event(const AmigaEvent &ev);
   void handle_key(const AmigaEvent &ev);
+  void check_hold();
   void draw_stats(class Frame *screen);
   void draw_message(class Frame *screen);
   void save_state();

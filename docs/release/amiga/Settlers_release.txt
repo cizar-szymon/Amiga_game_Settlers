@@ -76,7 +76,7 @@ Gra LAN:
   lewo od FPS.
 - Gdy gra sie konczy (wyjscie gracza, zerwane polaczenie), obie Amigi ja
   zapisuja: LAN_ERR_<rrmmdd>_<ggmmss>.
-- Gdy gry sie rozejda (OUT OF STEP): zapis obu stron SYNC_ERR_..M / ..S,
+- Gdy gry sie rozejda (OUT OF STEP): zapis obu stron SYNC_..M / ..S,
   potem serwer wysyla swoja gre drugiemu graczowi (resync) i obie graja
   dalej zgodnie. Ctrl+Shift+R - resync na zyczenie.
 

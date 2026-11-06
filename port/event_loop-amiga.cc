@@ -34,6 +34,12 @@ void (*settlers_frame_check)(const char *where) = nullptr;
 /* How fast consecutive clicks make a double click, and how far the mouse
    may move between them (as in event_loop-sdl.cc). */
 #define MOUSE_TIME_SENSITIVITY  600
+/* The + and - buttons held: the first repeat after HOLD_DELAY ms, then
+   one each HOLD_SLOW ms, after HOLD_FAST_AFTER repeats each HOLD_FAST. */
+#define HOLD_DELAY       400
+#define HOLD_SLOW        120
+#define HOLD_FAST         50
+#define HOLD_FAST_AFTER   10
 #define MOUSE_MOVE_SENSITIVITY  8
 
 EventLoop &
@@ -93,6 +99,8 @@ EventLoopAmiga::EventLoopAmiga()
   , drag_dist(0)
   , last_click_x(0)
   , last_click_y(0)
+  , hold_next(0)
+  , hold_count(0)
   , message_until(0) {
   start_ms = static_cast<unsigned int>(amiga_now_ms());
   for (int i = 0; i < 4; i++) {
@@ -183,6 +191,13 @@ EventLoopAmiga::handle_event(const AmigaEvent &ev) {
       if (ev.down) {
         buttons_down[b] = 1;
         if (b == Event::ButtonRight) right_used = false;
+        if (b == Event::ButtonLeft) {
+          hold_next = get_ticks() + HOLD_DELAY;
+          if (hold_next == 0) hold_next = 1;
+          hold_count = 0;
+        } else {
+          hold_next = 0;  /* Both buttons: no repeat. */
+        }
         last_x = ev.x;
         last_y = ev.y;
         break;
@@ -190,6 +205,22 @@ EventLoopAmiga::handle_event(const AmigaEvent &ev) {
       buttons_down[b] = 0;
       int x = ev.x;
       int y = ev.y;
+      if (b == Event::ButtonLeft) {
+        bool repeated = hold_count > 0;
+        hold_next = 0;
+        hold_count = 0;
+        if (repeated) {
+          /* The held + or - button acted already: the release is no
+             click (one step more) and starts no double click. */
+          if (drag_button == b) {
+            drag_button = 0;
+            dragged = false;
+            drag_dist = 0;
+          }
+          last_click[b] = 0;
+          break;
+        }
+      }
       /* Left clicked with the right button held (the original's way to
          switch the building sites on the build button): one click of
          both, and the right button gives none when it is let go. */
@@ -230,7 +261,11 @@ EventLoopAmiga::handle_event(const AmigaEvent &ev) {
         x = drag_x;
         y = drag_y;
       }
-      notify_click(x, y, static_cast<Event::Button>(b));
+      int modifier = 0;
+      if (ev.qual & AQUAL_CTRL) modifier |= 1;
+      if (ev.qual & AQUAL_SHIFT) modifier |= 2;
+      if (ev.qual & AQUAL_ALT) modifier |= 4;
+      notify_click(x, y, static_cast<Event::Button>(b), modifier);
 
       unsigned int now = get_ticks();
       if (now - last_click[b] < MOUSE_TIME_SENSITIVITY &&
@@ -280,6 +315,26 @@ EventLoopAmiga::handle_event(const AmigaEvent &ev) {
     default:
       break;
   }
+}
+
+/* The left button held: the box under the pointer repeats its + or -
+   button; when nothing there repeats, no more in this press. */
+void
+EventLoopAmiga::check_hold() {
+  if (hold_next == 0) return;
+  if (!buttons_down[Event::ButtonLeft] || buttons_down[Event::ButtonRight]) {
+    hold_next = 0;
+    return;
+  }
+  unsigned int now = get_ticks();
+  if (static_cast<int>(now - hold_next) < 0) return;
+  if (!notify_hold(last_x, last_y)) {
+    hold_next = 0;
+    return;
+  }
+  hold_count++;
+  hold_next = now + ((hold_count > HOLD_FAST_AFTER) ? HOLD_FAST : HOLD_SLOW);
+  if (hold_next == 0) hold_next = 1;
 }
 
 /* F10: the whole game state for bug reports (the standard of the ports):
@@ -383,6 +438,7 @@ EventLoopAmiga::run() {
       deferred_calls.pop_front();
     }
     if (!running) break;
+    check_hold();
 
     if (video.mode_pending()) {
       /* Between frames: a new screen, then the GUI laid out again. */

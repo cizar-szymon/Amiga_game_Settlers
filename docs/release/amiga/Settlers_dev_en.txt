@@ -126,7 +126,7 @@ The end of a game for a test: the option LANTEST, in a LAN game
 Ctrl+Shift+W - the player of this computer wins at once (on both).
 Games apart for a test: the option LANTEST, Ctrl+Shift+X - this game
 alone draws one more random number; OUT OF STEP within a few s, the
-SYNC_ERR saves and the resync. Ctrl+Shift+R (no LANTEST): a resync.
+SYNC_ saves and the resync. Ctrl+Shift+R (no LANTEST): a resync.
 
 Tests: lansim (the same game without a network; -l two games in
 lockstep, -s/-r sand/rocks, the time of the checksum), lantest (the

@@ -209,21 +209,27 @@ During the game:
 - When one player leaves the game (or the link breaks), the other sees a
   notice and goes back to the start menu after 4 s.
 - When the games go apart (LAN: OUT OF STEP), both Amigas save the game
-  of the same step: SYNC_ERR_<yymmdd>_<hhmm>M (server) and ...S (the
+  of the same step: SYNC_<yymmdd>_<hhmmss>M (server) and ...S (the
   player who joined). Then the server sends its game to the other player
   (resync): that Amiga stops for a moment, loads it and both go on alike.
   In the chat: RESYNC DONE.
 - A LAN game saves itself when it ends (a player leaves, the link
   breaks) - on both Amigas, the file LAN_ERR_<date>_<time of the end> (LAN in the
-  list of saves); go on with it as with any LAN save, below.
+  list of LAN saves); go on with it as with any LAN save, below.
 
 Saving and going on:
-- Save with the usual Save box. Saves of LAN games show a yellow LAN in
-  the list (files name.lan.save).
-- The one who sets up: Load game -> a LAN save -> Start (or a double
-  click) opens the server box with that save; then RUN SERVER, START
-  GAME. The save goes to the other Amiga, both go on from there. The
-  server box can also choose a save with SAVED GAME.
+- Save with the usual Save box. In a LAN game the Save box lists the
+  saves of LAN games only (files name.lan.save, a yellow LAN in the
+  list), in a normal game the normal saves only; Load game at the start
+  has the normal saves only.
+- The one who sets up: in the server box LOAD GAME -> a LAN save -> USE
+  GAME (or a double click); then RUN SERVER, START GAME. The save goes to
+  the other Amiga, both go on from there. DELETE removes the chosen LAN
+  save from the disk (after a question: YES / NO).
+- Several saves at once (Load game and LOAD GAME of the LAN box): Shift
+  click (or Ctrl click) marks more saves and unmarks them, a normal click
+  goes back to one; DELETE removes all the marked ones (the question
+  says how many).
 
 
 ICON SETTINGS (Tool Types)

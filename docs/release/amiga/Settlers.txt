@@ -199,21 +199,26 @@ W czasie gry:
 - Gdy jeden gracz wyjdzie z gry (albo zerwie sie polaczenie), drugi
   widzi komunikat i po 4 s wraca do menu startowego.
 - Gdy gry sie rozejda (LAN: OUT OF STEP), obie Amigi same zapisuja gre
-  z tego samego kroku: SYNC_ERR_<rrmmdd>_<ggmm>M (serwer) i ...S (gracz,
+  z tego samego kroku: SYNC_<rrmmdd>_<ggmmss>M (serwer) i ...S (gracz,
   ktory dolaczyl). Potem serwer wysyla swoja gre drugiemu graczowi
   (resync): ta Amiga staje na chwile, wczytuje ja i obie graja dalej
   zgodnie. W czacie: RESYNC DONE.
 - Gra LAN zapisuje sie sama, gdy sie konczy (wyjscie gracza, zerwane
   polaczenie) - u obu graczy, plik LAN_ERR_<data>_<godzina konca> (LAN na
-  liscie zapisow); dalsza gra jak z kazdym zapisem LAN, nizej.
+  liscie zapisow LAN); dalsza gra jak z kazdym zapisem LAN, nizej.
 
 Zapis i dalsza gra:
-- Zapisuj zwyklym oknem Save. Zapisy gier LAN maja na liscie zolte LAN
-  (pliki nazwa.lan.save).
-- Zakladajacy: Load game -> zapis LAN -> Start (albo dwuklik) otwiera
-  okno serwera z tym zapisem; dalej RUN SERVER, START GAME. Zapis idzie
-  do drugiej Amigi, obie graja dalej od tego miejsca. W oknie serwera
-  mozna tez wybrac zapis przyciskiem SAVED GAME.
+- Zapisuj zwyklym oknem Save. W grze LAN okno Save pokazuje tylko zapisy
+  gier LAN (pliki nazwa.lan.save, na liscie zolte LAN), w zwyklej grze
+  tylko zwykle zapisy; Load game na starcie ma tylko zwykle zapisy.
+- Zakladajacy: w oknie serwera przycisk LOAD GAME -> zapis LAN -> USE
+  GAME (albo dwuklik); dalej RUN SERVER, START GAME. Zapis idzie do
+  drugiej Amigi, obie graja dalej od tego miejsca. DELETE kasuje
+  wybrany zapis LAN z dysku (po pytaniu: YES / NO).
+- Kilka zapisow naraz (Load game i LOAD GAME okna LAN): Shift+klik (albo
+  Ctrl+klik) zaznacza kolejne zapisy i zdejmuje zaznaczenie, zwykly klik
+  wraca do jednego; DELETE kasuje wszystkie zaznaczone (pytanie podaje
+  ich liczbe).
 
 
 USTAWIENIA W IKONIE (Tool Types)
