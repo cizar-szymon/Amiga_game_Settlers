@@ -6,6 +6,18 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.124 (6.11.2026, beta release)
+-------------------------------
+
+- F10: the report RAM:Settlers-state.txt also gives the place of the map
+  view and of the mouse pointer; the option VIEW=col,row (with LOAD=)
+  sets the view there after loading - a bug report shows exactly what
+  the player saw.
+- The shores of the water are drawn whole, no black dots on the land by
+  the water.
+- LAN game: both sides need version 0.124.
+
+
 0.123 (6.11.2026, beta release)
 -------------------------------
 

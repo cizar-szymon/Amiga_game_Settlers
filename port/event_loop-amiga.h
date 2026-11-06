@@ -27,6 +27,8 @@ class EventLoopAmiga : public EventLoop {
      the last (Z), +1 a step more (wheel up), -1 a step less (wheel
      down). */
   std::function<void(int)> on_zoom;
+  /* More lines of the F10 report (main: where the map view is). */
+  std::function<std::string()> state_info;
 
  protected:
   std::list<DeferredCall> deferred_calls;

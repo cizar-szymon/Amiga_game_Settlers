@@ -190,6 +190,8 @@ class VideoAmiga : public Video {
   virtual void set_cursor(void *data, unsigned int width,
                           unsigned int height);
   void set_mouse(int x, int y) { mouse_x = x; mouse_y = y; }
+  void get_mouse(unsigned int *x, unsigned int *y) const {
+    *x = static_cast<unsigned int>(mouse_x); *y = static_cast<unsigned int>(mouse_y); }
 
   /* Another screen mode (the Options box): set_resolution() only asks for
      it; the game loop calls apply_mode() between frames. */

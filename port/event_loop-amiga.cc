@@ -374,6 +374,9 @@ EventLoopAmiga::save_state() {
             game->is_paused() ? " (paused)" : "", w, h,
             VideoAmiga::render_vram ? "RENDER=VRAM" : "RENDER=FAST");
     fprintf(f, "save: RAM:Settlers-state.save (%s)\n", ok ? "ok" : "FAILED");
+    if (state_info) {
+      fprintf(f, "%s\n", state_info().c_str());
+    }
     fclose(f);
   }
   message_text = ok ? "STATE SAVED: RAM:SETTLERS-STATE.SAVE"

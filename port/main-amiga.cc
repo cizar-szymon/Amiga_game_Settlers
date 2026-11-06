@@ -67,6 +67,9 @@ max_map_zoom(unsigned int width, unsigned int height) {
 
 static std::list<std::string> data_dirs;
 static std::string save_file;
+/* VIEW=col,row (with LOAD): the map view there at the start - the place of
+   an F10 report ("view" line). */
+static int view_col = -1, view_row = -1;
 static unsigned int width = 640, height = 480;
 static bool mode_given = false;
 /* FREEZE: the loaded game paused (screenshots to compare). */
@@ -107,6 +110,10 @@ parse_option(const char *a) {
     data_dirs.push_back(v);
   } else if ((v = option_value(a, "LOAD")) != nullptr) {
     save_file = v;
+  } else if ((v = option_value(a, "VIEW")) != nullptr) {
+    if (sscanf(v, "%d,%d", &view_col, &view_row) != 2) {
+      view_col = view_row = -1;
+    }
   } else if ((v = option_value(a, "DEBUG")) != nullptr) {
     int d = atoi(v);
     if (d >= 0 && d < Log::LevelMax) {
@@ -275,10 +282,35 @@ main(int argc, char *argv[]) {
 
     if (save_file.empty()) {
       interface.open_game_init();
+    } else if (view_col >= 0 && interface.get_viewport() != nullptr &&
+               interface.get_game()) {
+      PMap map = interface.get_game()->get_map();
+      interface.get_viewport()->move_to_map_pos(map->pos(view_col, view_row));
     }
 
     EventLoopAmiga &event_loop =
       static_cast<EventLoopAmiga &>(EventLoop::get_instance());
+    /* The F10 report says where the view is (VIEW= shows it again). */
+    event_loop.state_info = [&interface]() {
+      std::string text;
+      Viewport *viewport = interface.get_viewport();
+      PGame game = interface.get_game();
+      if (viewport != nullptr && game) {
+        PMap map = game->get_map();
+        MapPos c = viewport->get_current_map_pos();
+        MapPos cur = interface.get_map_cursor_pos();
+        unsigned int mx = 0, my = 0;
+        static_cast<VideoAmiga &>(Video::get_instance()).get_mouse(&mx, &my);
+        text = "view " + std::to_string(map->pos_col(c)) + "," +
+               std::to_string(map->pos_row(c)) + " (VIEW=), map cursor " +
+               std::to_string(map->pos_col(cur)) + "," +
+               std::to_string(map->pos_row(cur)) + ", pointer " +
+               std::to_string(mx) + "," + std::to_string(my) +
+               ", map zoom " +
+               std::to_string(Graphics::get_instance().get_map_zoom());
+      }
+      return text;
+    };
     event_loop.on_mode_change = [&interface, screen_frame]() {
       unsigned int w = 0, h = 0;
       Graphics::get_instance().get_resolution(&w, &h);

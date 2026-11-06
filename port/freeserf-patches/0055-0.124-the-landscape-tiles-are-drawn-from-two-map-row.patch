@@ -1,0 +1,48 @@
+From 1316519ee9faa96601e8b36efacd16e49211976b Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Fri, 6 Nov 2026 23:08:21 +0100
+Subject: [PATCH] 0.124: the landscape tiles are drawn from two map rows above
+ (the last mask row of a triangle at height 0 above the tile was missing:
+ black dots along the shores)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7U35RuKvTQMs84jNJEFhT
+---
+ src/viewport.cc | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
+
+diff --git a/src/viewport.cc b/src/viewport.cc
+index b2f80da..91d6bb0 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -353,15 +353,24 @@ Viewport::draw_tile(int tc, int tr) {
+ 
+   int col = (tc*MAP_TILE_COLS + (tr*MAP_TILE_ROWS)/2) % map->get_cols();
+   int row = tr*MAP_TILE_ROWS;
+-  MapPos pos = map->pos(col, row);
++  /* From two map rows above the tile (one column left: the same place on
++     the screen): a triangle of the row above whose lower corners are at
++     height 0 (water) ends with the last row of its mask in the first row
++     of the tile - started at the tile's own row, nothing drew it there: a
++     dotted black line along the shores (user report). What is above the
++     tile is clipped. */
++  int cols = static_cast<int>(map->get_cols());
++  int rows = static_cast<int>(map->get_rows());
++  MapPos pos = map->pos((col - 1 + cols) % cols, (row - 2 + rows) % rows);
++  const int y_top = -2*MAP_TILE_HEIGHT;
+ 
+   int x_base = -(MAP_TILE_WIDTH/2);
+ 
+   /* Draw one extra column as half a column will be outside the
+    map tile on both right and left side.. */
+   for (int col = 0; col < MAP_TILE_COLS+1; col++) {
+-    draw_up_tile_col(pos, x_base, 0, tile_height, tile_frame.get());
+-    draw_down_tile_col(pos, x_base + MAP_TILE_WIDTH/2, 0, tile_height,
++    draw_up_tile_col(pos, x_base, y_top, tile_height, tile_frame.get());
++    draw_down_tile_col(pos, x_base + MAP_TILE_WIDTH/2, y_top, tile_height,
+                        tile_frame.get());
+ 
+     pos = map->move_right(pos);
+-- 
+2.45.2.windows.1
+

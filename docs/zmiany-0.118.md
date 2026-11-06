@@ -75,6 +75,15 @@ Wydane na prośbę użytkownika (łatka Freeserf `0050`); potwierdzone przez uż
 | 2 | Suwaki i przyciski w oknach ustawień przestawiają się po jednym kliknięciu (okno przerysowane po wykonaniu polecenia) | ✅ |
 | 3 | Dźwięk przy wysłaniu geologa, awansie na rycerzy i łączeniu dróg mówi, czy się udało | ✅ |
 
+## 0.124 (6.11.2026)
+
+Łatka Freeserf `0055`.
+
+| Nr | Zmiana | Stan |
+|---|---|---|
+| 1 | Raport F10 podaje miejsce widoku i wskaźnika; opcja `VIEW=kol,wiersz` (z `LOAD=`) | ✅ WinUAE |
+| 2 | Kreska czarnych kropek przy brzegu wody: kafelki terenu rysowane od dwóch wierszy mapy wyżej (trójkąt wiersza wyżej na wysokości 0 kończył się w pierwszym wierszu kafelka) | ✅ WinUAE (zrzut przed/po) |
+
 ## 0.123 (6.11.2026)
 
 Łatka Freeserf `0054`.

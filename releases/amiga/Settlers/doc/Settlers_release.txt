@@ -6,6 +6,18 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.124 (6.11.2026, wydanie beta)
+-------------------------------
+
+- F10: raport RAM:Settlers-state.txt podaje tez miejsce widoku mapy
+  i wskaznika myszy; opcja VIEW=kol,wiersz (z LOAD=) ustawia widok
+  w tym miejscu po wczytaniu zapisu - zgloszenie bledu pokazuje
+  dokladnie to, co widzial gracz.
+- Brzegi wody rysowane w calosci, bez czarnych kropek na ladzie przy
+  wodzie.
+- Gra LAN: obie strony musza miec wersje 0.124.
+
+
 0.123 (6.11.2026, wydanie beta)
 -------------------------------
 
