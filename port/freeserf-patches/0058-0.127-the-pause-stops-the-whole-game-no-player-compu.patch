@@ -1,0 +1,87 @@
+From fe635266d02609af50c23d60516eb5bcac67b394 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sat, 7 Nov 2026 16:01:18 +0100
+Subject: [PATCH] 0.127: the pause stops the whole game (no player, computer
+ player, flag, building or serf works) and refuses the commands of the play
+
+---
+ src/game.cc        | 11 +++++++++++
+ src/interface.cc   |  5 +++++
+ src/lan-command.cc |  3 +++
+ src/lan-command.h  |  8 ++++++++
+ 4 files changed, 27 insertions(+)
+
+diff --git a/src/game.cc b/src/game.cc
+index 4bcf8c7..3c0d7dd 100644
+--- a/src/game.cc
++++ b/src/game.cc
+@@ -953,6 +953,17 @@ Game::update() {
+   /* Increment tick counters */
+   const_tick += 1;
+ 
++  /* Paused: nothing of the game works - no player, no computer player, no
++     flag, building or serf (in the original only the clock of the game
++     stood, the rest went on: the computer players kept deciding). Only
++     the counter of the frames above (the interface). The same on both
++     sides of a LAN game: the pause is a command of the same step. */
++  if (game_speed == 0) {
++    last_tick = tick;
++    tick_diff = 0;
++    return;
++  }
++
+   /* Update tick counters based on game speed */
+   last_tick = tick;
+   tick += game_speed;
+diff --git a/src/interface.cc b/src/interface.cc
+index 5d7890b..76f775d 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -508,6 +508,11 @@ Interface::command(const LanCommand &cmd) {
+   if (!game) return false;
+   LanCommand c = cmd;
+   c.player = static_cast<uint8_t>(player->get_index());
++  /* Paused: nothing of the play (not even sent in a LAN game). */
++  if (game->is_paused() && c.is_play()) {
++    play_sound(Audio::TypeSfxNotAccepted);
++    return false;
++  }
+   if (lan_game) {
+     lan_game->queue(c);
+     return true;
+diff --git a/src/lan-command.cc b/src/lan-command.cc
+index b02b877..3610e07 100644
+--- a/src/lan-command.cc
++++ b/src/lan-command.cc
+@@ -136,6 +136,9 @@ bool
+ LanCommand::apply(Game *game) const {
+   Player *p = game->get_player(player);
+   if (p == nullptr) return false;
++  /* Nothing of the play while the game is paused (both sides of a LAN game
++     the same: the pause is a command too). */
++  if (game->is_paused() && is_play()) return false;
+   switch (type) {
+     case TypeBuildFlag:
+       return game->build_flag(pos, p);
+diff --git a/src/lan-command.h b/src/lan-command.h
+index 8eed404..407c48c 100644
+--- a/src/lan-command.h
++++ b/src/lan-command.h
+@@ -87,6 +87,14 @@ class LanCommand {
+   Road road;
+ 
+   LanCommand();
++
++  /* A command of the play (building, roads, demolishing, settings ...),
++     not the pause, the speed or the LAN commands: refused while the game
++     is paused. */
++  bool is_play() const {
++    return type != TypePause && type != TypeSpeed && type != TypeTestWin &&
++           type != TypeDump && type != TypeResync;
++  }
+   LanCommand(Type type, unsigned int player, MapPos pos = 0, int a = 0,
+              int b = 0, int c = 0);
+ 
+-- 
+2.45.2.windows.1
+

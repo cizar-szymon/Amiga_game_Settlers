@@ -6,6 +6,16 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.127 (7.11.2026, wydanie beta)
+-------------------------------
+
+- Pauza (klawisz P): cala gra stoi - gracze komputerowi, osadnicy,
+  budynki i transport nic nie robia; w czasie pauzy nie mozna budowac,
+  burzyc ani zmieniac ustawien (dzwiek odmowy). Pauza i tempo gry
+  dzialaja jak zawsze.
+- Gra LAN: obie strony musza miec wersje 0.127.
+
+
 0.126 (7.11.2026, wydanie beta)
 -------------------------------
 

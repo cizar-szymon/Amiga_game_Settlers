@@ -6,6 +6,16 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.127 (7.11.2026, beta release)
+-------------------------------
+
+- Pause (the P key): the whole game stands still - the computer players,
+  the serfs, the buildings and the transport do nothing; while paused,
+  nothing can be built, demolished or set (a refusal sound). The pause
+  and the game speed work as always.
+- LAN game: both sides need version 0.127.
+
+
 0.126 (7.11.2026, beta release)
 -------------------------------
 
