@@ -1,0 +1,472 @@
+From 10d8ac74f843334cf978c24ee0b59606fe91cad8 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sat, 7 Nov 2026 23:38:34 +0100
+Subject: [PATCH] 0.130 TEST: palms felled with Terraforming wasteland (a
+ falling palm drawn turned from the game's palm), cacti and bones go with the
+ greened sand, progress of loading a saved game, save sections read at once
+ (20-last load 8.1 -> 5.8 s)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7U35RuKvTQMs84jNJEFhT
+---
+ src/advanced-box.cc |  7 +++--
+ src/configfile.cc   |  7 +++++
+ src/configfile.h    | 11 ++++++++
+ src/game.cc         | 19 +++++++++++++
+ src/gfx.cc          | 56 +++++++++++++++++++++++++++++++++++++
+ src/gfx.h           |  4 +++
+ src/savegame.cc     | 67 +++++++++++++++++++++++++++++++++++++++++----
+ src/savegame.h      |  6 ++++
+ src/serf.cc         | 17 ++++++++++--
+ src/serf.h          |  4 +++
+ src/viewport.cc     | 13 ++++++++-
+ 11 files changed, 200 insertions(+), 11 deletions(-)
+
+diff --git a/src/advanced-box.cc b/src/advanced-box.cc
+index 18b71b1..7175e1f 100644
+--- a/src/advanced-box.cc
++++ b/src/advanced-box.cc
+@@ -202,12 +202,13 @@ static const Option video_options[] = {
+     N_("A few dark brown wild boars among the trees, with their sounds. "
+        "Only the picture: the game stays the same.") },
+   /* Terraforming wasteland: the foresters plant on sand (the sand around a
+-     new tree is grass), the lumberjacks fell dead trees too (first). */
++     new tree is grass), the lumberjacks fell dead trees too (first) and
++     palms. */
+   { N_("Terraforming wasteland"), &Interface::get_terraforming, nullptr,
+     &Interface::switch_terraforming, nullptr,
+     N_("Foresters plant on sand first, the sand around a new tree turns "
+-       "to grass for good. Lumberjacks fell dead trees first (no lumber), "
+-       "stonecutters break the brown boulders (no stone). New games and "
++       "to grass for good (cacti and bones go). Lumberjacks fell dead trees "
++       "first (no lumber), palms too, stonecutters break the brown boulders (no stone). New games and "
+        "the game now; in a LAN game the server's setting counts.") },
+   /* When the logic of a large game is slower than the game. */
+   { N_("Large games"), nullptr, large_games_text,
+diff --git a/src/configfile.cc b/src/configfile.cc
+index 1f37cf6..912f69d 100644
+--- a/src/configfile.cc
++++ b/src/configfile.cc
+@@ -99,6 +99,8 @@ ConfigFile::trim(const std::string &str) {
+   return tmp;
+ }
+ 
++void (*ConfigFile::read_progress)(size_t bytes) = nullptr;
++
+ bool
+ ConfigFile::read(std::istream *is) {
+   std::setlocale(LC_ALL, "en_US.UTF-8");
+@@ -106,11 +108,16 @@ ConfigFile::read(std::istream *is) {
+   PValues section = std::make_shared<Values>();
+   data["global"] = section;
+   size_t line_number = 0;
++  size_t bytes = 0;
+ 
+   while (!is->eof() && !is->fail()) {
+     std::string line;
+     getline(*is, line);
+     line_number++;
++    bytes += line.size() + 1;
++    if (read_progress != nullptr && (line_number & 511) == 0) {
++      read_progress(bytes);
++    }
+     line = trim(line);
+     if (line.empty()) {
+       continue;
+diff --git a/src/configfile.h b/src/configfile.h
+index 8e7f3eb..8d1fffd 100644
+--- a/src/configfile.h
++++ b/src/configfile.h
+@@ -39,6 +39,10 @@ class ConfigFile {
+   ConfigFile();
+   virtual ~ConfigFile();
+ 
++  /* While read() runs: called now and then with the bytes read so far
++     (the progress of loading a game). */
++  static void (*read_progress)(size_t bytes);
++
+   bool load(const std::string &path);
+   bool save(const std::string &path);
+ 
+@@ -47,6 +51,13 @@ class ConfigFile {
+ 
+   std::list<std::string> get_sections() const;
+   std::list<std::string> get_values(const std::string &section) const;
++  /* The names and values of a section at once (nullptr: none) - loading a
++     game read them one by one, each looked up again (0.130). */
++  const std::map<std::string, std::string> *
++  section_values(const std::string &section) const {
++    Sections::const_iterator sect = data.find(section);
++    return sect == data.end() ? nullptr : sect->second.get();
++  }
+ 
+   bool contains(const std::string &section, const std::string &name) const {
+     if (data.find(section) == data.end()) {
+diff --git a/src/game.cc b/src/game.cc
+index 7359ad8..acfbdbc 100644
+--- a/src/game.cc
++++ b/src/game.cc
+@@ -132,6 +132,13 @@ green_place(Map *map, MapPos pos) {
+   if (!is_sand(up) && !is_sand(down)) return;
+   map->set_types(pos, is_sand(up) ? Map::TerrainGrass1 : up,
+                  is_sand(down) ? Map::TerrainGrass1 : down);
++  /* What belongs to the desert goes with it: cacti and the bones of
++     animals on the place (0.130). */
++  Map::Object obj = map->get_obj(pos);
++  if (obj == Map::ObjectCactus0 || obj == Map::ObjectCactus1 ||
++      obj == Map::ObjectCadaver0 || obj == Map::ObjectCadaver1) {
++    map->set_object(pos, Map::ObjectNone, -1);
++  }
+ }
+ 
+ /* A tree planted at pos turns the sand around it to grass: the place and
+@@ -3337,7 +3344,14 @@ operator >> (SaveReaderText &reader, Game &game) {
+ 
+   /* Initialize remaining map dimensions. */
+   game.map.reset(new Map(MapGeometry(size)));
++  /* The parts of the game, for the progress of loading. */
++  unsigned int parts = 0, parts_done = 0;
++  for (const char *name : {"map", "player", "flag", "building", "inventory",
++                           "serf"}) {
++    parts += static_cast<unsigned int>(reader.get_sections(name).size());
++  }
+   for (SaveReaderText* subreader : reader.get_sections("map")) {
++    load_progress_parts(++parts_done, parts);
+     *subreader >> *game.map;
+   }
+ 
+@@ -3438,6 +3452,7 @@ operator >> (SaveReaderText &reader, Game &game) {
+   game.map->set_update_state(update_state);
+ 
+   for (SaveReaderText* subreader : reader.get_sections("player")) {
++    load_progress_parts(++parts_done, parts);
+     Player *p = game.players.get_or_insert(subreader->get_number());
+     *subreader >> *p;
+     /* Older saves did not use the AI slots. */
+@@ -3445,22 +3460,26 @@ operator >> (SaveReaderText &reader, Game &game) {
+   }
+ 
+   for (SaveReaderText* subreader : reader.get_sections("flag")) {
++    if ((++parts_done & 63) == 0) load_progress_parts(parts_done, parts);
+     Flag *p = game.flags.get_or_insert(subreader->get_number());
+     *subreader >> *p;
+   }
+ 
+   sections = reader.get_sections("building");
+   for (SaveReaderText* subreader : reader.get_sections("building")) {
++    if ((++parts_done & 63) == 0) load_progress_parts(parts_done, parts);
+     Building *p = game.buildings.get_or_insert(subreader->get_number());
+     *subreader >> *p;
+   }
+ 
+   for (SaveReaderText* subreader : reader.get_sections("inventory")) {
++    load_progress_parts(++parts_done, parts);
+     Inventory *p = game.inventories.get_or_insert(subreader->get_number());
+     *subreader >> *p;
+   }
+ 
+   for (SaveReaderText* subreader : reader.get_sections("serf")) {
++    if ((++parts_done & 63) == 0) load_progress_parts(parts_done, parts);
+     Serf *p = game.serfs.get_or_insert(subreader->get_number());
+     *subreader >> *p;
+   }
+diff --git a/src/gfx.cc b/src/gfx.cc
+index 9a0f1cb..6a41998 100644
+--- a/src/gfx.cc
++++ b/src/gfx.cc
+@@ -324,6 +324,62 @@ Frame::draw_sprite_variant(int x, int y, Data::Resource res,
+                     y + image->get_offset_y(), 0, video_frame);
+ }
+ 
++void
++Frame::draw_sprite_turned(int x, int y, Data::Resource res,
++                          unsigned int index, int degrees) {
++  Data::Sprite::Color none = {0, 0, 0, 0};
++  /* The mask fields of the id: 0xe0 and the angle in 5 degree steps. */
++  uint64_t id = Data::Sprite::create_id(res, index, 0xe0,
++                                        static_cast<unsigned int>(degrees / 5),
++                                        none);
++  Image *image = Image::get_cached_image(id);
++  if (image == nullptr) {
++    Data::PSprite base = data_source->get_sprite(res, index, none);
++    if (!base) return;
++    int bw = static_cast<int>(base->get_width());
++    int bh = static_cast<int>(base->get_height());
++    int ox = base->get_offset_x(), oy = base->get_offset_y();
++    /* Pixel (u, v) of the sprite is at (u + ox, v + oy) from the point;
++       turned: x' = x cos - y sin, y' = x sin + y cos (y down). Fixed
++       point, 1/1024, from a small table (no floating point). */
++    static const int kCos[] = { 1024, 1020, 1008, 989, 962, 928, 887, 839,
++                                784, 724, 658, 587, 512, 433, 350, 265, 178,
++                                89, 0 };
++    int k = std::min(18, std::max(0, degrees / 5));
++    int c = kCos[k], sn = kCos[18 - k];
++    int min_x = 1 << 20, min_y = 1 << 20, max_x = -(1 << 20),
++        max_y = -(1 << 20);
++    const int cx[4] = { ox, ox + bw, ox, ox + bw };
++    const int cy[4] = { oy, oy, oy + bh, oy + bh };
++    for (int i = 0; i < 4; i++) {
++      int tx = (cx[i] * c - cy[i] * sn) / 1024;
++      int ty = (cx[i] * sn + cy[i] * c) / 1024;
++      min_x = std::min(min_x, tx); max_x = std::max(max_x, tx);
++      min_y = std::min(min_y, ty); max_y = std::max(max_y, ty);
++    }
++    int w = max_x - min_x + 2, h = max_y - min_y + 2;
++    std::shared_ptr<SpriteBase> s = std::make_shared<SpriteBase>(w, h);
++    s->set_offset(min_x, min_y);
++    uint8_t *dst = s->get_data();
++    std::memset(dst, 0, static_cast<size_t>(w) * h * 4);
++    const uint8_t *src = base->get_data();
++    for (int j = 0; j < h; j++) {
++      for (int i = 0; i < w; i++) {
++        /* Back to the sprite (the turn the other way). */
++        int x1 = i + min_x, y1 = j + min_y;
++        int u = (x1 * c + y1 * sn + 512) / 1024 - ox;
++        int v = (-x1 * sn + y1 * c + 512) / 1024 - oy;
++        if (u < 0 || v < 0 || u >= bw || v >= bh) continue;
++        std::memcpy(dst + (j * w + i) * 4, src + (v * bw + u) * 4, 4);
++      }
++    }
++    image = new Image(video, s);
++    Image::cache_image(id, image);
++  }
++  video->draw_image(image->get_video_image(), x + image->get_offset_x(),
++                    y + image->get_offset_y(), 0, video_frame);
++}
++
+ void
+ Frame::draw_sprite(int x, int y, Data::Resource res, unsigned int index,
+                    bool use_off) {
+diff --git a/src/gfx.h b/src/gfx.h
+index 1729bac..e28ef45 100644
+--- a/src/gfx.h
++++ b/src/gfx.h
+@@ -185,6 +185,10 @@ class Frame {
+   } SpriteVariant;
+   void draw_sprite_variant(int x, int y, Data::Resource res,
+                            unsigned int index, int variant);
++  /* The sprite turned clockwise by degrees (a multiple of 5) about the
++     point it stands on - a palm falling; made once and kept. */
++  void draw_sprite_turned(int x, int y, Data::Resource res,
++                          unsigned int index, int degrees);
+   void draw_masked_sprite(int x, int y, Data::Resource mask_res,
+                           unsigned int mask_index, Data::Resource res,
+                           unsigned int index);
+diff --git a/src/savegame.cc b/src/savegame.cc
+index 4c65b94..6f64a2f 100644
+--- a/src/savegame.cc
++++ b/src/savegame.cc
+@@ -146,10 +146,12 @@ class SaveReaderTextSection : public SaveReaderText {
+       ss >> number;
+     }
+ 
+-    auto vals = file->get_values(_name);
+-    for (std::string vname : vals) {
+-      values.emplace(std::make_pair(vname,
+-                           SaveReaderTextValue(file->value(_name, vname, ""))));
++    const std::map<std::string, std::string> *vals =
++      file->section_values(_name);
++    if (vals != nullptr) {
++      for (const auto &v : *vals) {
++        values.emplace(std::make_pair(v.first, SaveReaderTextValue(v.second)));
++      }
+     }
+   }
+ 
+@@ -190,6 +192,8 @@ class SaveReaderTextSection : public SaveReaderText {
+ 
+ typedef std::list<SaveReaderTextSection*> ReaderSections;
+ 
++static void load_progress_sections(size_t done, size_t total);
++
+ class SaveReaderTextFile : public SaveReaderText {
+  protected:
+   ReaderSections sections;
+@@ -206,9 +210,11 @@ class SaveReaderTextFile : public SaveReaderText {
+     }
+ 
+     auto sects = file.get_sections();
+-    for (std::string name : sects) {
++    size_t done = 0;
++    for (const std::string &name : sects) {
+       SaveReaderTextSection *section = new SaveReaderTextSection(&file, name);
+       sections.push_back(section);
++      if ((++done & 31) == 0) load_progress_sections(done, sects.size());
+     }
+ 
+     auto vals = file.get_values("main");
+@@ -783,6 +789,45 @@ void
+ GameStore::find_regular() {
+ }
+ 
++void (*load_progress)(int percent) = nullptr;
++
++/* Loading by its steps: reading the file to this percent, making its
++   sections to the next, the parts of the game the rest (shares of the
++   time on a 68060, 20-last.save). */
++static const int kLoadReadShare = 50;
++static const int kLoadSectionsShare = 72;
++static size_t load_file_size = 0;
++static int load_last_percent = -1;
++
++static void
++load_report(int percent) {
++  if (load_progress != nullptr && percent != load_last_percent) {
++    load_last_percent = percent;
++    load_progress(percent);
++  }
++}
++
++static void
++load_read_progress(size_t bytes) {
++  if (load_file_size == 0) return;
++  size_t p = bytes * kLoadReadShare / load_file_size;
++  load_report(static_cast<int>(std::min<size_t>(p, kLoadReadShare)));
++}
++
++static void
++load_progress_sections(size_t done, size_t total) {
++  if (total == 0) return;
++  load_report(kLoadReadShare + static_cast<int>(
++    (kLoadSectionsShare - kLoadReadShare) * done / total));
++}
++
++void
++load_progress_parts(unsigned int done, unsigned int total) {
++  if (total == 0) return;
++  load_report(kLoadSectionsShare + static_cast<int>(
++    (100 - kLoadSectionsShare) * done / total));
++}
++
+ bool
+ GameStore::load(const std::string &path, Game *game) {
+   std::ifstream file;
+@@ -793,10 +838,22 @@ GameStore::load(const std::string &path, Game *game) {
+     return false;
+   }
+ 
++  load_last_percent = -1;
++  if (load_progress != nullptr) {
++    file.seekg(0, std::ios::end);
++    load_file_size = static_cast<size_t>(file.tellg());
++    file.seekg(0, std::ios::beg);
++    ConfigFile::read_progress = load_read_progress;
++    load_report(0);
++  }
+   try {
+     SaveReaderTextFile reader_text(&file);
++    ConfigFile::read_progress = nullptr;
++    load_report(kLoadSectionsShare);
+     reader_text >> *game;
++    load_report(100);
+   } catch (ExceptionFreeserf& e) {
++    ConfigFile::read_progress = nullptr;
+     file.close();
+     Log::Warn["savegame"] << "Unable to load save game: " << e.what();
+     Log::Warn["savegame"] << "Trying compatability mode...";
+diff --git a/src/savegame.h b/src/savegame.h
+index 0c92105..b684f4d 100644
+--- a/src/savegame.h
++++ b/src/savegame.h
+@@ -139,6 +139,12 @@ class SaveWriterText {
+                                       unsigned int number) = 0;
+ };
+ 
++/* The progress of loading a game, 0-100, for a picture while it loads
++   (the reading of the file, then the parts of the game); nullptr: none. */
++extern void (*load_progress)(int percent);
++/* operator >> (SaveReaderText, Game): done of total parts read. */
++void load_progress_parts(unsigned int done, unsigned int total);
++
+ class GameStore {
+  public:
+   class SaveInfo {
+diff --git a/src/serf.cc b/src/serf.cc
+index df78a57..36dd1a0 100644
+--- a/src/serf.cc
++++ b/src/serf.cc
+@@ -2450,12 +2450,19 @@ Serf::handle_serf_free_walking_state_dest_reached() {
+         int obj = map->get_obj(pos);
+         /* A dead tree too (Terraforming wasteland), felled as a tree. */
+         bool dead = obj == Map::ObjectDeadTree && game->get_terraforming();
++        /* And a palm (Terraforming wasteland): -3, felled as a tree (the
++           map has the objects of a falling tree, the view draws the palm
++           falling - Serf::is_felling_palm), lumber as from a tree, a stub
++           at the end. */
++        bool palm = obj >= Map::ObjectPalm0 && obj <= Map::ObjectPalm3 &&
++                    game->get_terraforming();
+         if ((obj >= Map::ObjectTree0 &&
+-             obj <= Map::ObjectPine7) || dead) {
++             obj <= Map::ObjectPine7) || dead || palm) {
+           set_state(StateLogging);
+           s.free_walking.neg_dist1 = 0;
+           s.free_walking.neg_dist2 = 0;
+           if (obj < 16) s.free_walking.neg_dist1 = -1;
++          if (palm) s.free_walking.neg_dist1 = -3;
+           /* -2: felled as a tree, then gone, no lumber. */
+           if (dead) s.free_walking.neg_dist1 = -2;
+           animation = 116;
+@@ -3141,6 +3148,10 @@ Serf::handle_serf_logging_state() {
+     } else {
+       new_obj = Map::ObjectFelledPine0 + s.free_walking.neg_dist2 - 1;
+     }
++    /* A palm: no lying tree (its picture is of a tree), a stub. */
++    if (s.free_walking.neg_dist1 == -3 && s.free_walking.neg_dist2 >= 5) {
++      new_obj = Map::ObjectStub;
++    }
+ 
+     /* Change map object. */
+     game->get_map()->set_object(pos, (Map::Object)new_obj, -1);
+@@ -3184,7 +3195,9 @@ Serf::handle_serf_planning_logging_state() {
+       }
+     }
+     if ((obj >= Map::ObjectTree0 && obj <= Map::ObjectPine7) ||
+-        (obj == Map::ObjectDeadTree && game->get_terraforming())) {
++        ((obj == Map::ObjectDeadTree ||
++          (obj >= Map::ObjectPalm0 && obj <= Map::ObjectPalm3)) &&
++         game->get_terraforming())) {
+       set_state(StateReadyToLeave);
+       s.leaving_building.field_B = Map::get_spiral_pattern()[2 * dist] - 1;
+       s.leaving_building.dest = Map::get_spiral_pattern()[2 * dist + 1] - 1;
+diff --git a/src/serf.h b/src/serf.h
+index 0f11c83..5d101b1 100644
+--- a/src/serf.h
++++ b/src/serf.h
+@@ -396,6 +396,10 @@ class Serf : public GameObject {
+   void stop_playing_sfx() { sound = false; }
+ 
+   State get_state() const { return state; }
++  /* Felling a palm (Terraforming wasteland): the view draws the palm
++     falling instead of the tree of the map's object. */
++  bool is_felling_palm() const {
++    return state == StateLogging && s.free_walking.neg_dist1 == -3; }
+   /* Its state, type and inventory to Game::serf_mirror (serf.cc). */
+   void sync_mirror();
+   unsigned int get_idle_inventory() const { return s.idle_in_stock.inv_index; }
+diff --git a/src/viewport.cc b/src/viewport.cc
+index 48a6388..3d79f38 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -1442,7 +1442,18 @@ Viewport::draw_map_objects_row(MapPos pos, int y_base, int cols, int x_base) {
+         draw_building(pos, x_base, ly);
+       }
+     } else {
+-      int sprite = map->get_obj(pos) - Map::ObjectTree0;
++      Map::Object obj = map->get_obj(pos);
++      if (obj >= Map::ObjectFelledTree0 && obj < Map::ObjectFelledTree4 &&
++          map->has_serf(pos) &&
++          interface->get_game()->get_serf_at_pos(pos)->is_felling_palm()) {
++        /* A palm falling (Terraforming wasteland): the game's palm turned
++           a little more at each stroke, without its shadow. */
++        static const int kAngle[] = { 15, 35, 60, 85 };
++        frame->draw_sprite_turned(x_base, ly, Data::AssetMapObject, 16,
++                                  kAngle[obj - Map::ObjectFelledTree0]);
++        continue;
++      }
++      int sprite = obj - Map::ObjectTree0;
+       if (sprite < 24) {
+         /* Trees */
+         if (hears(x_base, ly)) trees_in_view += 1;
+-- 
+2.45.2.windows.1
+

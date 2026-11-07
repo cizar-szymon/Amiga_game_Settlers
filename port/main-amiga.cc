@@ -263,6 +263,8 @@ main(int argc, char *argv[]) {
     }
 
     GameManager &game_manager = GameManager::get_instance();
+    /* The event loop now: it shows the progress of loading LOAD=. */
+    EventLoop::get_instance();
     if (!save_file.empty()) {
       if (!game_manager.load_game(save_file)) {
         return 10;

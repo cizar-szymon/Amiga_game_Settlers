@@ -61,6 +61,11 @@ class EventLoopAmiga : public EventLoop {
   std::string fps_text;
   std::string message_text;
   unsigned int message_until;
+  /* Loading a game (load_progress): how far, -1 not loading; when the
+     screen showed it last. */
+  int load_percent;
+  unsigned int load_shown;
+  static void on_load_progress(int percent);
 
  public:
   EventLoopAmiga();

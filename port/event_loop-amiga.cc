@@ -19,6 +19,8 @@
 #include "src/viewport.h"
 #include "src/game-manager.h"
 #include "src/savegame.h"
+#include "src/translation.h"
+#include "src/log.h"
 #include "port/settlers_version.h"
 #include "port/amiga_screen.h"
 #include "port/video-amiga.h"
@@ -102,7 +104,10 @@ EventLoopAmiga::EventLoopAmiga()
   , hold_next(0)
   , hold_count(0)
   , press_used(false)
-  , message_until(0) {
+  , message_until(0)
+  , load_percent(-1)
+  , load_shown(0) {
+  load_progress = on_load_progress;
   start_ms = static_cast<unsigned int>(amiga_now_ms());
   for (int i = 0; i < 4; i++) {
     buttons_down[i] = 0;
@@ -385,8 +390,52 @@ EventLoopAmiga::save_state() {
 }
 
 /* A short line in the top middle of the screen (F10). */
+/* Loading a game takes some seconds (20-last.save ~7 s on a 68060): a box
+   with how far it is, so that it does not look like a hang. The whole
+   screen is drawn again at most every 0.3 s (in a large game a frame costs
+   tens of ms). */
+void
+EventLoopAmiga::on_load_progress(int percent) {
+  EventLoopAmiga &loop = static_cast<EventLoopAmiga &>(get_instance());
+  unsigned int now = loop.get_ticks();
+  if (percent >= 100) {
+    loop.load_percent = -1;
+    return;
+  }
+  bool first = loop.load_percent < 0;
+  loop.load_percent = percent;
+  if (first || static_cast<int>(now - loop.load_shown) >= 300) {
+    loop.load_shown = now;
+    if (loop.screen_frame != nullptr) {
+      loop.draw_now();
+    } else {
+      /* LOAD= at the start: no interface yet, the box alone. */
+      Graphics &gfx = Graphics::get_instance();
+      loop.draw_message(gfx.get_screen_frame());
+      gfx.swap_buffers();
+    }
+  }
+}
+
 void
 EventLoopAmiga::draw_message(Frame *screen) {
+  if (load_percent >= 0) {
+    /* Loading a game: as the map progress of the start box. */
+    unsigned int sw = 0, sh = 0;
+    Video::get_instance().get_resolution(&sw, &sh);
+    const int w = 150, h = 36;
+    int x = (static_cast<int>(sw) - w) / 2, y = (static_cast<int>(sh) - h) / 2;
+    screen->fill_rect(x, y, w, h, Color::black);
+    std::string title = _("Loading the game");
+    screen->draw_string(x + (w - screen->get_string_width(title)) / 2, y + 2,
+                        title, Color::green, Color::black);
+    std::string value = std::to_string(load_percent) + "%";
+    screen->draw_string(x + (w - screen->get_string_width(value)) / 2,
+                        y + 13, value, Color::green, Color::black);
+    screen->draw_rect(x + 15, y + 25, 120, 7, Color::green);
+    screen->fill_rect(x + 16, y + 26, 118 * load_percent / 100, 5,
+                      Color(0xdd, 0xdd, 0x00));
+  }
   if (message_text.empty()) return;
   if (static_cast<int>(get_ticks() - message_until) >= 0) {
     message_text.clear();

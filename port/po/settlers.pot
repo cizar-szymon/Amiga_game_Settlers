@@ -59,7 +59,7 @@ msgstr ""
 msgid "Sounds"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:148 freeserf/src/advanced-box.cc:264
+#: freeserf/src/advanced-box.cc:148 freeserf/src/advanced-box.cc:265
 msgid "Music"
 msgstr ""
 
@@ -135,75 +135,75 @@ msgstr ""
 msgid "A few dark brown wild boars among the trees, with their sounds. Only the picture: the game stays the same."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:206
+#: freeserf/src/advanced-box.cc:207
 msgid "Terraforming wasteland"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:208
-msgid "Foresters plant on sand first, the sand around a new tree turns to grass for good. Lumberjacks fell dead trees first (no lumber), stonecutters break the brown boulders (no stone). New games and the game now; in a LAN game the server's setting counts."
+#: freeserf/src/advanced-box.cc:209
+msgid "Foresters plant on sand first, the sand around a new tree turns to grass for good (cacti and bones go). Lumberjacks fell dead trees first (no lumber), palms too, stonecutters break the brown boulders (no stone). New games and the game now; in a LAN game the server's setting counts."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:213
+#: freeserf/src/advanced-box.cc:214
 msgid "Large games"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:215
+#: freeserf/src/advanced-box.cc:216
 msgid "When a large game is too much for the CPU: Smooth - one game step a frame, the smoothest picture, the game slower; Balanced - steps for about a frame of time; Full speed - up to five steps a frame, the game fastest, fewer frames. Small games run at full speed anyway."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:258
+#: freeserf/src/advanced-box.cc:259
 msgid "Sound output"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:260
+#: freeserf/src/advanced-box.cc:261
 msgid "Paula: the sound chip of the Amiga (audio.device), 8 bits. AHI: ahi.device in 16 bits - a sound card, or Paula through the AHI drivers (AHI prefs). A click: the other one, at once; kept for the next start. If AHI does not open, Paula stays."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:265
+#: freeserf/src/advanced-box.cc:266
 msgid "The music of the game on or off (the M key)."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:266
+#: freeserf/src/advanced-box.cc:267
 msgid "Sound effects"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:268
+#: freeserf/src/advanced-box.cc:269
 msgid "The sounds of the game on or off (the S key)."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:269
+#: freeserf/src/advanced-box.cc:270
 msgid "Volume"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:271
+#: freeserf/src/advanced-box.cc:272
 msgid "How loud the sounds and the music are together, 0 to 100."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:272
+#: freeserf/src/advanced-box.cc:273
 msgid "Music volume"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:274
+#: freeserf/src/advanced-box.cc:275
 msgid "How loud the music is, 0 to 100 (times Volume)."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:275
+#: freeserf/src/advanced-box.cc:276
 msgid "Effects volume"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:277
+#: freeserf/src/advanced-box.cc:278
 msgid "How loud the sound effects are, 0 to 100 (times Volume); a sound already playing keeps its volume."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:297
+#: freeserf/src/advanced-box.cc:298
 msgid "Video"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:299
+#: freeserf/src/advanced-box.cc:300
 msgid "Audio"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:341
+#: freeserf/src/advanced-box.cc:342
 msgid "Nothing here yet."
 msgstr ""
 
@@ -227,79 +227,79 @@ msgstr ""
 msgid "%u% of normal"
 msgstr ""
 
-#: freeserf/src/game-init.cc:279 freeserf/src/game-init.cc:291
+#: freeserf/src/game-init.cc:296 freeserf/src/game-init.cc:308
 msgid "Making the map"
 msgstr ""
 
-#: freeserf/src/game-init.cc:290
+#: freeserf/src/game-init.cc:307
 msgid "Starting the game"
 msgstr ""
 
-#: freeserf/src/game-init.cc:305
+#: freeserf/src/game-init.cc:322
 msgid "The map is chosen"
 msgstr ""
 
-#: freeserf/src/game-init.cc:305
+#: freeserf/src/game-init.cc:322
 msgid "in the LAN box,"
 msgstr ""
 
-#: freeserf/src/game-init.cc:305
+#: freeserf/src/game-init.cc:322
 msgid "after the other"
 msgstr ""
 
-#: freeserf/src/game-init.cc:306
+#: freeserf/src/game-init.cc:323
 msgid "player joins."
 msgstr ""
 
-#: freeserf/src/game-init.cc:335
+#: freeserf/src/game-init.cc:352
 msgid "Start mission"
 msgstr ""
 
-#: freeserf/src/game-init.cc:336
+#: freeserf/src/game-init.cc:353
 msgid "Mission:"
 msgstr ""
 
-#: freeserf/src/game-init.cc:350
+#: freeserf/src/game-init.cc:367
 msgid "Start tutorial"
 msgstr ""
 
-#: freeserf/src/game-init.cc:351
+#: freeserf/src/game-init.cc:368
 msgid "Tutorial:"
 msgstr ""
 
-#: freeserf/src/game-init.cc:365
+#: freeserf/src/game-init.cc:382
 msgid "New game"
 msgstr ""
 
-#: freeserf/src/game-init.cc:366
+#: freeserf/src/game-init.cc:383
 msgid "Mapsize:"
 msgstr ""
 
-#: freeserf/src/game-init.cc:379 freeserf/src/lan-box.cc:946
+#: freeserf/src/game-init.cc:396 freeserf/src/lan-box.cc:946
 msgid "LAN game"
 msgstr ""
 
-#: freeserf/src/game-init.cc:386
+#: freeserf/src/game-init.cc:403
 msgid "Load game"
 msgstr ""
 
-#: freeserf/src/game-init.cc:391 freeserf/src/lan-box.cc:1052
+#: freeserf/src/game-init.cc:408 freeserf/src/lan-box.cc:1052
 msgid "Delete %u saves?"
 msgstr ""
 
-#: freeserf/src/game-init.cc:392 freeserf/src/lan-box.cc:1053
+#: freeserf/src/game-init.cc:409 freeserf/src/lan-box.cc:1053
 msgid "Delete the save?"
 msgstr ""
 
-#: freeserf/src/game-init.cc:393 freeserf/src/lan-box.cc:1054
+#: freeserf/src/game-init.cc:410 freeserf/src/lan-box.cc:1054
 msgid "YES"
 msgstr ""
 
-#: freeserf/src/game-init.cc:394 freeserf/src/lan-box.cc:1055
+#: freeserf/src/game-init.cc:411 freeserf/src/lan-box.cc:1055
 msgid "NO"
 msgstr ""
 
-#: freeserf/src/game-init.cc:396 freeserf/src/lan-box.cc:1046
+#: freeserf/src/game-init.cc:413 freeserf/src/lan-box.cc:1046
 msgid "DELETE"
 msgstr ""
 
@@ -1202,5 +1202,9 @@ msgstr ""
 
 #: port/amiga-box.cc:96
 msgid "No Warp found."
+msgstr ""
+
+#: port/event_loop-amiga.cc:420
+msgid "Loading the game"
 msgstr ""
 

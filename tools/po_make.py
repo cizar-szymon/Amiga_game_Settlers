@@ -57,9 +57,9 @@ T = {
    ('Kilka ciemnobrązowych dzików wśród drzew, z ich odgłosami. Tylko wygląd: gra się nie zmienia.',
     'Ein paar dunkelbraune Wildschweine zwischen den Bäumen, mit ihren Lauten. Nur das Bild: das Spiel bleibt gleich.'),
  ('', 'Terraforming wasteland'): ('Ożywianie pustkowi', 'Ödland urbar machen'),
- ('', "Foresters plant on sand first, the sand around a new tree turns to grass for good. Lumberjacks fell dead trees first (no lumber), stonecutters break the brown boulders (no stone). New games and the game now; in a LAN game the server's setting counts."):
-   ('Leśnicy sadzą najpierw na piasku, piasek wokół nowego drzewa na stałe zmienia się w trawę. Drwale najpierw ścinają suche drzewa (bez drewna), kamieniarze rozbijają brązowe skały (bez kamienia). Nowe gry i bieżąca gra; w grze LAN liczy się ustawienie serwera.',
-    'Förster pflanzen zuerst auf Sand, der Sand um einen neuen Baum wird für immer zu Gras. Holzfäller fällen zuerst tote Bäume (ohne Holz), Steinmetze zerschlagen die braunen Felsen (ohne Stein). Neue Spiele und das laufende Spiel; im LAN-Spiel zählt die Einstellung des Servers.'),
+ ('', "Foresters plant on sand first, the sand around a new tree turns to grass for good (cacti and bones go). Lumberjacks fell dead trees first (no lumber), palms too, stonecutters break the brown boulders (no stone). New games and the game now; in a LAN game the server's setting counts."):
+   ('Leśnicy sadzą najpierw na piasku, piasek wokół nowego drzewa na stałe zmienia się w trawę (kaktusy i kości znikają). Drwale najpierw ścinają suche drzewa (bez drewna), także palmy, kamieniarze rozbijają brązowe skały (bez kamienia). Nowe gry i bieżąca gra; w grze LAN liczy się ustawienie serwera.',
+    'Förster pflanzen zuerst auf Sand, der Sand um einen neuen Baum wird für immer zu Gras (Kakteen und Knochen verschwinden). Holzfäller fällen zuerst tote Bäume (ohne Holz), auch Palmen, Steinmetze zerschlagen die braunen Felsen (ohne Stein). Neue Spiele und das laufende Spiel; im LAN-Spiel zählt die Einstellung des Servers.'),
  ('', 'The map moves the other way when it is dragged with the mouse. The cursor keys stay as they are.'):
    ('Mapa przesuwa się w drugą stronę przy przeciąganiu myszą. Klawisze strzałek działają jak dotąd.',
     'Die Karte bewegt sich beim Ziehen mit der Maus andersherum. Die Pfeiltasten bleiben, wie sie sind.'),
@@ -129,6 +129,7 @@ T = {
  ('', 'Audio'): ('Dźwięk', 'Ton'),
  ('', 'Nothing here yet.'): ('Na razie nic.', 'Noch nichts hier.'),
  ('', 'Making the map'): ('Tworzę mapę', 'Erstelle Karte'),
+ ('', 'Loading the game'): ('Wczytuję grę', 'Lade das Spiel'),
  ('', 'The map is chosen'): ('Mapę wybiera się', 'Die Karte wird'),
  ('', 'in the LAN box,'): ('w oknie LAN,', 'im LAN-Fenster'),
  ('', 'after the other'): ('gdy drugi gracz', 'gewählt, wenn der'),

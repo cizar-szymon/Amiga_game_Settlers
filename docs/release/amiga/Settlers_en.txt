@@ -137,9 +137,9 @@ Options -> Video:
   More kinds of trees (mirrored trees and birches, only the look),
   Wild boars (boars among the trees)
   Terraforming wasteland (off at first): foresters plant trees on sand
-    first, the sand around a new tree turns to grass for good;
-    lumberjacks fell dead trees too (first, no lumber from them),
-    stonecutters break the brown boulders (no stone); new games and the
+    first, the sand around a new tree turns to grass for good (cacti
+    and bones on it go); lumberjacks fell dead trees too (first, no lumber from them) and
+    palms, stonecutters break the brown boulders (no stone); new games and the
     game now, in a LAN game the server's)
   Large games: when a large game is too much for the CPU - Smooth (one
     game step a frame: the smoothest picture, the game slower), Balanced

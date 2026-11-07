@@ -130,8 +130,8 @@ Options -> Video:
   Wild boars (dziki wsrod drzew)
   Terraforming wasteland (zmiana nieuzytkow, domyslnie wyl.): lesnicy
     sadza drzewa najpierw na piasku, piasek wokol nowego drzewa zmienia
-    sie na stale w trawe; drwale scinaja tez suche drzewa (najpierw, bez
-    drewna z nich), kamieniarze rozbijaja brazowe skaly (bez kamienia);
+    sie na stale w trawe (kaktusy i kosci na nim znikaja); drwale scinaja tez suche drzewa (najpierw, bez
+    drewna z nich) i palmy, kamieniarze rozbijaja brazowe skaly (bez kamienia);
     nowe gry i biezaca gra, w grze LAN ustawienie serwera)
   Large games (duze gry): gdy duza gra przerasta procesor - Smooth (jeden
     krok gry na klatke: najplynniejszy obraz, gra wolniejsza), Balanced
