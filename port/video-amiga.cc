@@ -40,6 +40,14 @@ bool VideoAmiga::verify = false;
 int VideoAmiga::zoom_gap = 16;
 bool VideoAmiga::render_vram = true;
 bool VideoAmiga::lock_per_call = false;
+bool VideoAmiga::view_incremental = false;
+bool VideoAmiga::view_none = false;
+int VideoAmiga::view_kinds = 0xf;
+static uint32_t image_serial = 0;
+
+/* The block being drawn again (VideoAmiga::sig_end): every drawing call
+   is clipped to it as well as to its destination. */
+static int clip_l = 0, clip_t = 0, clip_r = 0x7fff, clip_b = 0x7fff;
 
 /* Times a drawing call with the E-clock when profiling is on. */
 class ProfScope {
@@ -100,7 +108,18 @@ VideoAmiga::VideoAmiga()
   , blit_ms(0)
   , verify_errors(0)
   , frame_no(0)
-  , scaled_frame(0) {
+  , scaled_frame(0)
+  , sig_on(false)
+  , replaying(false)
+  , sig_other_all(true)
+  , sig_cols(0)
+  , sig_rows(0)
+  , sig_blocks(0)
+  , sig_dirty(0)
+  , sig_ticks(0)
+  , sig_spans(0)
+  , sig_calls(0)
+  , sig_frames(0) {
   prof_reset();
   std::memset(rgb, 0, sizeof(rgb));
   /* 0 transparent, 1 shade: both black on the screen. Darkening a
@@ -131,6 +150,152 @@ VideoAmiga::VideoAmiga()
       std::memset(row_ptr(screen, 0, y), kTransparent, screen->w);
     }
     release_vram();
+  }
+}
+
+static inline uint32_t
+sig_mix(uint32_t h, uint32_t v) {
+  h ^= v;
+  h *= 0x01000193u;
+  return h ^ (h >> 15);
+}
+
+void
+VideoAmiga::sig_begin() {
+  int cols = (screen->w + kSigBlock - 1) / kSigBlock;
+  int rows = (screen->h + kSigBlock - 1) / kSigBlock;
+  if (cols != sig_cols || rows != sig_rows) {
+    sig_cols = cols;
+    sig_rows = rows;
+    sig_prev.assign(cols * rows, 0);
+    sig_other.assign(cols * rows, 1);
+    row_ops.assign(rows, std::vector<uint32_t>());
+  }
+  sig_cur.assign(cols * rows, 0x811c9dc5u);
+  view_ops.clear();
+  sig_on = true;
+}
+
+/* Something not of the view drawn on the screen: its blocks are drawn
+   again with the next view. */
+void
+VideoAmiga::sig_mark_other(int x, int y, int w, int h) {
+  if (sig_other.empty() || w <= 0 || h <= 0) return;
+  int c0 = x / kSigBlock, c1 = (x + w - 1) / kSigBlock;
+  int r0 = y / kSigBlock, r1 = (y + h - 1) / kSigBlock;
+  if (c1 >= sig_cols) c1 = sig_cols - 1;
+  if (r1 >= sig_rows) r1 = sig_rows - 1;
+  for (int r = r0; r <= r1; r++) {
+    uint8_t *p = &sig_other[r * sig_cols];
+    for (int c = c0; c <= c1; c++) p[c] = 1;
+  }
+}
+
+bool
+VideoAmiga::view_record(const ViewOp &op, uint32_t sig) {
+  if (replaying || to_fast) return false;
+  if (!sig_on) {
+    sig_mark_other(op.bx, op.by, op.bw, op.bh);
+    return false;
+  }
+  sig_add(op.bx, op.by, op.bw, op.bh, sig);
+  if (!view_incremental) return false;
+  view_ops.push_back(op);
+  return true;
+}
+
+void
+VideoAmiga::replay(const ViewOp &op) {
+  switch (op.kind) {
+    case OpImage:
+      draw_image(static_cast<const Video::Image *>(op.src), op.a, op.b, op.c,
+                 screen);
+      break;
+    case OpFrame:
+      draw_frame(op.a, op.b, screen, op.c, op.d,
+                 static_cast<Video::Frame *>(const_cast<void *>(op.src)),
+                 op.e, op.f);
+      break;
+    case OpFill:
+      fill_rect(op.a, op.b, op.c, op.d, op.color, screen);
+      break;
+    default:
+      draw_line(op.a, op.b, op.c, op.d, op.color, screen);
+      break;
+  }
+}
+
+void
+VideoAmiga::sig_end() {
+  if (!sig_on) return;
+  sig_on = false;
+  uint32_t n = static_cast<uint32_t>(sig_cur.size());
+  uint8_t *dirty = &sig_other[0];
+  for (uint32_t i = 0; i < n; i++) {
+    if (sig_cur[i] != sig_prev[i] || sig_other_all) dirty[i] = 1;
+    sig_dirty += dirty[i];
+  }
+  sig_other_all = false;
+  sig_blocks += n;
+  sig_prev.swap(sig_cur);
+  if (!view_incremental) {
+    std::memset(dirty, 0, n);
+    return;
+  }
+
+  /* The calls by rows of blocks, then each run of dirty blocks of a row
+     drawn again from them. */
+  for (int r = 0; r < sig_rows; r++) row_ops[r].clear();
+  for (size_t i = 0; i < view_ops.size(); i++) {
+    const ViewOp &op = view_ops[i];
+    int r0 = op.by / kSigBlock, r1 = (op.by + op.bh - 1) / kSigBlock;
+    for (int r = r0; r <= r1; r++) {
+      row_ops[r].push_back(static_cast<uint32_t>(i));
+    }
+  }
+  uint32_t t0 = static_cast<uint32_t>(amiga_eclock());
+  replaying = true;
+  for (int r = 0; r < sig_rows && !view_none; r++) {
+    const uint8_t *row = dirty + r * sig_cols;
+    const std::vector<uint32_t> &ops = row_ops[r];
+    for (int c = 0; c < sig_cols;) {
+      if (!row[c]) {
+        c++;
+        continue;
+      }
+      int c0 = c;
+      while (c < sig_cols && row[c]) c++;
+      clip_l = c0 * kSigBlock;
+      clip_r = std::min(static_cast<int>(screen->w), c * kSigBlock);
+      clip_t = r * kSigBlock;
+      clip_b = std::min(static_cast<int>(screen->h), (r + 1) * kSigBlock);
+      sig_spans++;
+      for (size_t k = 0; k < ops.size(); k++) {
+        const ViewOp &op = view_ops[ops[k]];
+        if (op.bx < clip_r && op.bx + op.bw > clip_l &&
+            (view_kinds & (1 << op.kind))) {
+          replay(op);
+          sig_calls++;
+        }
+      }
+    }
+  }
+  replaying = false;
+  sig_ticks += static_cast<uint32_t>(amiga_eclock()) - t0;
+  sig_frames++;
+  clip_l = clip_t = 0;
+  clip_r = clip_b = 0x7fff;
+  std::memset(dirty, 0, n);
+}
+
+/* A drawing call on x, y, w, h (clipped) into the blocks it covers. */
+void
+VideoAmiga::sig_add(int x, int y, int w, int h, uint32_t op) {
+  int c0 = x / kSigBlock, c1 = (x + w - 1) / kSigBlock;
+  int r0 = y / kSigBlock, r1 = (y + h - 1) / kSigBlock;
+  for (int r = r0; r <= r1; r++) {
+    uint32_t *p = &sig_cur[r * sig_cols];
+    for (int c = c0; c <= c1; c++) p[c] = sig_mix(p[c], op);
   }
 }
 
@@ -238,6 +403,8 @@ VideoAmiga::apply_mode() {
   }
   dirty_first = 0;
   dirty_last = static_cast<int>(colors_used) - 1;
+  sig_cols = 0;
+  sig_other_all = true;
   if (cursor != nullptr) amiga_hide_pointer();
   return true;
 }
@@ -281,6 +448,7 @@ VideoAmiga::destroy_frame(Video::Frame *frame) {
 Video::Image *
 VideoAmiga::create_image(void *data, unsigned int width, unsigned int height) {
   Video::Image *image = new Video::Image;
+  image->serial = ++image_serial;
   image->w = width;
   image->h = height;
   image->pixels = new uint8_t[width * height];
@@ -461,6 +629,64 @@ draw_runs(uint8_t *d, int stride, const uint8_t *r, int h,
         break;                        /* end of the row */
       }
     }
+  }
+}
+
+/* One row of an image from its runs, only its columns x0 .. x0+w-1; d is
+   the pixel of column x0. VRAM as in draw_runs. */
+template <bool kVram>
+static void
+draw_runs_clip(uint8_t *d, const uint8_t *r, int x0, int w,
+               const uint8_t *shade) {
+  int px = 0;
+  const int x1 = x0 + w;
+  while (px < x1) {
+    unsigned int code = *r++;
+    int n = static_cast<int>(code & 0x3f) + 1;
+    if (code >= RunEnd) break;
+    int lo = std::max(px, x0), hi = std::min(px + n, x1);
+    if (code < RunCopy) {             /* skip */
+    } else if (code < RunShade) {     /* copy */
+      if (lo < hi) {
+        uint8_t *p = d + (lo - x0);
+        const uint8_t *s = r + (lo - px);
+        int m = hi - lo;
+        if (kVram) {
+          while (m > 0 && (reinterpret_cast<uintptr_t>(p) & 3) != 0) {
+            *p++ = *s++;
+            m--;
+          }
+        }
+        while (m >= 4) {
+          put_long(p, get_long(s));
+          s += 4;
+          p += 4;
+          m -= 4;
+        }
+        while (m > 0) {
+          *p++ = *s++;
+          m--;
+        }
+      }
+      r += n;
+    } else if (lo < hi) {             /* shade */
+      uint8_t *p = d + (lo - x0);
+      int m = hi - lo;
+      if (kVram) {
+        uint8_t *a = reinterpret_cast<uint8_t *>(
+          reinterpret_cast<uintptr_t>(p) & ~uintptr_t(3));
+        unsigned int lead = static_cast<unsigned int>(p - a);
+        unsigned int longs = (lead + m + 3) >> 2;
+        uint32_t buf[18];
+        for (unsigned int i = 0; i < longs; i++) buf[i] = get_long(a + 4 * i);
+        uint8_t *b = reinterpret_cast<uint8_t *>(buf) + lead;
+        for (int i = 0; i < m; i++) b[i] = shade[b[i]];
+        for (unsigned int i = 0; i < longs; i++) put_long(a + 4 * i, buf[i]);
+      } else {
+        for (int i = 0; i < m; i++) p[i] = shade[p[i]];
+      }
+    }
+    px += n;
   }
 }
 
@@ -668,17 +894,20 @@ masked_row(uint8_t *d, const uint8_t *s, const uint8_t *m, int w) {
 static bool
 clip(int *x, int *y, int *w, int *h, int *sx, int *sy,
      const Video::Frame *dest) {
-  if (*x < 0) { *sx -= *x; *w += *x; *x = 0; }
-  if (*y < 0) { *sy -= *y; *h += *y; *y = 0; }
-  if (*x + *w > static_cast<int>(dest->w)) *w = dest->w - *x;
-  if (*y + *h > static_cast<int>(dest->h)) *h = dest->h - *y;
+  int l = clip_l, t = clip_t;
+  int r = std::min(static_cast<int>(dest->w), clip_r);
+  int b = std::min(static_cast<int>(dest->h), clip_b);
+  if (*x < l) { *sx += l - *x; *w -= l - *x; *x = l; }
+  if (*y < t) { *sy += t - *y; *h -= t - *y; *y = t; }
+  if (*x + *w > r) *w = r - *x;
+  if (*y + *h > b) *h = b - *y;
   return *w > 0 && *h > 0;
 }
 
 void
 VideoAmiga::draw_image(const Video::Image *image, int x, int y, int y_offset,
                        Video::Frame *dest) {
-  if (vram && verify && dest == screen && !to_fast) {
+  if (vram && verify && dest == screen && !to_fast && !replaying) {
     to_fast = true;
     draw_image(image, x, y, y_offset, dest);
     to_fast = false;
@@ -686,6 +915,7 @@ VideoAmiga::draw_image(const Video::Image *image, int x, int y, int y_offset,
   VramRelease release(this);
   ProfScope prof(this, ProfImage, image->w * (image->h - y_offset));
   touch(dest);
+  const int x0 = x, y0 = y;
   int w = image->w;
   int h = image->h - y_offset;
   int sx = 0;
@@ -693,6 +923,15 @@ VideoAmiga::draw_image(const Video::Image *image, int x, int y, int y_offset,
   y += y_offset;
   if (!clip(&x, &y, &w, &h, &sx, &sy, dest)) return;
   mark_rows(dest, y, h);
+  if (view_incremental && dest == screen && !replaying) {
+    ViewOp op;
+    op.kind = OpImage;
+    op.bx = x; op.by = y; op.bw = w; op.bh = h;
+    op.src = image;
+    op.a = x0; op.b = y0; op.c = y_offset;
+    uint32_t s = sig_mix(image->serial, x | (y << 16));
+    if (view_record(op, sig_mix(sig_mix(s, sx | (sy << 16)), w | (h << 16)))) return;
+  }
 
   uint8_t *d = row_ptr(dest, x, y);
   int stride = row_stride(dest);
@@ -757,6 +996,18 @@ VideoAmiga::draw_image(const Video::Image *image, int x, int y, int y_offset,
     }
     return;
   }
+  if (!verify) {
+    /* Cut at the sides (a block of the view drawn again): by the runs. */
+    for (int j = 0; j < h; j++, d += stride) {
+      const uint8_t *runs = image->runs + image->rows[sy + j];
+      if (in_vram(dest)) {
+        draw_runs_clip<true>(d, runs, sx, w, shade);
+      } else {
+        draw_runs_clip<false>(d, runs, sx, w, shade);
+      }
+    }
+    return;
+  }
   for (int j = 0; j < h; j++, d += stride) {
     blend_row(d, image->pixels + (sy + j) * image->w + sx, w);
   }
@@ -765,7 +1016,7 @@ VideoAmiga::draw_image(const Video::Image *image, int x, int y, int y_offset,
 void
 VideoAmiga::draw_frame(int dx, int dy, Video::Frame *dest, int sx, int sy,
                        Video::Frame *src, int w, int h) {
-  if (vram && verify && dest == screen && !to_fast) {
+  if (vram && verify && dest == screen && !to_fast && !replaying) {
     to_fast = true;
     draw_frame(dx, dy, dest, sx, sy, src, w, h);
     to_fast = false;
@@ -779,6 +1030,17 @@ VideoAmiga::draw_frame(int dx, int dy, Video::Frame *dest, int sx, int sy,
   if (sy + h > static_cast<int>(src->h)) h = src->h - sy;
   if (!clip(&dx, &dy, &w, &h, &sx, &sy, dest)) return;
   mark_rows(dest, dy, h);
+  if (view_incremental && dest == screen && !replaying) {
+    ViewOp op;
+    op.kind = OpFrame;
+    op.bx = dx; op.by = dy; op.bw = w; op.bh = h;
+    op.src = src;
+    op.a = dx; op.b = dy; op.c = sx; op.d = sy; op.e = w; op.f = h;
+    uint32_t s = sig_mix(static_cast<uint32_t>(
+                           reinterpret_cast<uintptr_t>(src)), src->version);
+    s = sig_mix(s, dx | (dy << 16));
+    if (view_record(op, sig_mix(sig_mix(s, sx | (sy << 16)), w | (h << 16)))) return;
+  }
 
   if (src->changed) {
     src->opaque = is_opaque(src);
@@ -789,7 +1051,7 @@ VideoAmiga::draw_frame(int dx, int dy, Video::Frame *dest, int sx, int sy,
       prof_opaque_calls++;
       prof_opaque_pixels += w * h;
     }
-    if (in_vram(dest) && !src->vram_failed) {
+    if (in_vram(dest) && !src->vram_failed && !replaying) {
       /* A landscape tile: by the card's blitter from its copy in the
          card's memory, uploaded again only after it was drawn into. The
          back bitmap is unlocked first: allocating, uploading and
@@ -832,7 +1094,7 @@ void
 VideoAmiga::draw_frame_scaled(int dx, int dy, int dw, int dh,
                               Video::Frame *dest, Video::Frame *src,
                               int w, int h) {
-  if (vram && verify && dest == screen && !to_fast) {
+  if (vram && verify && dest == screen && !to_fast && !replaying) {
     to_fast = true;
     draw_frame_scaled(dx, dy, dw, dh, dest, src, w, h);
     to_fast = false;
@@ -840,6 +1102,7 @@ VideoAmiga::draw_frame_scaled(int dx, int dy, int dw, int dh,
   VramRelease release(this);
   ProfScope prof(this, ProfOther, dw * dh);
   touch(dest);
+  if (dest == screen && !to_fast) sig_other_all = true;
   if (dw <= 0 || dh <= 0) return;
   int f = (w > 0 && dw % w == 0) ? dw / w : 0;
   if ((f == 2 || f == 3) && dh == f * h && dw <= kWideMax) {
@@ -983,7 +1246,7 @@ VideoAmiga::draw_rect(int x, int y, unsigned int width, unsigned int height,
 void
 VideoAmiga::fill_rect(int x, int y, unsigned int width, unsigned int height,
                       const Video::Color color, Video::Frame *dest) {
-  if (vram && verify && dest == screen && !to_fast) {
+  if (vram && verify && dest == screen && !to_fast && !replaying) {
     to_fast = true;
     fill_rect(x, y, width, height, color, dest);
     to_fast = false;
@@ -991,6 +1254,7 @@ VideoAmiga::fill_rect(int x, int y, unsigned int width, unsigned int height,
   VramRelease release(this);
   ProfScope prof(this, ProfFill, width * height);
   touch(dest);
+  const int x0 = x, y0 = y;
   int w = width;
   int h = height;
   int sx = 0;
@@ -998,6 +1262,16 @@ VideoAmiga::fill_rect(int x, int y, unsigned int width, unsigned int height,
   if (!clip(&x, &y, &w, &h, &sx, &sy, dest)) return;
   mark_rows(dest, y, h);
   uint8_t v = get_index(color.r, color.g, color.b);
+  if (view_incremental && dest == screen && !replaying) {
+    ViewOp op;
+    op.kind = OpFill;
+    op.bx = x; op.by = y; op.bw = w; op.bh = h;
+    op.src = nullptr;
+    op.a = x0; op.b = y0; op.c = width; op.d = height;
+    op.color = color;
+    if (view_record(op, sig_mix(sig_mix(v, x | (y << 16)),
+                                w | (h << 16)))) return;
+  }
   uint8_t *d = row_ptr(dest, x, y);
   int stride = row_stride(dest);
   for (int j = 0; j < h; j++, d += stride) {
@@ -1008,7 +1282,7 @@ VideoAmiga::fill_rect(int x, int y, unsigned int width, unsigned int height,
 void
 VideoAmiga::draw_line(int x, int y, int x1, int y1, const Video::Color color,
                       Video::Frame *dest) {
-  if (vram && verify && dest == screen && !to_fast) {
+  if (vram && verify && dest == screen && !to_fast && !replaying) {
     to_fast = true;
     draw_line(x, y, x1, y1, color, dest);
     to_fast = false;
@@ -1017,14 +1291,29 @@ VideoAmiga::draw_line(int x, int y, int x1, int y1, const Video::Color color,
   uint8_t v = get_index(color.r, color.g, color.b);
   touch(dest);
   mark_rows(dest, std::min(y, y1), std::abs(y1 - y) + 1);
+  if (view_incremental && dest == screen && !replaying) {
+    int bx = std::max(0, std::min(x, x1)), by = std::max(0, std::min(y, y1));
+    int ex = std::min(static_cast<int>(dest->w) - 1, std::max(x, x1));
+    int ey = std::min(static_cast<int>(dest->h) - 1, std::max(y, y1));
+    if (bx > ex || by > ey) return;
+    ViewOp op;
+    op.kind = OpLine;
+    op.bx = bx; op.by = by; op.bw = ex - bx + 1; op.bh = ey - by + 1;
+    op.src = nullptr;
+    op.a = x; op.b = y; op.c = x1; op.d = y1;
+    op.color = color;
+    if (view_record(op, sig_mix(sig_mix(v, x | (y << 16)),
+                                x1 | (y1 << 16)))) return;
+  }
   int dx = std::abs(x1 - x);
   int dy = -std::abs(y1 - y);
   int stx = x < x1 ? 1 : -1;
   int sty = y < y1 ? 1 : -1;
   int err = dx + dy;
   for (;;) {
-    if (x >= 0 && y >= 0 && x < static_cast<int>(dest->w) &&
-        y < static_cast<int>(dest->h)) {
+    if (x >= std::max(0, clip_l) && y >= std::max(0, clip_t) &&
+        x < std::min(static_cast<int>(dest->w), clip_r) &&
+        y < std::min(static_cast<int>(dest->h), clip_b)) {
       *row_ptr(dest, x, y) = v;
     }
     if (x == x1 && y == y1) break;

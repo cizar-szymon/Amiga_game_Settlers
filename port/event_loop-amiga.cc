@@ -418,6 +418,14 @@ static int view_part = Viewport::ProbeEnd;
 
 static void
 view_probe(int part) {
+  if (VideoAmiga::view_incremental) {
+    if (part == Viewport::ProbeLandscape) {
+      static_cast<VideoAmiga &>(Video::get_instance()).sig_begin();
+    } else if (part == Viewport::ProbeEnd) {
+      static_cast<VideoAmiga &>(Video::get_instance()).sig_end();
+    }
+  }
+  if (!VideoAmiga::profile) return;
   uint32_t now = static_cast<uint32_t>(amiga_eclock());
   if (view_part != Viewport::ProbeEnd) view_ticks[view_part] += now - view_last;
   view_part = part;
@@ -450,7 +458,9 @@ EventLoopAmiga::run() {
   unsigned int logic_ms = 0, draw_ms = 0;
   video.blit_ms = 0;
 
-  if (VideoAmiga::profile) Viewport::draw_probe = view_probe;
+  if (VideoAmiga::profile || VideoAmiga::view_incremental) {
+    Viewport::draw_probe = view_probe;
+  }
 
   running = true;
   while (running) {
@@ -534,6 +544,22 @@ EventLoopAmiga::run() {
                logic_ms * 1000 / span, draw_ms * 1000 / span,
                video.blit_ms * 1000 / span, steps_done * 1000 / span,
                video.get_colors_used(), VideoAmiga::verify ? "  VERIFY" : "");
+      if (video.sig_blocks != 0) {
+        size_t n = strlen(line);
+        uint32_t per = static_cast<uint32_t>(amiga_eclock_per_ms());
+        uint32_t fr = video.sig_frames ? video.sig_frames : 1;
+        snprintf(line + n, sizeof(line) - n,
+                 "  DIRTY %u  RE %lu SP %lu CALLS %lu OPS %lu",
+                 static_cast<unsigned int>(
+                   video.sig_dirty / (video.sig_blocks / 100 + 1)),
+                 (unsigned long)(video.sig_ticks / per * 1000 / span),
+                 (unsigned long)(video.sig_spans / fr),
+                 (unsigned long)(video.sig_calls / fr),
+                 (unsigned long)video.view_ops.size());
+        video.sig_dirty = video.sig_blocks = 0;
+        video.sig_ticks = video.sig_spans = video.sig_calls = 0;
+        video.sig_frames = 0;
+      }
       if (VideoAmiga::verify) {
         size_t n = strlen(line);
         snprintf(line + n, sizeof(line) - n, " %lu TILES %u",

@@ -23,6 +23,7 @@
 #include "src/settings.h"
 #include "src/game-manager.h"
 #include "src/translation.h"
+#include "port/amiga_sampler.h"
 #include "port/event_loop-amiga.h"
 #include "port/video-amiga.h"
 #include "port/settlers_version.h"
@@ -123,6 +124,21 @@ parse_option(const char *a) {
     EventLoopAmiga::show_fps = true;
   } else if (strcasecmp(a, "STATS") == 0) {
     EventLoopAmiga::show_stats = true;
+  } else if ((v = option_value(a, "PCSAMPLE")) != nullptr) {
+    /* PCSAMPLE=delay,count[,us]: the sampling profiler (amiga_sampler.c). */
+    unsigned long delay = strtoul(v, nullptr, 10);
+    const char *c = strchr(v, ',');
+    unsigned long count = c != nullptr ? strtoul(c + 1, nullptr, 10) : 20000;
+    const char *u = c != nullptr ? strchr(c + 1, ',') : nullptr;
+    unsigned long us = u != nullptr ? strtoul(u + 1, nullptr, 10) : 1000;
+    if (amiga_sampler_start(delay, count, us) == 0) atexit(amiga_sampler_stop);
+  } else if ((v = option_value(a, "VIEWDRAW")) != nullptr) {
+    /* BLOCKS (a test): the view by changed blocks, NONE / LAND / SPR
+       nothing / the landscape / the sprites drawn again. */
+    VideoAmiga::view_incremental = strcasecmp(v, "FULL") != 0;
+    VideoAmiga::view_none = strcasecmp(v, "NONE") == 0;
+    if (strcasecmp(v, "LAND") == 0) VideoAmiga::view_kinds = 2;
+    if (strcasecmp(v, "SPR") == 0) VideoAmiga::view_kinds = 1;
   } else if ((v = option_value(a, "RENDER")) != nullptr) {
     VideoAmiga::render_vram = strcasecmp(v, "FAST") != 0;
   } else if (strcasecmp(a, "LANTEST") == 0) {

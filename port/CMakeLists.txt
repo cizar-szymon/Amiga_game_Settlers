@@ -39,7 +39,7 @@ if(AMIGA_CPU)
 endif()
 # simtest with the allocator of the game (its times are those of the game).
 if(AMIGA_CPU)
-  add_executable(simtest simtest.cc amiga_fastmalloc.c ${PLATFORM_SRC})
+  add_executable(simtest simtest.cc amiga_fastmalloc.c amiga_sampler.c ${PLATFORM_SRC})
 else()
   add_executable(simtest simtest.cc ${PLATFORM_SRC})
 endif()
@@ -89,12 +89,12 @@ if(AMIGA_CPU)
 
   # AmiXcom's size-class allocator instead of libnix's malloc: loading a
   # save (some 300000 small blocks) 1.0 -> 0.57 s on the Warp (loadtest).
-  add_executable(Settlers main-amiga.cc amiga_fastmalloc.c)
+  add_executable(Settlers main-amiga.cc amiga_fastmalloc.c amiga_sampler.c)
   target_link_libraries(Settlers fs_gui fs_game fs_data fs_tools)
 
   # Diagnostic build: the checking allocator of AmiXcom instead of libnix's
   # malloc, every heap block checked once a frame (RAM:Settlers-heap.txt).
-  add_executable(Settlers-hg main-amiga.cc amiga_heapguard.c
+  add_executable(Settlers-hg main-amiga.cc amiga_heapguard.c amiga_sampler.c
                  amiga_heapguard_new.cpp)
   target_link_libraries(Settlers-hg fs_gui fs_game fs_data fs_tools)
 

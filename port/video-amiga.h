@@ -34,9 +34,11 @@ class Video::Frame {
   void *vram;
   bool vram_stale;
   bool vram_failed;
+  /* Drawn into this many times (the signatures of the map view). */
+  uint32_t version;
   Frame() : w(0), h(0), pixels(nullptr), raw(nullptr), changed(true),
             opaque(false), vram(nullptr), vram_stale(true),
-            vram_failed(false) {}
+            vram_failed(false), version(0) {}
 };
 
 class Video::Image {
@@ -53,8 +55,11 @@ class Video::Image {
   /* 0xff for each pixel with a colour, else 0: drawing into fast RAM
      (VideoAmiga::masked_row), made at the first such drawing. */
   uint8_t *mask;
+  /* A number of its own (the signatures of the map view: an address
+     can come back for another image). */
+  uint32_t serial;
   Image() : w(0), h(0), pixels(nullptr), runs(nullptr), rows(nullptr),
-            n_runs(0), n_copy(0), n_shade(0), mask(nullptr) {}
+            n_runs(0), n_copy(0), n_shade(0), mask(nullptr), serial(0) {}
 };
 
 class ExceptionAmiga : public ExceptionVideo {
@@ -129,6 +134,48 @@ class VideoAmiga : public Video {
   uint32_t prof_img_runs_path, prof_img_clip_path;
   uint32_t prof_runs, prof_copy_px, prof_shade_px, prof_box_px;
   void prof_reset();
+
+  /* The map view drawn by blocks of 16x16 pixels (0.128): while the view
+     draws (sig_on, Viewport::draw_probe) its drawing calls on the screen
+     are kept, not done, and give each block a signature (the calls on it
+     in their order). At the end only the blocks whose signature differs
+     from the last frame's, or that something else was drawn on since (the
+     panel, boxes, texts), are drawn again: the calls on them, clipped to
+     them. The rest of the screen keeps the last frame. A test
+     (VIEWDRAW=BLOCKS), off: in a large game the changes are everywhere
+     (serfs, waves, flags) and a piece of almost every sprite is drawn
+     again - no faster than the whole view (0.128, PORTING.md). */
+  static const int kSigBlock = 16;
+  static bool view_incremental;
+  static bool view_none;  /* VIEWDRAW=NONE (a test): nothing drawn again */
+  static int view_kinds;  /* VIEWDRAW=LAND / SPR (a test): kinds drawn again */
+  bool sig_on;
+  bool replaying;
+  std::vector<uint32_t> sig_cur, sig_prev;
+  std::vector<uint8_t> sig_other;
+  bool sig_other_all;
+  int sig_cols, sig_rows;
+  uint32_t sig_blocks, sig_dirty;
+  /* E-clock ticks of drawing again, spans, calls done again, landscape
+     calls done again (STATS). */
+  uint32_t sig_ticks, sig_spans, sig_calls, sig_frames;
+  struct ViewOp {
+    uint8_t kind;              /* OpImage, OpFrame, OpFill, OpLine */
+    int16_t bx, by, bw, bh;    /* the clipped box on the screen */
+    const void *src;
+    int a, b, c, d, e, f;
+    Video::Color color;
+  };
+  enum { OpImage, OpFrame, OpFill, OpLine };
+  std::vector<ViewOp> view_ops;
+  std::vector<std::vector<uint32_t> > row_ops;
+  void sig_begin();
+  void sig_end();
+  void sig_add(int x, int y, int w, int h, uint32_t op);
+  void sig_mark_other(int x, int y, int w, int h);
+  void replay(const ViewOp &op);
+  /* True: the call is kept (or the box marked) and not to be done now. */
+  bool view_record(const ViewOp &op, uint32_t sig);
 
   /* VERIFY: every blended row is checked against the reference version. */
   static bool verify;
@@ -228,6 +275,7 @@ class VideoAmiga : public Video {
   void touch(Video::Frame *dest) {
     dest->changed = true;
     dest->vram_stale = true;
+    dest->version++;
   }
   void vram_unlocked() { vram_base = nullptr; }
   /* Unlocks the back bitmap. Never keep it locked across calls: any OS

@@ -28,8 +28,12 @@
 #include <sstream>
 #include <string>
 
+#ifdef __AMIGA__
+#include "port/amiga_sampler.h"
+#endif
 #include "src/game-manager.h"
 #include "src/game.h"
+#include "src/serf.h"
 #include "src/mission.h"
 #include "src/savegame.h"
 #include "src/log.h"
@@ -144,6 +148,15 @@ int main(int argc, char *argv[]) {
     else if (!strcmp(a, "-c")) { castle = true; }
     else if (!strcmp(a, "-p")) { profile = true; }
     else if (!strcmp(a, "-P")) { profile = true; detail = true; }
+    else if (!strcmp(a, "-V")) { Game::serf_mirror_verify = true; }
+#ifdef __AMIGA__
+    else if (!strcmp(a, "-S") && i + 1 < argc) {
+      /* -S delay,count,us: the sampling profiler (amiga_sampler.c). */
+      unsigned long d = 0, c = 20000, u = 1000;
+      sscanf(argv[++i], "%lu,%lu,%lu", &d, &c, &u);
+      if (amiga_sampler_start(d, c, u) == 0) atexit(amiga_sampler_stop);
+    }
+#endif
     else if (!strcmp(a, "-z") && v) {
       map_size = strtoul(v, nullptr, 10);
       i++;
@@ -233,6 +246,21 @@ int main(int argc, char *argv[]) {
   }
   printf("done: %u steps in %u ms\n", steps,
          static_cast<unsigned>(tsum));
+  {
+    /* The serfs by the table of the game: all, idle in a stock. */
+    unsigned long all = 0, idle = 0;
+    for (uint32_t m : game->serf_mirror) {
+      if (m == 0xffffffffu) continue;
+      all++;
+      if ((m & 0xff) == Serf::StateIdleInStock) idle++;
+    }
+    printf("serfs %lu (table %lu), idle in a stock %lu\n", all,
+           (unsigned long)game->serf_mirror.size(), idle);
+  }
+  if (Game::serf_mirror_verify) {
+    printf("serf table checked: %lu differences\n",
+           Game::serf_mirror_errors);
+  }
   printf("searches %lu/step, flags visited %lu/step, failed %lu/step, "
          "call_transporter %lu/step, send_serf_to_flag %lu/step\n",
          flag_search_count[0] / steps, flag_search_count[1] / steps,

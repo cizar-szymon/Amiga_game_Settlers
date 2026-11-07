@@ -1,0 +1,460 @@
+From 809bdcc9cc61466871fa4469c9aa95948f3999aa Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sat, 7 Nov 2026 19:35:31 +0100
+Subject: [PATCH] 0.128 SPEED: serf loop over the serf table (serf_mirror)
+ without a list of indexes, serfs made or freed during the loop marked, no
+ table update after a serf's own update (it may delete itself), image lookup
+ through a direct table in front of the hash table, sprite id without the
+ 64-bit call
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7U35RuKvTQMs84jNJEFhT
+---
+ src/game.cc     | 128 ++++++++++++++++++++++++++++++++++++++----------
+ src/game.h      |  29 ++++++++++-
+ src/gfx.cc      |  29 ++++++++++-
+ src/gfx.h       |  12 +++++
+ src/inventory.h |   5 ++
+ src/serf.cc     |  24 ++++++++-
+ src/serf.h      |   3 ++
+ 7 files changed, 200 insertions(+), 30 deletions(-)
+
+diff --git a/src/game.cc b/src/game.cc
+index 3c0d7dd..7359ad8 100644
+--- a/src/game.cc
++++ b/src/game.cc
+@@ -108,6 +108,7 @@ Game::Game()
+   inventory_schedule_counter = 0;
+ 
+   gold_total = 0;
++  in_serf_loop = false;
+ }
+ 
+ Game::~Game() {
+@@ -641,28 +642,88 @@ Game::update_buildings() {
+ void
+ Game::update_serfs() {
+   /* Updating a serf can delete other serfs (e.g. a lost fight) or create
+-     new ones, which invalidates iterators of the collection. Go through
+-     the indexes taken before and skip serfs deleted in the meantime. */
+-  /* Kept between the steps (no allocation of thousands of elements on
+-     every step; only the update below uses it, not recursively). */
+-  std::vector<unsigned int> &indexes = serf_update_indexes;
+-  serfs.get_indexes(&indexes);
+-
+-  for (unsigned int index : indexes) {
+-    Serf *serf = serfs[index];
+-    /* index 0 is the dummy serf; an object is at its own index */
+-    if (serf != nullptr && index != 0) {
+-      if (game_prof_detail_ms) {
+-        int st = serf->get_state() & 63;
+-        unsigned long p0 = game_prof_detail_ms();
+-        serf->update();
+-        game_prof_serf[st] += game_prof_detail_ms() - p0;
+-        game_prof_serf_n[st]++;
+-      } else {
+-        serf->update();
++     new ones. The serfs there at the start are updated, in the order of
++     their indexes, those deleted in the meantime skipped - by the table of
++     the serfs (serf_mirror: none where ~0) and the places marked while
++     this runs (in_serf_loop), not a list of the indexes made first: a
++     68060 waited for memory on every one of thousands of serfs. The table
++     and the marks are read through locals, read again after each update
++     (only an update can move them): the compiler read them again for every
++     serf, as a write to a stock might have changed them. */
++  const unsigned int n = serfs.get_max_index();
++  const bool verify = serf_mirror_verify;
++  unsigned long (*const detail)() = game_prof_detail_ms;
++  in_serf_loop = true;
++  if (verify) {
++    for (unsigned int index = 1; index < n; index++) {
++      bool in_table = index < serf_mirror.size() &&
++                      serf_mirror[index] != 0xffffffffu;
++      if (in_table != (serfs[index] != nullptr)) serf_mirror_errors++;
++    }
++  }
++
++  const uint32_t *table = serf_mirror.data();
++  unsigned int table_n = static_cast<unsigned int>(serf_mirror.size());
++  bool marks = false;
++  /* index 0 is the dummy serf; an object is at its own index */
++  for (unsigned int index = 1; index < n; index++) {
++    if (index >= table_n) break;  /* no serf past the table */
++    uint32_t m = table[index];
++    if (m == 0xffffffffu) continue;
++    if (marks && index < serf_loop_mark.size() &&
++        serf_loop_mark[index] == 2) {
++      continue;  /* made while this runs */
++    }
++    if (verify) {
++      Serf *serf = serfs[index];
++      if (serf == nullptr) {
++        serf_mirror_errors++;
++        continue;
++      }
++      bool idle = serf->get_state() == Serf::StateIdleInStock;
++      if ((m & 0xff) != (static_cast<uint32_t>(serf->get_state()) & 0xff) ||
++          ((m >> 8) & 0xff) !=
++            (static_cast<uint32_t>(serf->get_type()) & 0xff) ||
++          (idle && (m >> 16) != (serf->get_idle_inventory() & 0xffff))) {
++        serf_mirror_errors++;
+       }
+     }
++    /* A serf idle in a stock, as handle_serf_idle_in_stock_state would do
++       it, from the table alone (its object not read): the stock keeps it
++       as the serf of its type; a knight 0-3 (training), a stock sending
++       serfs out and every other state: the update itself. */
++    if (detail == nullptr && (m & 0xff) == Serf::StateIdleInStock) {
++      int type = static_cast<int8_t>((m >> 8) & 0xff);
++      if (type < Serf::TypeKnight0 || type > Serf::TypeKnight3) {
++        Inventory *inventory = inventories[m >> 16];
++        if (inventory->get_serf_mode() == 0 ||
++            inventory->get_serf_mode() == 1 ||
++            inventory->get_serf_queue_length() >= 3) {
++          if (type != Serf::TypeSmelter) {
++            inventory->set_idle_serf(static_cast<Serf::Type>(type), index);
++          }
++          continue;
++        }
++      }
++    }
++    Serf *serf = serfs[index];
++    if (serf == nullptr) continue;
++    if (detail != nullptr) {
++      int st = serf->get_state() & 63;
++      unsigned long p0 = detail();
++      serf->update();
++      game_prof_serf[st] += detail() - p0;
++      game_prof_serf_n[st]++;
++    } else {
++      serf->update();
++    }
++    table = serf_mirror.data();
++    table_n = static_cast<unsigned int>(serf_mirror.size());
++    marks = !serf_loop_marked.empty();
+   }
++  in_serf_loop = false;
++  for (unsigned int index : serf_loop_marked) serf_loop_mark[index] = 0;
++  serf_loop_marked.clear();
+ }
+ 
+ /* Update historical player statistics for one measure. */
+@@ -935,6 +996,8 @@ Game::update_game_stats() {
+ /* Profiling (the Amiga port's simtest -p): when game_prof_ms is set, the
+    milliseconds of the parts of update() add up in game_prof. */
+ unsigned long (*game_prof_detail_ms)() = nullptr;  /* per object (-P) */
++bool Game::serf_mirror_verify = false;
++unsigned long Game::serf_mirror_errors = 0;
+ unsigned long (*game_prof_ms)() = nullptr;
+ unsigned long game_prof[64];
+ /* Serfs by state (simtest -p): time and count of updates. */
+@@ -2717,16 +2780,31 @@ Game::next_search_id() {
+ 
+ Serf *
+ Game::create_serf(int index) {
+-  if (index == -1) {
+-    return serfs.allocate();
+-  } else {
+-    return serfs.get_or_insert(index);
+-  }
++  Serf *serf = index == -1 ? serfs.allocate() : serfs.get_or_insert(index);
++  if (in_serf_loop) serf_loop_note(serf->get_index(), 2);
++  return serf;
+ }
+ 
+ void
+ Game::delete_serf(Serf *serf) {
+-  serfs.erase(serf->get_index());
++  unsigned int index = serf->get_index();
++  serfs.erase(index);
++  clear_serf_mirror(index);
++  if (in_serf_loop) serf_loop_note(index, 1);
++}
++
++/* A place made or freed while update_serfs runs (see in_serf_loop): the
++   first of the two counts - a place freed and used again was in use at
++   the start. */
++void
++Game::serf_loop_note(unsigned int index, uint8_t mark) {
++  if (index >= serf_loop_mark.size()) {
++    serf_loop_mark.resize(index + 256, 0);
++  }
++  if (serf_loop_mark[index] == 0) {
++    serf_loop_mark[index] = mark;
++    serf_loop_marked.push_back(index);
++  }
+ }
+ 
+ Flag *
+diff --git a/src/game.h b/src/game.h
+index c093605..f52ac51 100644
+--- a/src/game.h
++++ b/src/game.h
+@@ -83,7 +83,34 @@ class Game {
+   Flags flags;
+   Inventories inventories;
+   /* The serfs to update in a step (update_serfs). */
+-  std::vector<unsigned int> serf_update_indexes;
++  /* update_serfs goes through the indexes in use when it starts: a serf
++     made while it runs in a place free at its start is marked 2 (not
++     updated in this step), a place freed while it runs 1 (a serf made there
++     is updated, as one that was there at the start). */
++  bool in_serf_loop;
++  std::vector<uint8_t> serf_loop_mark;
++  std::vector<unsigned int> serf_loop_marked;
++  void serf_loop_note(unsigned int index, uint8_t mark);
++ public:
++  /* Of each serf by index: state (bits 0-7), type (8-15), inventory of an
++     idle serf (16-31); ~0 unknown. Serf::sync_mirror keeps it. */
++  std::vector<uint32_t> serf_mirror;
++  void set_serf_mirror(unsigned int index, int state, int type,
++                       unsigned int inventory) {
++    if (index >= serf_mirror.size()) {
++      serf_mirror.resize(index + 256, 0xffffffffu);
++    }
++    serf_mirror[index] = (static_cast<uint32_t>(state) & 0xff) |
++                         ((static_cast<uint32_t>(type) & 0xff) << 8) |
++                         ((inventory & 0xffff) << 16);
++  }
++  /* simtest -V: the table checked against the serfs every step. */
++  static bool serf_mirror_verify;
++  static unsigned long serf_mirror_errors;
++  void clear_serf_mirror(unsigned int index) {
++    if (index < serf_mirror.size()) serf_mirror[index] = 0xffffffffu;
++  }
++ protected:
+   std::vector<unsigned int> land_part;
+   unsigned int land_parts_version = 0;
+   Buildings buildings;
+diff --git a/src/gfx.cc b/src/gfx.cc
+index b3aa4bf..aad6242 100644
+--- a/src/gfx.cc
++++ b/src/gfx.cc
+@@ -101,23 +101,39 @@ Image::ImageCache Image::image_cache;
+    getting them decoded the sprite again, for every head in every frame. */
+ static std::unordered_map<uint32_t, std::pair<int, int>> sprite_deltas;
+ 
++Image::Front Image::front[Image::kFront];
++
+ void
+ Image::cache_image(uint64_t id, Image *image) {
+   image_cache[id] = image;
++  uint32_t hi = static_cast<uint32_t>(id >> 32);
++  uint32_t lo = static_cast<uint32_t>(id);
++  Front &f = front[front_slot(hi, lo)];
++  f.hi = hi;
++  f.lo = lo;
++  f.image = image;
+ }
+ 
+ /* Return a pointer to the sprite pointer associated with id. */
+ Image *
+ Image::get_cached_image(uint64_t id) {
++  uint32_t hi = static_cast<uint32_t>(id >> 32);
++  uint32_t lo = static_cast<uint32_t>(id);
++  Front &f = front[front_slot(hi, lo)];
++  if (f.image != nullptr && f.hi == hi && f.lo == lo) return f.image;
+   ImageCache::iterator result = image_cache.find(id);
+   if (result == image_cache.end()) {
+     return nullptr;
+   }
++  f.hi = hi;
++  f.lo = lo;
++  f.image = result->second;
+   return result->second;
+ }
+ 
+ void
+ Image::clear_cache() {
++  std::memset(front, 0, sizeof(front));
+   while (!image_cache.empty()) {
+     Image *image = image_cache.begin()->second;
+     image_cache.erase(image_cache.begin());
+@@ -206,7 +222,14 @@ Frame::draw_sprite(int x, int y, Data::Resource res, unsigned int index,
+                             color.get_green(),
+                             color.get_red(),
+                             color.get_alpha()};
+-  uint64_t id = Data::Sprite::create_id(res, index, 0, 0, pc);
++  /* Data::Sprite::create_id(res, index, 0, 0, pc), made here: the call
++     takes 64-bit arguments. */
++  uint64_t id = (static_cast<uint64_t>(
++                   ((static_cast<uint32_t>(res) & 0xff) << 24) |
++                   ((static_cast<uint32_t>(index) & 0xfff) << 12)) << 32) |
++                ((static_cast<uint32_t>(pc.red) << 16) |
++                 (static_cast<uint32_t>(pc.green) << 8) |
++                 static_cast<uint32_t>(pc.blue));
+   Image *image = Image::get_cached_image(id);
+   if (image == nullptr) {
+     Data::PSprite s = data_source->get_sprite(res, index, pc);
+@@ -227,7 +250,9 @@ Frame::draw_sprite(int x, int y, Data::Resource res, unsigned int index,
+   /* Almost always whole: no float arithmetic then (in software on a CPU
+      without an FPU). */
+   int y_off = 0;
+-  if (progress < 1.f) {
++  uint32_t progress_bits;
++  std::memcpy(&progress_bits, &progress, sizeof(progress_bits));
++  if (progress_bits != 0x3f800000u && progress < 1.f) {  /* not 1.0 */
+     y_off = image->get_height() - static_cast<int>(image->get_height() *
+                                                    progress);
+   }
+diff --git a/src/gfx.h b/src/gfx.h
+index a2a0b3d..e7fd26a 100644
+--- a/src/gfx.h
++++ b/src/gfx.h
+@@ -103,6 +103,18 @@ class Image {
+   };
+   typedef std::unordered_map<uint64_t, Image*, IdHash> ImageCache;
+   static ImageCache image_cache;
++  /* In front of it, a table by a few bits of the id: most sprites of a
++     frame are found at the first try, without the hash table's buckets and
++     nodes (a 68060 waited for memory on each, ~600 sprites a frame). */
++  struct Front {
++    uint32_t hi, lo;
++    Image *image;
++  };
++  static const unsigned int kFront = 1024;
++  static Front front[kFront];
++  static unsigned int front_slot(uint32_t hi, uint32_t lo) {
++    return (hi ^ (hi >> 11) ^ lo ^ (lo >> 7) ^ (lo >> 15)) & (kFront - 1);
++  }
+ 
+  public:
+   Image(Video *video, Data::PSprite sprite);
+diff --git a/src/inventory.h b/src/inventory.h
+index 9e576f1..cf9ad87 100644
+--- a/src/inventory.h
++++ b/src/inventory.h
+@@ -104,6 +104,11 @@ class Inventory : public GameObject {
+   void serf_come_back() { generic_count++; }
+   size_t free_serf_count() { return generic_count; }
+   bool have_serf(Serf::Type type) { return (serfs[type] != 0); }
++  /* serf_idle_in_stock() of a serf by its type and index (Game::update_serfs
++     from its table, the serf not read). */
++  void set_idle_serf(Serf::Type type, unsigned int index) {
++    serfs[type] = index;
++  }
+ 
+   unsigned int get_count_of(Resource::Type resource) {
+     return resources[resource]; }
+diff --git a/src/serf.cc b/src/serf.cc
+index 910f585..df78a57 100644
+--- a/src/serf.cc
++++ b/src/serf.cc
+@@ -48,7 +48,8 @@ is_boulder(int obj) {
+                        << "state " << Serf::get_state_name(state) \
+                        << " -> " << Serf::get_state_name((new_state)) \
+                        << " (" << __FUNCTION__ << ":" << __LINE__ << ")"; \
+-  state = new_state;
++  state = new_state; \
++  sync_mirror();
+ 
+ #define set_other_state(other_serf, new_state)  \
+   Log::Verbose["serf"] << "serf " << other_serf->index \
+@@ -57,7 +58,8 @@ is_boulder(int obj) {
+                        << Serf::get_state_name(other_serf->state) \
+                        << " -> " << Serf::get_state_name((new_state)) \
+                        << "(" << __FUNCTION__ << ":" << __LINE__ << ")"; \
+-  other_serf->state = new_state;
++  other_serf->state = new_state; \
++  other_serf->sync_mirror();
+ 
+ 
+ static const int counter_from_animation[] = {
+@@ -310,6 +312,16 @@ Serf::Serf(Game *game, unsigned int index) : GameObject(game, index) {
+   /* All of the union: a state can read what an earlier one left, and
+      {0} sets only the first member (GCC 15 leaves the rest as is). */
+   std::memset(&s, 0, sizeof(s));
++  sync_mirror();
++}
++
++/* The state, type and inventory of this serf in the table of the game
++   (Game::serf_mirror): update_serfs reads it instead of this object for a
++   serf idle in a stock (Amiga port: thousands of serfs, a 68060 waits for
++   memory on each). Called on every change of these. */
++void
++Serf::sync_mirror() {
++  game->set_serf_mirror(index, state, type, s.idle_in_stock.inv_index);
+ }
+ 
+ /* Change type of serf and update all global tables
+@@ -322,6 +334,7 @@ Serf::set_type(Serf::Type new_type) {
+ 
+   Serf::Type old_type = type;
+   type = new_type;
++  sync_mirror();
+ 
+   /* Register this type as transporter */
+   if (new_type == TypeTransporterInventory) new_type = TypeTransporter;
+@@ -394,6 +407,7 @@ Serf::init_generic(Inventory *inventory) {
+   tick = game->get_tick();
+   state = StateIdleInStock;
+   s.idle_in_stock.inv_index = inventory->get_index();
++  sync_mirror();
+ }
+ 
+ void
+@@ -622,6 +636,7 @@ Serf::building_deleted(MapPos building_pos, bool escape) {
+     if (escape) {
+       /* Serf is escaping. */
+       state = StateEscapeBuilding;
++      sync_mirror();
+     } else {
+       /* Kill this serf. */
+       set_type(TypeDead);
+@@ -825,6 +840,7 @@ void
+ Serf::stay_idle_in_stock(unsigned int inventory) {
+   set_state(StateIdleInStock);
+   s.idle_in_stock.inv_index = inventory;
++  sync_mirror();
+ }
+ 
+ void
+@@ -1472,6 +1488,7 @@ Serf::enter_inventory() {
+   /*serf->s.idle_in_stock.field_B = 0;
+     serf->s.idle_in_stock.field_C = 0;*/
+   s.idle_in_stock.inv_index = building->get_inventory()->get_index();
++  sync_mirror();
+ }
+ 
+ void
+@@ -1821,6 +1838,7 @@ Serf::handle_serf_entering_building_state() {
+ 
+         set_state(StateIdleInStock);
+         s.idle_in_stock.inv_index = inventory->get_index();
++        sync_mirror();
+         break;
+       }
+       case TypeKnight0:
+@@ -5721,6 +5739,7 @@ operator >> (SaveReaderBinary &reader, Serf &serf) {
+     default: break;
+   }
+ 
++  serf.sync_mirror();  /* the table of the game (update_serfs) */
+   return reader;
+ }
+ 
+@@ -5987,6 +6006,7 @@ operator >> (SaveReaderText &reader, Serf &serf) {
+       break;
+   }
+ 
++  serf.sync_mirror();  /* the table of the game (update_serfs) */
+   return reader;
+ }
+ 
+diff --git a/src/serf.h b/src/serf.h
+index a6d9514..0f11c83 100644
+--- a/src/serf.h
++++ b/src/serf.h
+@@ -396,6 +396,9 @@ class Serf : public GameObject {
+   void stop_playing_sfx() { sound = false; }
+ 
+   State get_state() const { return state; }
++  /* Its state, type and inventory to Game::serf_mirror (serf.cc). */
++  void sync_mirror();
++  unsigned int get_idle_inventory() const { return s.idle_in_stock.inv_index; }
+   int get_animation() const { return animation; }
+   int get_counter() const { return counter; }
+ 
+-- 
+2.45.2.windows.1
+
