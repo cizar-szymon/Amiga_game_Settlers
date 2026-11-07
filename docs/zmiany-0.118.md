@@ -190,3 +190,14 @@ Gałąź `experimental-speed` (0.128 SPEED, 0.129 SPEED) scalona i wydana jako 0
 | 4 | Profiler próbkujący `PCSAMPLE` / `simtest -S`, `tools/pcprof.py` | ✅ |
 | 5 | Rysowanie blokami 16×16 (`VIEWDRAW=BLOCKS`) – próba bez zysku, wyłączone | – |
 | | Wynik (20-last, Full speed): 640×360 23 → 37,9, 800×600 10,1 → 20,1, 960×540 9,6 → 18,2 kl./s; obraz 0.125 ↔ 0.129 identyczny (20 par zrzutów) | ✅ |
+
+## 0.130 (7.11.2026)
+
+Łatki Freeserf `0061`, `0062`.
+
+| Nr | Zmiana | Stan |
+|---|---|---|
+| 1–2 | Terraforming wasteland: drwale ścinają palmy, palma pada (obrócona palma z gry), pniak | ✅ |
+| 3 | Terraforming wasteland: kaktusy i kości znikają z zazielenionego piasku | ✅ |
+| 4 | Postęp wczytywania zapisu (okienko z paskiem), wczytywanie szybsze (20-last 8,1 → 5,8 s) | ✅ |
+| 5 | LAN: odbudowa stanu po 16 ramek na krok (z testów nocnych) | ✅ |

@@ -6,6 +6,18 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.130 (7.11.2026, wydanie beta)
+-------------------------------
+
+- Wczytywanie zapisanej gry: okienko z procentem i paskiem postepu;
+  wczytywanie szybsze (duza gra ok. 6 zamiast 8 sekund na 68060).
+- Options -> Video -> Terraforming wasteland: drwale scinaja tez palmy
+  (palma przewraca sie przy kolejnych uderzeniach, zostaje pniak, jest
+  drewno); gdy piasek wokol nowego drzewa zmienia sie w trawe, znikaja
+  z niego kaktusy i kosci zwierzat.
+- Gra LAN: obie strony musza miec wersje 0.130.
+
+
 0.129 (7.11.2026, wydanie beta)
 -------------------------------
 

@@ -106,8 +106,8 @@ msgstr "Ein paar dunkelbraune Wildschweine zwischen den Bäumen, mit ihren Laute
 msgid "Terraforming wasteland"
 msgstr "Ödland urbar machen"
 
-msgid "Foresters plant on sand first, the sand around a new tree turns to grass for good. Lumberjacks fell dead trees first (no lumber), stonecutters break the brown boulders (no stone). New games and the game now; in a LAN game the server's setting counts."
-msgstr "Förster pflanzen zuerst auf Sand, der Sand um einen neuen Baum wird für immer zu Gras. Holzfäller fällen zuerst tote Bäume (ohne Holz), Steinmetze zerschlagen die braunen Felsen (ohne Stein). Neue Spiele und das laufende Spiel; im LAN-Spiel zählt die Einstellung des Servers."
+msgid "Foresters plant on sand first, the sand around a new tree turns to grass for good (cacti and bones go). Lumberjacks fell dead trees first (no lumber), palms too, stonecutters break the brown boulders (no stone). New games and the game now; in a LAN game the server's setting counts."
+msgstr "Förster pflanzen zuerst auf Sand, der Sand um einen neuen Baum wird für immer zu Gras (Kakteen und Knochen verschwinden). Holzfäller fällen zuerst tote Bäume (ohne Holz), auch Palmen, Steinmetze zerschlagen die braunen Felsen (ohne Stein). Neue Spiele und das laufende Spiel; im LAN-Spiel zählt die Einstellung des Servers."
 
 msgid "Large games"
 msgstr "GroSSe Spiele"
@@ -909,4 +909,7 @@ msgstr "Kartenram"
 
 msgid "No Warp found."
 msgstr "Kein Warp gefunden."
+
+msgid "Loading the game"
+msgstr "Lade das Spiel"
 

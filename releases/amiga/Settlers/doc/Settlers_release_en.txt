@@ -6,6 +6,19 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.130 (7.11.2026, beta release)
+-------------------------------
+
+- Loading a saved game: a box with the percentage and a progress bar;
+  loading is faster (a large game about 6 instead of 8 seconds on a
+  68060).
+- Options -> Video -> Terraforming wasteland: lumberjacks fell palms
+  too (the palm topples with the strokes, a stump stays, lumber comes);
+  when the sand around a new tree turns to grass, the cacti and the
+  bones of animals on it go.
+- LAN game: both sides need version 0.130.
+
+
 0.129 (7.11.2026, beta release)
 -------------------------------
 

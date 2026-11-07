@@ -1,0 +1,32 @@
+From 0fa88e127587b248dcfce1182dc6460f745cfbc8 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Fri, 6 Nov 2026 18:02:25 +0100
+Subject: [PATCH] LAN: a resync goes out at 16 frames a step (64 broke the
+ WinUAE connection now and then: ECONNRESET); EINTR of recv is no disconnect
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7U35RuKvTQMs84jNJEFhT
+---
+ src/lan-game.cc | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index 6260f97..c9146d2 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -461,8 +461,10 @@ LanGame::pump_files() {
+     file_out.clear();
+     return;
+   }
+-  /* A few at a time: the turns go between them. */
+-  for (int i = 0; i < 64 && !file_out.empty(); i++) {
++  /* A few at a time: the turns go between them. 16 frames a step (some
++     200 KB/s): 64 (750 KB/s) broke the connection of WinUAE now and then
++     during a resync (ECONNRESET, 6.11.2026). */
++  for (int i = 0; i < 16 && !file_out.empty(); i++) {
+     if (!link->send(file_out.front().first, file_out.front().second)) {
+       return;
+     }
+-- 
+2.45.2.windows.1
+
