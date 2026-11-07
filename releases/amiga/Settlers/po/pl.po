@@ -1,0 +1,891 @@
+# Polish texts of the Settlers port (Freeserf).
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: pl\n"
+
+msgid "Invert scrolling"
+msgstr "Odwrotne przewijanie"
+
+msgid "The map moves the other way when it is dragged with the mouse. The cursor keys stay as they are."
+msgstr "Mapa przesuwa się w drugą stronę przy przeciąganiu myszą. Klawisze strzałek działają jak dotąd."
+
+msgid "Large numbers"
+msgstr "Duże liczby"
+
+msgid "Numbers of 1000 and more in the boxes as 12K or .5M instead of >999."
+msgstr "Liczby od 1000 w oknach jako 12T albo .5M zamiast >999."
+
+msgid "Autosave"
+msgstr "Autozapis"
+
+msgid "Saves the game by itself every 3, 5, 10, 20, 30 or 60 minutes into autosave.save, unless it was paused. A click: the next time."
+msgstr "Sam zapisuje grę co 3, 5, 10, 20, 30 albo 60 minut do autosave.save, chyba że była pauza. Kliknięcie: następny czas."
+
+msgid "Stock box until occupied"
+msgstr "Magazyn do obsadzenia"
+
+msgid "A click on a new stock opens its building box until its serf has arrived, not the box of its goods."
+msgstr "Kliknięcie nowego magazynu otwiera okno budynku, dopóki nie dojdzie jego osadnik, a nie okno towarów."
+
+msgid "Show FPS"
+msgstr "Pokaż FPS"
+
+msgid "The frames a second in the top left corner of the screen (also the FPS Tool Type)."
+msgstr "Liczba klatek na sekundę w lewym górnym rogu ekranu (także Tool Type FPS)."
+
+msgid "Show ping in LAN game"
+msgstr "Ping w grze LAN"
+
+msgid "In a LAN game the time there and back of the connection in milliseconds, left of the FPS."
+msgstr "W grze LAN czas odpowiedzi połączenia w milisekundach, na lewo od FPS."
+
+msgid "Graphics"
+msgstr "Grafika"
+
+msgid "Sounds"
+msgstr "Dźwięki"
+
+msgid "Music"
+msgstr "Muzyka"
+
+msgid "Language"
+msgstr "Język"
+
+msgid "Fast mapclick"
+msgstr "Szybka mapa"
+
+msgid "An option of the original. A double click with the right mouse button on the map opens the map window."
+msgstr "Opcja oryginału. Dwuklik prawym przyciskiem myszy na mapie otwiera okno mapy."
+
+msgid "Fast building"
+msgstr "Szybka budowa"
+
+msgid "An option of the original. A double click on a free building site opens the choice of buildings at once."
+msgstr "Opcja oryginału. Dwuklik na wolnym miejscu budowy od razu otwiera wybór budynków."
+
+msgid "Sand on new maps"
+msgstr "Piasek na mapach"
+
+msgid "How much desert new maps get: None, 10% of normal ... Normal. Not the missions. In a LAN game the setting of the server counts."
+msgstr "Ile pustyni mają nowe mapy: Brak, 10% normy ... Normalnie. Nie dotyczy misji. W grze LAN liczy się ustawienie serwera."
+
+msgid "Rocks on new maps"
+msgstr "Skały na mapach"
+
+msgid "How many brown boulders new maps get, the same way. They stand in the way of roads and buildings. In a LAN game the server's setting counts."
+msgstr "Ile brązowych skał mają nowe mapy, tak samo. Stoją na drodze dróg i budynków. W grze LAN liczy się ustawienie serwera."
+
+msgid "Dead trees on new maps"
+msgstr "Suche drzewa"
+
+msgid "How many dead trees new maps get, the same way. They stand in the way of buildings. In a LAN game the server's setting counts."
+msgstr "Ile suchych drzew mają nowe mapy, tak samo. Stoją na drodze budynków. W grze LAN liczy się ustawienie serwera."
+
+msgid "More kinds of trees"
+msgstr "Więcej drzew"
+
+msgid "Mirrored trees and birches among the trees of the map. Only the picture: the game stays the same."
+msgstr "Odbite drzewa i brzozy wśród drzew mapy. Tylko wygląd: gra się nie zmienia."
+
+msgid "Wild boars"
+msgstr "Dziki"
+
+msgid "A few dark brown wild boars among the trees, with their sounds. Only the picture: the game stays the same."
+msgstr "Kilka ciemnobrązowych dzików wśród drzew, z ich odgłosami. Tylko wygląd: gra się nie zmienia."
+
+msgid "Terraforming wasteland"
+msgstr "Ożywianie pustkowi"
+
+msgid "Foresters plant on sand first, the sand around a new tree turns to grass for good. Lumberjacks fell dead trees first (no lumber), stonecutters break the brown boulders (no stone). New games and the game now; in a LAN game the server's setting counts."
+msgstr "Leśnicy sadzą najpierw na piasku, piasek wokół nowego drzewa na stałe zmienia się w trawę. Drwale najpierw ścinają suche drzewa (bez drewna), kamieniarze rozbijają brązowe skały (bez kamienia). Nowe gry i bieżąca gra; w grze LAN liczy się ustawienie serwera."
+
+msgid "Sound output"
+msgstr "Wyjście dźwięku"
+
+msgid "Paula: the sound chip of the Amiga (audio.device), 8 bits. AHI: ahi.device in 16 bits - a sound card, or Paula through the AHI drivers (AHI prefs). A click: the other one, at once; kept for the next start. If AHI does not open, Paula stays."
+msgstr "Paula: układ dźwięku Amigi (audio.device), 8 bitów. AHI: ahi.device w 16 bitach - karta dźwiękowa albo Paula przez sterowniki AHI (ustawienia AHI). Kliknięcie: drugie, od razu; zapamiętane na kolejne uruchomienie. Jeśli AHI się nie otworzy, zostaje Paula."
+
+msgid "The music of the game on or off (the M key)."
+msgstr "Muzyka gry włączona albo wyłączona (klawisz M)."
+
+msgid "Sound effects"
+msgstr "Efekty dźwięku"
+
+msgid "The sounds of the game on or off (the S key)."
+msgstr "Dźwięki gry włączone albo wyłączone (klawisz S)."
+
+msgid "Volume"
+msgstr "Głośność"
+
+msgid "How loud the sounds and the music are together, 0 to 100."
+msgstr "Głośność dźwięków i muzyki razem, od 0 do 100."
+
+msgid "Music volume"
+msgstr "Głośność muzyki"
+
+msgid "How loud the music is, 0 to 100 (times Volume)."
+msgstr "Głośność muzyki, od 0 do 100 (razy Głośność)."
+
+msgid "Effects volume"
+msgstr "Głośność efektów"
+
+msgid "How loud the sound effects are, 0 to 100 (times Volume); a sound already playing keeps its volume."
+msgstr "Głośność efektów dźwiękowych, od 0 do 100 (razy Głośność); dźwięk, który już gra, zostaje przy swojej głośności."
+
+msgid "Video"
+msgstr "Obraz"
+
+msgid "Audio"
+msgstr "Dźwięk"
+
+msgid "Nothing here yet."
+msgstr "Na razie nic."
+
+msgid "Off"
+msgstr "Wył."
+
+msgid "%d min"
+msgstr "%d min"
+
+msgid "Normal"
+msgstr "Normalnie"
+
+msgid "None"
+msgstr "Brak"
+
+msgid "%u% of normal"
+msgstr "%u% normy"
+
+msgid "Making the map"
+msgstr "Tworzę mapę"
+
+msgid "The map is chosen"
+msgstr "Mapę wybiera się"
+
+msgid "in the LAN box,"
+msgstr "w oknie LAN,"
+
+msgid "after the other"
+msgstr "gdy drugi gracz"
+
+msgid "player joins."
+msgstr "dołączy."
+
+msgid "Start mission"
+msgstr "Misja"
+
+msgid "Mission:"
+msgstr "Misja:"
+
+msgid "Start tutorial"
+msgstr "Samouczek"
+
+msgid "Tutorial:"
+msgstr "Samouczek:"
+
+msgid "New game"
+msgstr "Nowa gra"
+
+msgid "Mapsize:"
+msgstr "Mapa:"
+
+msgid "LAN game"
+msgstr "Gra LAN"
+
+msgid "Load game"
+msgstr "Wczytaj grę"
+
+msgid "Delete %u saves?"
+msgstr "Usunąć (%u)?"
+
+msgid "Delete the save?"
+msgstr "Usunąć zapis?"
+
+msgid "YES"
+msgstr "TAK"
+
+msgid "NO"
+msgstr "NIE"
+
+msgid "DELETE"
+msgstr "USUŃ"
+
+msgid "Game speed up"
+msgstr "Szybciej"
+
+msgid "Game speed down"
+msgstr "Wolniej"
+
+msgid "Normal speed"
+msgstr "Normalne tempo"
+
+msgid "Zoom"
+msgstr "Powiększenie"
+
+msgid "Wheel"
+msgstr "Kółko"
+
+msgid "Zoom in and out"
+msgstr "Powiększ, pomniejsz"
+
+msgid "Pause"
+msgstr "Pauza"
+
+msgid "Music on-off"
+msgstr "Muzyka wł.-wył."
+
+msgid "Sound on-off"
+msgstr "Dźwięk wł.-wył."
+
+msgid "Quick save"
+msgstr "Szybki zapis"
+
+msgid "Screenshot"
+msgstr "Zrzut ekranu"
+
+msgid "This box"
+msgstr "To okno"
+
+msgid "Quit"
+msgstr "Wyjście"
+
+msgid "Keys"
+msgstr "Klawisze"
+
+msgid "none"
+msgstr "brak"
+
+msgid "Server name"
+msgstr "Nazwa serwera"
+
+msgid "Server address"
+msgstr "Adres serwera"
+
+msgid "Internet address"
+msgstr "Adres w internecie"
+
+msgid "Port"
+msgstr "Port"
+
+msgid "AI players"
+msgstr "Gracze komp."
+
+msgid "Address"
+msgstr "Adres"
+
+msgid "STOP SERVER"
+msgstr "ZATRZYMAJ"
+
+msgid "RUN SERVER"
+msgstr "URUCHOM"
+
+msgid "Go on with a saved game"
+msgstr "Dalsza gra z zapisu"
+
+msgid "USE GAME"
+msgstr "WYBIERZ"
+
+msgid "Searching the network..."
+msgstr "Szukam w sieci..."
+
+msgid "Servers found"
+msgstr "Znalezione serwery"
+
+msgid "None - SEARCH or type"
+msgstr "Brak - SZUKAJ albo wpisz"
+
+msgid "the address below."
+msgstr "adres poniżej."
+
+msgid "SEARCH"
+msgstr "SZUKAJ"
+
+msgid "CONNECTING"
+msgstr "ŁĄCZĘ"
+
+msgid "CONNECT"
+msgstr "POŁĄCZ"
+
+msgid "Connected. Waiting for the"
+msgstr "Połączono. Czekam, aż serwer"
+
+msgid "server to start the game."
+msgstr "rozpocznie grę."
+
+msgid "Your address"
+msgstr "Twój adres"
+
+msgid "The game server is not ready yet."
+msgstr "Serwer gry nie jest jeszcze gotowy."
+
+msgid "CHANGE"
+msgstr "ZMIEŃ"
+
+msgid "AVERAGE"
+msgstr "ŚREDNIA"
+
+msgid "GREAT"
+msgstr "ŚWIETNA"
+
+msgid "The game did not start."
+msgstr "Gra nie wystartowała."
+
+msgid "No network in this version."
+msgstr "Brak sieci w tej wersji."
+
+msgid "Type the server address."
+msgstr "Wpisz adres serwera."
+
+msgid "Connecting to "
+msgstr "Łączę z "
+
+msgid "A save was not deleted."
+msgstr "Zapis nie został usunięty."
+
+msgid "Bad settings from the server."
+msgstr "Złe ustawienia od serwera."
+
+msgid "The saved game could not be read."
+msgstr "Nie można wczytać zapisu."
+
+msgid "The saved game came broken."
+msgstr "Zapis dotarł uszkodzony."
+
+msgid "Receiving the game... "
+msgstr "Odbieram grę... "
+
+msgid "Choose a saved game."
+msgstr "Wybierz zapis."
+
+msgid "Player 2 is not a person there."
+msgstr "Tam gracz 2 nie jest człowiekiem."
+
+msgid "Saved game"
+msgstr "Zapis gry"
+
+msgid "Making the map..."
+msgstr "Tworzę mapę..."
+
+msgid "No map yet."
+msgstr "Brak mapy."
+
+msgid "Saved"
+msgstr "Zapis"
+
+msgid "Map size"
+msgstr "Rozmiar"
+
+msgid "Server"
+msgstr "Serwer"
+
+msgid "Player 2"
+msgstr "Gracz 2"
+
+msgid "Response"
+msgstr "Ping"
+
+msgid "SMALLER"
+msgstr "MNIEJSZA"
+
+msgid "LARGER"
+msgstr "WIĘKSZA"
+
+msgid "OTHER MAP"
+msgstr "INNA MAPA"
+
+msgid "NEW MAP"
+msgstr "NOWA MAPA"
+
+msgid "LOAD GAME"
+msgstr "WCZYTAJ"
+
+msgid "The server chooses"
+msgstr "Serwer wybiera mapę."
+
+msgid "the map. Agree on"
+msgstr "Uzgodnijcie ją"
+
+msgid "it in the chat."
+msgstr "na czacie."
+
+msgid "Chat: type, Return"
+msgstr "Czat: pisz, Return"
+
+msgid "CANCEL"
+msgstr "ANULUJ"
+
+msgid "START GAME"
+msgstr "START GRY"
+
+msgid "DISCONNECT"
+msgstr "ROZŁĄCZ"
+
+msgid "Two players on two Amigas"
+msgstr "Dwóch graczy na dwóch Amigach"
+
+msgid "in one network."
+msgstr "w jednej sieci."
+
+msgid "START SERVER"
+msgstr "ZAŁÓŻ GRĘ"
+
+msgid "This Amiga sets up the game."
+msgstr "Ta Amiga zakłada grę."
+
+msgid "JOIN SERVER"
+msgstr "DOŁĄCZ"
+
+msgid "Find the server or type"
+msgstr "Znajdź serwer albo wpisz"
+
+msgid "its address and connect."
+msgstr "jego adres i połącz się."
+
+msgid "INTERNET GAME"
+msgstr "INTERNET"
+
+msgid "Both connect to the game server,"
+msgstr "Obie Amigi łączą się z serwerem,"
+
+msgid "no router to set up."
+msgstr "bez ustawiania routera."
+
+msgid "A game over the game server"
+msgstr "Gra przez serwer gry"
+
+msgid "Game server"
+msgstr "Serwer gry"
+
+msgid "not set yet"
+msgstr "jeszcze brak"
+
+msgid "Your name"
+msgstr "Twoja nazwa"
+
+msgid "Coming soon: the game server"
+msgstr "Wkrótce: serwer gry"
+
+msgid "is being made."
+msgstr "jest w przygotowaniu."
+
+msgid "NEW GAME"
+msgstr "NOWA GRA"
+
+msgid "JOIN GAME"
+msgstr "DOŁĄCZ"
+
+msgid "BACK"
+msgstr "WRÓĆ"
+
+msgid "A player has joined."
+msgstr "Gracz dołączył."
+
+msgid "Waiting for a player..."
+msgstr "Czekam na gracza..."
+
+msgid "RUN SERVER to be found."
+msgstr "URUCHOM - wtedy widać grę."
+
+msgid "GAME SAVED: SYNC ERROR"
+msgstr "ZAPISANO: BŁĄD ZGODNOŚCI"
+
+msgid "GAME NOT SAVED"
+msgstr "GRA NIE ZAPISANA"
+
+msgid "RESYNC: WAITING FOR THE SERVER"
+msgstr "RESYNC: CZEKAM NA SERWER"
+
+msgid "RESYNC FAILED"
+msgstr "RESYNC NIEUDANY"
+
+msgid "RESYNC: THE GAME GOES TO THE OTHER SIDE"
+msgstr "RESYNC: GRA IDZIE DO GRACZA 2"
+
+msgid "RESYNC: THE GAME CAME BROKEN"
+msgstr "RESYNC: GRA USZKODZONA"
+
+msgid "RESYNC DONE - THE GAMES ARE THE SAME"
+msgstr "RESYNC GOTOWY - GRY ZGODNE"
+
+msgid "STATE OF THE OTHER SIDE RECEIVED"
+msgstr "STAN DRUGIEJ STRONY ODEBRANY"
+
+msgid "STATE OF THE OTHER SIDE BROKEN"
+msgstr "STAN DRUGIEJ STRONY USZKODZONY"
+
+msgid "The other player"
+msgstr "Drugi gracz"
+
+msgid "The player %s ended the game."
+msgstr "Gracz %s zakończył grę."
+
+msgid "The server %s ended the game."
+msgstr "Serwer %s zakończył grę."
+
+msgid "%s left the game."
+msgstr "%s opuścił grę."
+
+msgid "%s ended the game."
+msgstr "%s zakończył grę."
+
+msgid "The connection to %s is lost."
+msgstr "Utracono połączenie z %s."
+
+msgid "Game saved."
+msgstr "Gra zapisana."
+
+msgid "OUT OF STEP AT "
+msgstr "ROZJAZD W KROKU "
+
+msgid "LAN: NO CONNECTION"
+msgstr "LAN: BRAK POŁĄCZENIA"
+
+msgid "LAN: PLAYER GONE"
+msgstr "LAN: GRACZ ODSZEDŁ"
+
+msgid "LAN: OUT OF STEP "
+msgstr "LAN: ROZJAZD "
+
+msgid "LAN: SENDING THE GAME "
+msgstr "LAN: WYSYŁAM GRĘ "
+
+msgid "LAN: WAITING FOR "
+msgstr "LAN: CZEKAM NA "
+
+msgid "PLAYER"
+msgstr "GRACZA"
+
+msgid "LAN: SLOW CONNECTION "
+msgstr "LAN: WOLNE POŁĄCZENIE "
+
+msgid "NOT SENT - NO CONNECTION"
+msgstr "NIE WYSŁANO - BRAK POŁĄCZENIA"
+
+msgid "You gained\na victory here"
+msgstr "Odniosłeś tu\nzwycięstwo"
+
+msgid "This mine hauls\nno more raw\nmaterials"
+msgstr "Ta kopalnia\nnie wydobywa\njuż surowców"
+
+msgid "You wanted me\nto call you to\nthis location"
+msgstr "Chciałeś, żebym\nwezwał cię\nw to miejsce"
+
+msgid "A knight has\noccupied this\nnew building"
+msgstr "Rycerz zajął\nten nowy\nbudynek"
+
+msgid "A new stock\nhas been built"
+msgstr "Zbudowano\nnowy magazyn"
+
+msgid "Because of this\nenemy building\nyou lost some\nland"
+msgstr "Przez ten\nbudynek wroga\nstraciłeś\nczęść ziemi"
+
+msgid "Because of this\nenemy building\nyou lost some\nland and\nsome buildings"
+msgstr "Przez ten\nbudynek wroga\nstraciłeś\nczęść ziemi\ni budynków"
+
+msgid "Emergency\nprogram\nactivated"
+msgstr "Program\nawaryjny\nwłączony"
+
+msgid "Emergency\nprogram\nneutralized"
+msgstr "Program\nawaryjny\nwyłączony"
+
+msgid "A geologist\nhas found gold"
+msgstr "Geolog\nznalazł złoto"
+
+msgid "A geologist\nhas found iron"
+msgstr "Geolog\nznalazł żelazo"
+
+msgid "A geologist\nhas found coal"
+msgstr "Geolog\nznalazł węgiel"
+
+msgid "A geologist\nhas found stone"
+msgstr "Geolog\nznalazł kamień"
+
+msgid "You wanted me\nto call you\nto this menu"
+msgstr "Chciałeś, żebym\nwezwał cię\ndo tego menu"
+
+msgid "30 min. passed\nsince the last\nsaving"
+msgstr "Minęło 30 min.\nod ostatniego\nzapisu"
+
+msgid "One hour passed\nsince the last\nsaving"
+msgstr "Minęła godzina\nod ostatniego\nzapisu"
+
+msgid "You wanted me\nto call you\nto this stock"
+msgstr "Chciałeś, żebym\nwezwał cię\ndo magazynu"
+
+msgid "Your settlement\nis under attack"
+msgstr "Twoja osada\njest atakowana"
+
+msgid "Your knights\njust lost the\nfight"
+msgstr "Twoi rycerze\nprzegrali\nwalkę"
+
+msgid "GROUND-ANALYSIS:"
+msgstr "BADANIE GRUNTU:"
+
+msgctxt "knight occupation"
+msgid "Minimum"
+msgstr "Minimum"
+
+msgctxt "knight occupation"
+msgid "Weak"
+msgstr "Słaba"
+
+msgctxt "knight occupation"
+msgid "Medium"
+msgstr "Średnia"
+
+msgctxt "knight occupation"
+msgid "Good"
+msgstr "Dobra"
+
+msgctxt "knight occupation"
+msgid "Full"
+msgstr "Pełna"
+
+msgid "Do you want\nto quit\nSettlers?"
+msgstr "Chcesz\nzakończyć\nSettlers?"
+
+msgid "Do you want\nto quit\nthis game?"
+msgstr "Chcesz\nzakończyć\ntę grę?"
+
+msgid "Yes"
+msgstr "Tak"
+
+msgid "Do you want\nto save\nthe game?"
+msgstr "Chcesz\nzapisać\ngrę?"
+
+msgid "No"
+msgstr "Nie"
+
+msgid "The game has not\nbeen saved\nrecently.\nAre you\nsure?"
+msgstr "Gra nie była\nostatnio\nzapisana.\nNa pewno?"
+
+msgid "The language of the texts: English, Deutsch, Polski. A click: the next one, kept for the next start."
+msgstr "Język napisów: English, Deutsch, Polski. Kliknięcie: następny, zapamiętany na kolejne uruchomienie."
+
+msgid "Font"
+msgstr "Czcionka"
+
+msgid "The letters of the texts: Original, the font of the game; Readable, plainer letters with small letters. A click: the other one, kept for the next start."
+msgstr "Litery napisów: Oryginalna, czcionka gry; Czytelna, prostsze litery, także małe. Kliknięcie: druga, zapamiętana na kolejne uruchomienie."
+
+msgid "Messages"
+msgstr "Komunikaty"
+
+msgid "How many messages the game shows: None, Few, Most, All."
+msgstr "Ile komunikatów pokazuje gra: Brak, Mało, Więcej, Wszystkie."
+
+msgid "Aspect"
+msgstr "Proporcje"
+
+msgid "The shape of the screen, 4:3 or 16:9: it chooses the modes of Screen. A click: the other one."
+msgstr "Kształt ekranu, 4:3 albo 16:9: od niego zależą tryby Ekranu. Kliknięcie: drugi."
+
+msgid "Screen"
+msgstr "Ekran"
+
+msgid "The screen mode; the arrows change it at once. Kept for the next start."
+msgstr "Tryb ekranu; strzałki zmieniają go od razu. Zapamiętany na kolejne uruchomienie."
+
+msgid "Readable"
+msgstr "Czytelna"
+
+msgid "Original"
+msgstr "Oryginalna"
+
+msgctxt "messages"
+msgid "None"
+msgstr "Brak"
+
+msgctxt "messages"
+msgid "Few"
+msgstr "Mało"
+
+msgctxt "messages"
+msgid "Most"
+msgstr "Więcej"
+
+msgctxt "messages"
+msgid "All"
+msgstr "Wszystkie"
+
+msgid "Fullscreen video"
+msgstr "Pełny ekran"
+
+msgid "MINING\nOUTPUT:"
+msgstr "WYDOBYCIE:"
+
+msgid "Ordered\nBuilding"
+msgstr "Zamówiony\nbudynek"
+
+msgid "Defenders:"
+msgstr "Obrońcy:"
+
+msgid "State:"
+msgstr "Stan:"
+
+msgid "Transport Info:"
+msgstr "Transport:"
+
+msgid "Index:"
+msgstr "Indeks:"
+
+msgid "Stock of\nthis building:"
+msgstr "Zapas\nbudynku:"
+
+msgid "CONGRATULATIONS."
+msgstr "GRATULACJE."
+
+msgid "YOUR ENEMIES\nRESIGN. YOU\nHAVE WON THIS\nMISSION."
+msgstr "TWOI WROGOWIE\nSIĘ PODDALI.\nWYGRAŁEŚ TĘ\nMISJĘ."
+
+msgid "NEW PASSWORD:"
+msgstr "NOWE HASŁO:"
+
+msgid "SORRY, ONLY ONE\nOF YOUR ENEMIES\nHAS GAINED THE\nSUPERIORITY IN\nTHIS MISSION"
+msgstr "NIESTETY, JEDEN\nZ TWOICH WROGÓW\nZDOBYŁ PRZEWAGĘ\nW TEJ MISJI"
+
+msgid "WELL DONE."
+msgstr "DOBRZE."
+
+msgid "YOU COMPLETED\nTHIS TUTORIAL\nGAME."
+msgstr "UKOŃCZYŁEŚ\nTEN SAMOUCZEK."
+
+msgid "THE BLUE\nSETTLERS HAVE\nGAINED THE\nSUPERIORITY"
+msgstr "NIEBIESCY\nOSADNICY\nZDOBYLI\nPRZEWAGĘ"
+
+msgid "THE RED\nSETTLERS HAVE\nGAINED THE\nSUPERIORITY"
+msgstr "CZERWONI\nOSADNICY\nZDOBYLI\nPRZEWAGĘ"
+
+msgid "THE VIOLET\nSETTLERS HAVE\nGAINED THE\nSUPERIORITY"
+msgstr "FIOLETOWI\nOSADNICY\nZDOBYLI\nPRZEWAGĘ"
+
+msgid "THE YELLOW\nSETTLERS HAVE\nGAINED THE\nSUPERIORITY"
+msgstr "ŻÓŁCI\nOSADNICY\nZDOBYLI\nPRZEWAGĘ"
+
+msgid "Build a guard hut and a guard tower and a fortress."
+msgstr "Zbuduj wartownię, wieżę strażniczą i fortecę."
+
+msgid "Produce five planks and five stones."
+msgstr "Wytwórz pięć desek i pięć kamieni."
+
+msgid "Produce five fish and five meat and five bread."
+msgstr "Wytwórz pięć ryb, pięć mięsa i pięć chlebów."
+
+msgid "Smelt five steel bars and five gold bars."
+msgstr "Wytop pięć sztab stali i pięć sztab złota."
+
+msgid "Make ten weapons and ten tools."
+msgstr "Wykuj dziesięć broni i dziesięć narzędzi."
+
+msgid "Conquer all the land of the enemy."
+msgstr "Zdobądź całą ziemię wroga."
+
+msgid "TUTORIAL %d"
+msgstr "SAMOUCZEK %d"
+
+msgid "ORDERS:"
+msgstr "ZADANIE:"
+
+msgid "Demolish:"
+msgstr "Burzenie:"
+
+msgid "Click here"
+msgstr "Kliknij tu"
+
+msgid "if you are\nsure"
+msgstr "jeśli jesteś\npewien"
+
+msgid "Save Game"
+msgstr "Zapisz grę"
+
+msgctxt "thousands"
+msgid "K"
+msgstr "T"
+
+msgctxt "millions"
+msgid "M"
+msgstr "M"
+
+msgctxt "ground analysis"
+msgid "Not Present"
+msgstr "Brak"
+
+msgctxt "ground analysis"
+msgid "Minimum"
+msgstr "Minimum"
+
+msgctxt "ground analysis"
+msgid "Very Few"
+msgstr "Bardzo mało"
+
+msgctxt "ground analysis"
+msgid "Few"
+msgstr "Mało"
+
+msgctxt "ground analysis"
+msgid "Below Average"
+msgstr "Poniżej średniej"
+
+msgctxt "ground analysis"
+msgid "Average"
+msgstr "Średnio"
+
+msgctxt "ground analysis"
+msgid "Above Average"
+msgstr "Powyżej średniej"
+
+msgctxt "ground analysis"
+msgid "Much"
+msgstr "Dużo"
+
+msgctxt "ground analysis"
+msgid "Very Much"
+msgstr "Bardzo dużo"
+
+msgctxt "ground analysis"
+msgid "Perfect"
+msgstr "Doskonale"
+
+msgid "not found."
+msgstr "nie znaleziono."
+
+msgid "Accelerator"
+msgstr "Akcelerator"
+
+msgid "Firmware"
+msgstr "Firmware"
+
+msgid "CPU clock"
+msgstr "Zegar CPU"
+
+msgid "Raising the clock overclocks"
+msgstr "Wyższy zegar to podkręcanie"
+
+msgid "the CPU - the system may hang."
+msgstr "CPU - system może się zawiesić."
+
+msgid "MC68040: 20 to 50 MHz."
+msgstr "MC68040: od 20 do 50 MHz."
+
+msgid "Only for a MC68060 rev. 6."
+msgstr "Tylko dla MC68060 rev. 6."
+
+msgid "The clock changes at once."
+msgstr "Zegar zmienia się od razu."
+
+msgid "Processor"
+msgstr "Procesor"
+
+msgid "yes"
+msgstr "tak"
+
+msgid "no"
+msgstr "nie"
+
+msgid "Card memory"
+msgstr "Pamięć karty"
+
+msgid "No Warp: SYS:C/WarpTool"
+msgstr "Brak Warpa: SYS:C/WarpTool"
+

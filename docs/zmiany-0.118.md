@@ -135,3 +135,21 @@ Wydane na prośbę użytkownika (łatka Freeserf `0050`); potwierdzone przez uż
 | 3 | Budowa drogi: zwykły klik na polu innej drogi (w miejscu na flagę) dołącza do niej; dwuklik zaraz potem nie zaczyna nowej drogi | ✅ |
 | 4 | Options → Video: „Dead trees on new maps” (0–100 %), w LAN ustawia serwer; 0.120 nie łączy się z 0.119 | ✅ |
 | – | Kreska czarnych pikseli przy brzegu wody (stała, w obu trybach rysowania) – zostawiona na prośbę użytkownika, opis w `PORTING.md`, zapis `water-line.save` na Amidze 1 | ⚠️ otwarte |
+
+## 0.125 (7.11.2026)
+
+Łatka Freeserf `0056`; potwierdzone przez użytkownika na Amidze 1 (`Settlers-test`), jeśli nie zaznaczono inaczej.
+
+| Nr | Zmiana | Stan |
+|---|---|---|
+| 1 | Menu startowe: przy LAN game bez „Mapsize” i przycisków rozmiaru mapy | ✅ |
+| 2 | Języki polski i niemiecki (własny czytnik `.po`, szuflada `po`), litery z ogonkami i umlautami dorysowane | ✅ |
+| 3 | Język pierwszą pozycją szerokiego okna Options; domyślnie angielski, zapamiętany | ✅ |
+| 4 | Podpowiedzi wszystkich opcji (Options, Advanced, Video, Audio); okno rośnie dla długiej podpowiedzi | ✅ |
+| 5 | Brakujące znaki czcionki (`, ; ( ) / ' " ! + = _ # * & [ ] < >`) | ✅ |
+| 6 | Audio: Paula / AHI (AHI przez interfejs biblioteki, 2 kanały L/P, pierścień 4 × 23 ms) | ✅ czysto, wszystkie dźwięki |
+| 8 | Options → Font: Original / Readable (czcionka 8×8 z małymi literami) | ⏳ do potwierdzenia |
+| 10 | Przyciski Advanced, Video, Audio, Amiga w Options; Exit wraca do Options | ✅ wyjście poprawione |
+| 11 | Volume działa (było puste `apply()`), kroki 10, 0–100 | ✅ |
+| 12 | Music, Sound effects, Volume w Audio + osobna głośność muzyki i efektów | ✅ |
+| 13 | Tryb 640×512 (320×256 nie – okna gry się nie mieszczą) | ⏳ do potwierdzenia |

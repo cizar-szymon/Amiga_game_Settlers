@@ -12,6 +12,7 @@
 #include "src/audio.h"
 #include "src/data.h"
 #include "src/gfx.h"
+#include "src/translation.h"
 
 static const int kExitSize = 16;
 static const int kLabelX = 16;
@@ -75,15 +76,15 @@ AmigaBox::internal_draw() {
   if (board.size() > 19) board.resize(19);
 
   const std::string rows[][2] = {
-    { "Processor", cpu },
-    { "FPU", info.fpu ? "yes" : "no" },
+    { _("Processor"), cpu },
+    { "FPU", info.fpu ? _("yes") : _("no") },
     { "Kickstart", std::to_string(info.kick_version) + "." +
                    std::to_string(info.kick_revision) },
     { "Chip RAM", size_text(info.chip_kb) },
     { "Fast RAM", size_text(info.fast_kb) },
-    { "Graphics", board },
-    { "Card memory", size_text(info.vram_kb) },
-    { "Screen", std::to_string(sw) + "x" + std::to_string(sh) + " 8 bit" },
+    { _("Graphics"), board },
+    { _("Card memory"), size_text(info.vram_kb) },
+    { _("Screen"), std::to_string(sw) + "x" + std::to_string(sh) + " 8 bit" },
   };
   int y = kFirstRowY;
   for (const auto &r : rows) {
@@ -94,21 +95,21 @@ AmigaBox::internal_draw() {
 
   y += kRowHeight / 2;
   if (!info.warp) {
-    frame->draw_string(kLabelX, y, "No Warp: SYS:C/WarpTool", Color::green,
+    frame->draw_string(kLabelX, y, _("No Warp: SYS:C/WarpTool"), Color::green,
                        Color::black);
-    frame->draw_string(kLabelX, y + kRowHeight, "not found.", Color::green,
+    frame->draw_string(kLabelX, y + kRowHeight, _("not found."), Color::green,
                        Color::black);
   } else {
-    frame->draw_string(kLabelX, y, "Accelerator", Color::green, Color::black);
+    frame->draw_string(kLabelX, y, _("Accelerator"), Color::green, Color::black);
     frame->draw_string(kValueX, y, info.warp_model, Color::green,
                        Color::black);
     y += kRowHeight;
-    frame->draw_string(kLabelX, y, "Firmware", Color::green, Color::black);
+    frame->draw_string(kLabelX, y, _("Firmware"), Color::green, Color::black);
     frame->draw_string(kValueX, y, info.warp_firmware, Color::green,
                        Color::black);
     y += kRowHeight;
     int clock_y = kFirstRowY + kClockRow * kRowHeight - 2;
-    frame->draw_string(kLabelX, clock_y + 4, "CPU clock", Color::green,
+    frame->draw_string(kLabelX, clock_y + 4, _("CPU clock"), Color::green,
                        Color::black);
     frame->draw_string(kValueX, clock_y + 4,
                        std::to_string(info.warp_mhz) + " MHz", Color::green,
@@ -123,13 +124,13 @@ AmigaBox::internal_draw() {
     }
 
     y = clock_y + kArrowSize + 6;
-    const char *warning[] = {  /* at most 31 characters */
-      "Raising the clock overclocks",
-      "the CPU - the system may hang.",
-      is_68040 ? "MC68040: 20 to 50 MHz." : "Only for a MC68060 rev. 6.",
-      "The clock changes at once."
+    const std::string warning[] = {  /* at most 31 characters */
+      _("Raising the clock overclocks"),
+      _("the CPU - the system may hang."),
+      is_68040 ? _("MC68040: 20 to 50 MHz.") : _("Only for a MC68060 rev. 6."),
+      _("The clock changes at once.")
     };
-    for (const char *line : warning) {
+    for (const std::string &line : warning) {
       frame->draw_string(kLabelX, y, line, Color::green, Color::black);
       y += kRowHeight;
     }

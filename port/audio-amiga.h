@@ -30,11 +30,16 @@ class AudioAmiga : public Audio {
     virtual void set_volume(float v);
     virtual void volume_up() { set_volume(volume + 0.1f); }
     virtual void volume_down() { set_volume(volume - 0.1f); }
-    virtual void apply() {}
+    /* The volume to the mixer (the whole mix, music and effects). */
+    virtual void apply();
   };
 
   class PlayerSFX;
   class PlayerMusic;
+
+  virtual std::vector<std::string> get_outputs() const;
+  virtual std::string get_output() const;
+  virtual bool set_output(const std::string &output);
 
  protected:
   bool open;

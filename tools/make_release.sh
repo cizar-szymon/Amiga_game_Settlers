@@ -41,6 +41,9 @@ cp "$D/Settlers.info" "$G/Settlers.info"	# the game's icon (Tool Types, stack), 
 cp "$D/data_ReadMe.txt" "$G/data/amiga/ReadMe.txt"
 cp "$D/data_intro_ReadMe.txt" "$G/data/intro/ReadMe.txt"
 cp "$INTRO" "$G/data/intro/intro.script"
+# The translations (Options -> Advanced -> Language): Polish, German.
+mkdir -p "$G/po"
+cp port/po/pl.po port/po/de.po "$G/po/"
 python tools/make_install.py >/dev/null	# Install.txt and Install.pdf (EN, PL, DE) from Install_src.txt
 for f in Settlers.txt Settlers_en.txt Settlers_dev.txt Settlers_dev_en.txt \
          Settlers_release.txt Settlers_release_en.txt Install.txt Install.pdf; do
@@ -62,7 +65,7 @@ EOT
 done
 
 # only these files in the public tree - no data of the original disks
-PUBLIC=" Settlers/Settlers Settlers/Settlers.info Settlers/doc.info Settlers/data/amiga/ReadMe.txt Settlers/data/intro/ReadMe.txt Settlers/data/intro/intro.script "
+PUBLIC=" Settlers/Settlers Settlers/Settlers.info Settlers/doc.info Settlers/data/amiga/ReadMe.txt Settlers/data/intro/ReadMe.txt Settlers/data/intro/intro.script Settlers/po/pl.po Settlers/po/de.po "
 bad=$(cd "$R" && find Settlers -type f | while read -r f; do
 	case "$PUBLIC" in *" $f "*) continue ;; esac
 	case "$f" in Settlers/doc/*) continue ;; esac

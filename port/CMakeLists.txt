@@ -27,7 +27,7 @@ add_library(fs_data STATIC
   ${FS}/data-source-amiga.cc ${FS}/data-source-legacy.cc
   ${FS}/data-source-custom.cc ${FS}/tpwm.cc ${FS}/sfx2wav.cc ${FS}/xmi2mid.cc
   ${FS}/pcm2wav.cc ${FS}/data-source.cc sprite-file-amiga.cc
-  ${FS}/font-dummy.cc ${FS}/translation-dummy.cc)
+  font-amiga.cc translation-po.cc)
 
 foreach(t fs_tools fs_game fs_data)
   target_include_directories(${t} PUBLIC ${FREESERF_DIR}

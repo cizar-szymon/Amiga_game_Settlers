@@ -68,7 +68,8 @@ FILES IN RAM:
   Settlers-log.txt     Freeserf messages (never to the console: with the
                        card's bitmap locked, text in a Shell window would
                        stop the Amiga)
-  Settlers-stats.txt   STATS: fps, times, sound (gaps, cost of mixing)
+  Settlers-stats.txt   STATS: fps, times, sound (gaps, cost of mixing,
+                       AUDIO LEVEL: the peak of the mix, samples at full scale)
   Settlers-shot.ppm    F9: screenshot with the true palette
   Settlers-state.*     F10: Freeserf save (text) + description
 

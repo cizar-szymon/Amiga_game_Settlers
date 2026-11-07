@@ -6,6 +6,28 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.125 (7.11.2026, beta release)
+-------------------------------
+
+- Languages: English, Polish and German (Options -> Language, the first
+  row); the game starts in English, the choice stays for the next time.
+  The translation files are in the po drawer next to the game.
+- Options -> Font: the original font or a readable one (Readable) - in
+  the same style, plainer letters, with small letters; the choice stays.
+- Polish and German letters and the characters , ; ( ) / ' " ! + = etc.
+  in the font of the game.
+- The Options box is wider; at its bottom the buttons Advanced, Video,
+  Audio, Amiga - the Exit of each goes back to Options.
+- Options -> Audio: the sound through Paula or AHI (16 bits, e.g. the
+  sound of a Warp card), music and effects on/off, the volume of all and
+  of the music and the effects on their own (0-100 in steps of 10).
+- Hints for all options: the left button held on the name of an option
+  shows what it does.
+- The 640x512 resolution (Options -> Screen, aspect 4:3).
+- Start menu: no map size for a LAN game (the server chooses the map).
+- LAN game: both sides need version 0.125.
+
+
 0.124 (6.11.2026, beta release)
 -------------------------------
 

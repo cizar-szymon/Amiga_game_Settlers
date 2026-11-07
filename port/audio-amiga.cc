@@ -13,6 +13,7 @@
 #include "src/data.h"
 #include "src/data-source.h"
 #include "src/log.h"
+#include "src/settings.h"
 #include "port/amiga_audio.h"
 
 extern "C" {
@@ -46,6 +47,9 @@ long music_gain = 32;
    original plays the effects there. */
 const int kChannelSide[Audio::kSfxChannels] = { 0, 1, 1, 0 };
 
+/* Options -> Volume: the whole mix times master_gain / 256. */
+int master_gain = 256;
+
 void
 mix(short *out, int frames, void *) {
   if (music_on) {
@@ -68,16 +72,35 @@ mix(short *out, int frames, void *) {
     }
     v.pos = pos;
   }
+  if (master_gain < 256) {
+    for (int i = 0; i < 2 * frames; i++) {
+      out[i] = static_cast<short>((out[i] * master_gain) >> 8);
+    }
+  }
 }
 
 }  // namespace
 
 /* ---- Sound effects ---- */
 
+/* A volume in steps of 10% (0.1 added ten times is not 1.0 in a float). */
+static float
+volume_step(float v) {
+  int tenths = static_cast<int>(v * 10.f + 0.5f);
+  return static_cast<float>(std::max(0, std::min(tenths, 10))) / 10.f;
+}
+
 void
 AudioAmiga::Volume::set_volume(float v) {
-  volume = std::max(0.f, std::min(v, 1.f));
+  volume = volume_step(v);
   apply();
+}
+
+void
+AudioAmiga::Volume::apply() {
+  int gain = static_cast<int>(volume * 256.f + 0.5f);
+  /* One word written: no lock needed (and with NOSOUND there is none). */
+  master_gain = gain;
 }
 
 class TrackSFX : public Audio::Track {
@@ -125,7 +148,7 @@ class AudioAmiga::PlayerSFX : public Audio::Player,
     return Audio::PVolumeController(this, [](Audio::VolumeController *) {});
   }
   virtual float get_volume() { return volume; }
-  virtual void set_volume(float v) { volume = std::max(0.f, std::min(v, 1.f)); }
+  virtual void set_volume(float v) { volume = volume_step(v); }
   virtual void volume_up() { set_volume(volume + 0.1f); }
   virtual void volume_down() { set_volume(volume - 0.1f); }
 
@@ -216,7 +239,7 @@ class AudioAmiga::PlayerMusic : public Audio::Player,
   }
   virtual float get_volume() { return volume; }
   virtual void set_volume(float v) {
-    volume = std::max(0.f, std::min(v, 1.f));
+    volume = volume_step(v);
     amiga_audio_lock();
     music_gain = static_cast<long>(32.f * volume);
     micromod_set_gain(music_gain);
@@ -268,8 +291,21 @@ AudioAmiga::AudioAmiga()
   : open(false)
   , master(1.f) {
   if (disabled) return;
-  /* 512 samples a buffer, four buffers: 23 ms each at 22 kHz. */
-  if (amiga_audio_open(512, mix, nullptr) != 0) {
+  /* The output of the settings (Advanced -> Audio): Paula at first; AHI
+     that does not open falls back to Paula. 512 samples a buffer: 23 ms
+     each at 22 kHz (four buffers for Paula, four per side for AHI). */
+  /* The settings keep it in small letters ("ahi"). */
+  std::string output = Settings::get_instance().get("audio", "output",
+                                                    std::string("Paula"));
+  bool ahi = strcasecmp(output.c_str(), "AHI") == 0;
+  amiga_audio_use_ahi(ahi ? 1 : 0);
+  int r = amiga_audio_open(512, mix, nullptr);
+  if (r != 0 && ahi) {
+    Log::Warn["audio"] << "No AHI audio (ahi.device), Paula instead";
+    amiga_audio_use_ahi(0);
+    r = amiga_audio_open(512, mix, nullptr);
+  }
+  if (r != 0) {
     Log::Warn["audio"] << "No Paula audio (audio.device)";
     return;
   }
@@ -283,6 +319,41 @@ AudioAmiga::~AudioAmiga() {
     amiga_audio_close();
     open = false;
   }
+}
+
+std::vector<std::string>
+AudioAmiga::get_outputs() const {
+  return disabled ? std::vector<std::string>()
+                  : std::vector<std::string>{ "Paula", "AHI" };
+}
+
+std::string
+AudioAmiga::get_output() const {
+  if (!open) return "-";
+  return amiga_audio_is_ahi() ? "AHI" : "Paula";
+}
+
+/* Another output at once: the audio process stops and starts again on it
+   (the mixer state - music, sounds playing - stays); one that does not
+   open gives the one before back. */
+bool
+AudioAmiga::set_output(const std::string &output) {
+  if (disabled) return false;
+  bool ahi = strcasecmp(output.c_str(), "AHI") == 0;
+  bool was_ahi = amiga_audio_is_ahi() != 0;
+  if (open) amiga_audio_close();
+  open = false;
+  amiga_audio_use_ahi(ahi ? 1 : 0);
+  bool ok = amiga_audio_open(512, mix, nullptr) == 0;
+  if (!ok) {
+    Log::Warn["audio"] << "No " << output << " audio, back to the one before";
+    amiga_audio_use_ahi(was_ahi ? 1 : 0);
+    if (amiga_audio_open(512, mix, nullptr) != 0) return false;
+  }
+  open = true;
+  if (!sfx_player) sfx_player = std::make_shared<PlayerSFX>();
+  if (!music_player) music_player = std::make_shared<PlayerMusic>();
+  return ok;
 }
 
 void

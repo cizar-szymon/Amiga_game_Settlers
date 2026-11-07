@@ -102,13 +102,19 @@ SETTINGS IN THE GAME
 --------------------
 
 Options:
+  Language   the language of the texts: English, Deutsch, Polski (the
+             files of the po drawer next to the game; the Polish and
+             German letters drawn onto the font of the game)
+  Font       the letters of the texts: Original (the font of the game)
+             or Readable (plainer, in a similar style, with small
+             letters); kept for the next start
   Messages   how many messages (None, Few, Most, All)
   Aspect     the shape of the screen, 4:3 or 16:9 (a click changes it;
              it always starts at the smallest resolution: 400x300 /
              640x360)
   Screen     resolution: the arrows next to it change it at once, within
              the chosen aspect - 4:3: 400x300, 640x400, 640x480,
-             800x600; 16:9: 640x360, 960x540; it is kept for the next
+             640x512, 800x600; 16:9: 640x360, 960x540; it is kept for the next
              start
 Options -> Amiga:
   about the Amiga; with a Warp accelerator the CPU clock: MC68060 50-100
@@ -118,7 +124,7 @@ Options -> Advanced:
   Invert scrolling, Large numbers, Autosave, Stock box until occupied,
   Show FPS (frame counter in the corner),
   Show ping in LAN game (the network's response time, left of the FPS)
-Options -> Advanced -> VIDEO:
+Options -> Video:
   (The left button held on the name of an option: what it does.)
   Sand on new maps (the deserts of new maps: None, 10% of normal
     ... Normal, - + buttons),
@@ -132,6 +138,17 @@ Options -> Advanced -> VIDEO:
     lumberjacks fell dead trees too (first, no lumber from them),
     stonecutters break the brown boulders (no stone); new games and the
     game now, in a LAN game the server's)
+Options -> Audio:
+  Sound output: Paula (the sound chip of the Amiga, audio.device, 8 bits)
+    or AHI (ahi.device, 16 bits: a sound card, the sound of a Warp card -
+    warp.audio, or Paula through the AHI drivers; the mode in the AHI
+    prefs). A click changes it at once, the choice stays for the next
+    time; if AHI does not open, Paula stays.
+  Music, Sound effects: the music and the effects on / off (also the keys
+    M and S)
+  Volume: the volume of all, 0-100 in steps of 10
+  Music volume, Effects volume: the volume of the music and of the
+    effects on their own, 0-100 (times Volume)
 
 Settings are kept in Settlers.ini next to the game, saved games in the
 freeserf drawer.
@@ -158,7 +175,7 @@ The one who sets up the game (MASTER):
    LAN on it, third after New game and Start mission).
 2. Set up the map as in New game: size, random number, computer players
    (player 1 is you, player 2 the other person). Sand and rocks of the
-   map: Options -> Advanced -> VIDEO; the settings of this side count.
+   map: Options -> Video; the settings of this side count.
 3. Start -> START SERVER. Type the name of the server (PLAYER 1), the port
    if needed (Port, 6810) and click RUN SERVER - the server announces
    itself in the network. The box shows the address of the Amiga in the

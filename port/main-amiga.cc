@@ -2,7 +2,7 @@
  * main-amiga.cc - main program of the Amiga port (replaces src/freeserf.cc)
  *
  * Options, in the Shell or as Tool Types of the icon:
- *   MODE=400x300|640x360|640x400|640x480|800x600|960x540|WxH  DATA=path  LOAD=savefile  NOSOUND  FPS
+ *   MODE=400x300|640x360|640x400|640x480|640x512|800x600|960x540|WxH  DATA=path  LOAD=savefile  NOSOUND  FPS
  *   STATS[=FULL]  VERIFY  RENDER=VRAM|FAST  LOCK=FRAME|CALL  BLIT=0|1|2
  *   NOINTRO  DEBUG=0..4
  */

@@ -6,6 +6,28 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.125 (7.11.2026, wydanie beta)
+-------------------------------
+
+- Jezyki: angielski, polski i niemiecki (Options -> Language, pierwsza
+  pozycja); gra startuje po angielsku, wybor zostaje na nastepny raz.
+  Pliki tlumaczen w szufladzie po obok gry.
+- Options -> Font: czcionka oryginalna albo czytelna (Readable) - w tym
+  samym stylu, prostsze litery, z malymi literami; wybor zostaje.
+- Polskie i niemieckie litery oraz znaki , ; ( ) / ' " ! + = itd.
+  w czcionce gry.
+- Okno Options szersze; na dole przyciski Advanced, Video, Audio,
+  Amiga - Exit kazdego z nich wraca do Options.
+- Options -> Audio: wyjscie dzwieku Paula albo AHI (16 bitow, np. dzwiek
+  karty Warp), muzyka i efekty wl./wyl., glosnosc calosci oraz osobno
+  muzyki i efektow (0-100 co 10).
+- Podpowiedzi do wszystkich opcji: lewy przycisk przytrzymany na nazwie
+  opcji pokazuje, co robi.
+- Rozdzielczosc 640x512 (Options -> Screen, proporcje 4:3).
+- Menu startowe: przy grze LAN bez rozmiaru mapy (mape wybiera serwer).
+- Gra LAN: obie strony musza miec wersje 0.125.
+
+
 0.124 (6.11.2026, wydanie beta)
 -------------------------------
 

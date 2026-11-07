@@ -65,7 +65,8 @@ PLIKI W RAM:
   Settlers-log.txt     komunikaty Freeserf (nigdy na konsole: przy
                        zablokowanej bitmapie karty tekst w oknie Shella
                        zatrzymalby Amige)
-  Settlers-stats.txt   STATS: fps, czasy, dzwiek (przerwy, koszt miksowania)
+  Settlers-stats.txt   STATS: fps, czasy, dzwiek (przerwy, koszt miksowania,
+                       AUDIO LEVEL: szczyt miksu i probki na pelnej skali)
   Settlers-shot.ppm    F9: zrzut z prawdziwa paleta
   Settlers-state.*     F10: zapis Freeserf (tekst) + opis
 

@@ -1,0 +1,2594 @@
+From 978279d5cf0dad15ea079d56f0f4f9dfe2eb8031 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sat, 7 Nov 2026 02:15:59 +0100
+Subject: [PATCH] 0.125: Polish and German (the po files), the Font option
+ (original or readable), more glyphs, Options box wider with
+ Advanced/Video/Audio/Amiga buttons, hints of all options, Audio page
+ (Paula/AHI, music and effects on/off and their volumes), 640x512, no map size
+ for a LAN game in the start menu
+
+---
+ src/advanced-box.cc | 216 +++++++++----------
+ src/advanced-box.h  |   8 +-
+ src/audio.h         |  10 +
+ src/box-frame.cc    |  51 +++++
+ src/box-frame.h     |   7 +
+ src/game-init.cc    |  51 +++--
+ src/gfx.cc          | 140 +++++++++++-
+ src/gfx.h           | 504 ++++++++++++++++++++++----------------------
+ src/interface.cc    | 152 ++++++++++++-
+ src/interface.h     |  19 ++
+ src/keys-box.cc     |  31 +--
+ src/lan-box.cc      | 201 +++++++++---------
+ src/lan-game.cc     |  51 ++---
+ src/popup.cc        | 208 ++++++++++++------
+ src/popup.h         |   9 +
+ src/translation.h   |  10 +
+ 16 files changed, 1077 insertions(+), 591 deletions(-)
+
+diff --git a/src/advanced-box.cc b/src/advanced-box.cc
+index b073a48..9226d0a 100644
+--- a/src/advanced-box.cc
++++ b/src/advanced-box.cc
+@@ -44,45 +44,6 @@ static const int kFirstRowY = 19;
+ /* The boxes with a title (Video, Audio): rows below it. */
+ static const int kTitleY = 11;
+ static const int kTitledFirstRowY = 30;
+-/* VIDEO and AUDIO left of the Exit button, in the small letters of the
+-   original's buttons (3x5, as the EXIT label). */
+-static const int kPageButtonWidth = 40;
+-
+-static const char *
+-small_glyph(char c, int row) {
+-  static const char *const kGlyphs[][6] = {
+-    { "V", "# #", "# #", "# #", "# #", " # " },
+-    { "I", "###", " # ", " # ", " # ", "###" },
+-    { "D", "## ", "# #", "# #", "# #", "## " },
+-    { "E", "###", "#  ", "## ", "#  ", "###" },
+-    { "O", "###", "# #", "# #", "# #", "###" },
+-    { "A", "###", "# #", "###", "# #", "# #" },
+-    { "U", "# #", "# #", "# #", "# #", "###" },
+-  };
+-  for (const auto &g : kGlyphs) {
+-    if (g[0][0] == c) return g[1 + row];
+-  }
+-  return "   ";
+-}
+-
+-/* A wooden plate with a word in the small letters. */
+-static void
+-draw_small_button(Frame *frame, int x, int y, int w, const char *word) {
+-  frame->fill_rect(x, y, w, 16, Color(0x55, 0x22, 0x00));
+-  frame->fill_rect(x + 1, y + 1, w - 2, 14, Color(0x99, 0x55, 0x22));
+-  std::string rows[5];
+-  for (const char *c = word; *c != 0; c++) {
+-    for (int r = 0; r < 5; r++) {
+-      if (c != word) rows[r] += " ";
+-      rows[r] += small_glyph(*c, r);
+-    }
+-  }
+-  const char *lines[5];
+-  for (int r = 0; r < 5; r++) lines[r] = rows[r].c_str();
+-  int lw = static_cast<int>(rows[0].size());
+-  draw_small_letters(frame, x + (w - lw) / 2, y + 5, lines);
+-}
+-
+ /* An option is a check box (get) or a value shown as text (text); a click
+    on either calls change. */
+ typedef struct Option {
+@@ -114,9 +75,9 @@ autosave_text(const Interface *interface) {
+    "50% of normal" - a plain "100%" read like all sand. */
+ static std::string
+ amount_text(unsigned int percent) {
+-  if (percent >= 100) return "Normal";
+-  if (percent == 0) return "None";
+-  return std::to_string(percent) + "% of normal";
++  if (percent >= 100) return _("Normal");
++  if (percent == 0) return _("None");
++  return text_with(_("%u% of normal"), std::to_string(percent));
+ }
+ 
+ static std::string
+@@ -157,22 +118,28 @@ music_text(const Interface *interface) {
+ 
+ static const Option options[] = {
+   { N_("Invert scrolling"), &Interface::get_invert_scrolling, nullptr,
+-    &Interface::switch_invert_scrolling },
++    &Interface::switch_invert_scrolling, nullptr,
++    N_("The map moves the other way when it is dragged with the mouse. The cursor keys stay as they are.") },
+   { N_("Large numbers"), &Interface::get_large_numbers, nullptr,
+-    &Interface::switch_large_numbers },
++    &Interface::switch_large_numbers, nullptr,
++    N_("Numbers of 1000 and more in the boxes as 12K or .5M instead of >999.") },
+   { N_("Autosave"), nullptr, autosave_text,
+-    &Interface::next_autosave_interval },
++    &Interface::next_autosave_interval, nullptr,
++    N_("Saves the game by itself every 3, 5, 10, 20, 30 or 60 minutes into autosave.save, unless it was paused. A click: the next time.") },
+   { N_("Stock box until occupied"), &Interface::get_stock_box_occupied, nullptr,
+-    &Interface::switch_stock_box_occupied },
++    &Interface::switch_stock_box_occupied, nullptr,
++    N_("A click on a new stock opens its building box until its serf has arrived, not the box of its goods.") },
+ #ifdef __AMIGA__
+   /* Amiga port: the frame rate in the corner (also the FPS Tool Type).
+-     The port has only the Amiga data and no translations, so the choice
+-     of the data and the language is left out. */
++     The port has only the Amiga data, so the choice of the data is left
++     out; the language is the first row of the Options box. */
+   { N_("Show FPS"), &Interface::get_show_fps, nullptr,
+-    &Interface::switch_show_fps },
++    &Interface::switch_show_fps, nullptr,
++    N_("The frames a second in the top left corner of the screen (also the FPS Tool Type).") },
+   /* The time there and back of the LAN connection, left of the FPS. */
+   { N_("Show ping in LAN game"), &Interface::get_show_ping, nullptr,
+-    &Interface::switch_show_ping },
++    &Interface::switch_show_ping, nullptr,
++    N_("In a LAN game the time there and back of the connection in milliseconds, left of the FPS.") },
+ #else
+   /* With the data of several versions installed. */
+   { N_("Graphics"), nullptr, graphics_text,
+@@ -235,6 +202,65 @@ static const Option video_options[] = {
+        "the game now; in a LAN game the server's setting counts.") },
+ };
+ 
++/* A volume as 0 .. 100. */
++static std::string
++percent_text(float volume) {
++  return std::to_string(static_cast<int>(volume * 100.f + 0.5f));
++}
++
++static std::string
++volume_text(const Interface *interface) {
++  Audio::VolumeController *c = Audio::get_instance().get_volume_controller();
++  return c != nullptr ? percent_text(c->get_volume()) : std::string("-");
++}
++
++static std::string
++player_volume_text(Audio::PPlayer player) {
++  if (!player) return "-";
++  Audio::PVolumeController c = player->get_volume_controller();
++  return c ? percent_text(c->get_volume()) : std::string("-");
++}
++
++static std::string
++music_volume_text(const Interface *interface) {
++  return player_volume_text(Audio::get_instance().get_music_player());
++}
++
++static std::string
++sound_volume_text(const Interface *interface) {
++  return player_volume_text(Audio::get_instance().get_sound_player());
++}
++
++static std::string
++audio_output_text(const Interface *interface) {
++  return Audio::get_instance().get_output();
++}
++
++/* The Audio box: the way out of the sound. */
++static const Option audio_options[] = {
++  { N_("Sound output"), nullptr, audio_output_text,
++    &Interface::next_audio_output, nullptr,
++    N_("Paula: the sound chip of the Amiga (audio.device), 8 bits. AHI: "
++       "ahi.device in 16 bits - a sound card, or Paula through the AHI "
++       "drivers (AHI prefs). A click: the other one, at once; kept for the "
++       "next start. If AHI does not open, Paula stays.") },
++  { N_("Music"), &Interface::is_music_on, nullptr, &Interface::switch_music,
++    nullptr, N_("The music of the game on or off (the M key).") },
++  { N_("Sound effects"), &Interface::is_sound_on, nullptr,
++    &Interface::switch_sound, nullptr,
++    N_("The sounds of the game on or off (the S key).") },
++  { N_("Volume"), nullptr, volume_text, &Interface::volume_up,
++    &Interface::volume_down,
++    N_("How loud the sounds and the music are together, 0 to 100.") },
++  { N_("Music volume"), nullptr, music_volume_text,
++    &Interface::music_volume_up, &Interface::music_volume_down,
++    N_("How loud the music is, 0 to 100 (times Volume).") },
++  { N_("Effects volume"), nullptr, sound_volume_text,
++    &Interface::sound_volume_up, &Interface::sound_volume_down,
++    N_("How loud the sound effects are, 0 to 100 (times Volume); a sound "
++       "already playing keeps its volume.") },
++};
++
+ /* Width of the value texts, right aligned to the check boxes. */
+ static const int kValueWidth = 48;
+ 
+@@ -253,7 +279,8 @@ static const PageInfo pages[] = {
+ #endif
+   { N_("Video"), video_options,
+     sizeof(video_options) / sizeof(video_options[0]), 224 },
+-  { N_("Audio"), nullptr, 0, 84 },
++  { N_("Audio"), audio_options,
++    sizeof(audio_options) / sizeof(audio_options[0]), 184 },
+ };
+ 
+ AdvancedBox::AdvancedBox(Interface *_interface)
+@@ -267,6 +294,7 @@ AdvancedBox::AdvancedBox(Interface *_interface)
+ void
+ AdvancedBox::set_page(Page _page) {
+   page = _page;
++  hint = -1;
+   set_size(kWidth, pages[page].height);
+   set_redraw();
+   interface->open_advanced();  /* laid out again for the new size */
+@@ -293,7 +321,7 @@ AdvancedBox::internal_draw() {
+     first_y = kTitledFirstRowY;
+   }
+   if (info.count == 0) {
+-    std::string none = "Nothing here yet.";
++    std::string none = _("Nothing here yet.");
+     frame->draw_string((width - frame->get_string_width(none)) / 2,
+                        first_y + 8, none, Color::green, Color::black);
+   }
+@@ -317,8 +345,10 @@ AdvancedBox::internal_draw() {
+       if (frame->get_string_width(value) > room && of != std::string::npos) {
+         value = value.substr(0, of) + " of norm.";
+       }
+-      if (frame->get_string_width(value) > room && of != std::string::npos) {
+-        value = value.substr(0, of);
++      /* Still too wide (or another language): the number, "50%". */
++      size_t pct = value.find('%');
++      if (frame->get_string_width(value) > room && pct != std::string::npos) {
++        value = value.substr(0, pct + 1);
+       }
+       frame->draw_string(minus_x - 6 - frame->get_string_width(value), y + 4,
+                          value, Color::green, Color::black);
+@@ -333,12 +363,6 @@ AdvancedBox::internal_draw() {
+ 
+   int exit_x = width - 8 - kExitWidth;
+   int exit_y = height - 7 - kExitHeight;
+-  if (page == PageAdvanced) {
+-    int audio_x = exit_x - 6 - kPageButtonWidth;
+-    draw_small_button(frame, audio_x - 4 - kPageButtonWidth, exit_y,
+-                      kPageButtonWidth, "VIDEO");
+-    draw_small_button(frame, audio_x, exit_y, kPageButtonWidth, "AUDIO");
+-  }
+   frame->draw_sprite(exit_x, exit_y, Data::AssetIcon, 60);  // Exit
+ 
+   if (hint >= 0 && hint < info.count && options[hint].hint != nullptr) {
+@@ -351,43 +375,13 @@ AdvancedBox::internal_draw() {
+ void
+ AdvancedBox::draw_hint(const std::string &label, const std::string &text,
+                        int top) {
+-  int x = 12, w = width - 24;
+-  std::vector<std::string> lines;
+-  std::string line, word;
+-  std::string all = text + " ";
+-  for (char c : all) {
+-    if (c != ' ') {
+-      word += c;
+-      continue;
+-    }
+-    if (word.empty()) continue;
+-    std::string next = line.empty() ? word : line + " " + word;
+-    if (frame->get_string_width(next) > w - 12 && !line.empty()) {
+-      lines.push_back(line);
+-      line = word;
+-    } else {
+-      line = next;
+-    }
+-    word.clear();
+-  }
+-  if (!line.empty()) lines.push_back(line);
+-  int h = 10 + 12 + 10 * static_cast<int>(lines.size()) + 6;
+-  frame->fill_rect(x, top, w, h, Color(0x00, 0x33, 0x1a));
+-  frame->draw_rect(x, top, w, h, Color::green);
+-  frame->draw_string(x + 6, top + 6, label, Color(0xdd, 0xdd, 0x00),
+-                     Color::black);
+-  int y = top + 6 + 14;
+-  for (const std::string &l : lines) {
+-    frame->draw_string(x + 6, y, l, Color::green, Color::black);
+-    y += 10;
+-  }
++  draw_hint_box(frame, 12, top, width - 24, label, text);
+ }
+ 
+-/* The left button down on the label of an option of the Video box: its
+-   hint, until the button goes up. */
++/* The left button down on the label of an option: its hint, until the
++   button goes up. */
+ bool
+ AdvancedBox::handle_press(int x, int y) {
+-  if (page != PageVideo) return false;
+   const PageInfo &info = pages[page];
+   int first_y = (info.title != nullptr) ? kTitledFirstRowY : kFirstRowY;
+   for (int i = 0; i < info.count; i++) {
+@@ -398,6 +392,16 @@ AdvancedBox::handle_press(int x, int y) {
+         y >= row_y && y < row_y + kCheckSize &&
+         x >= kLabelX - 4 && x < kLabelX + label_w + 4) {
+       hint = i;
++      /* A hint taller than the box (Audio has one row): the box grows
++         while it shows, back at the release. */
++      if (frame != nullptr) {
++        int need = first_y + hint_box_height(frame, width - 24,
++                                             _(info.options[i].hint)) + 8;
++        if (need > height) {
++          set_size(kWidth, need);
++          interface->open_advanced();  /* laid out again */
++        }
++      }
+       set_redraw();
+       return true;
+     }
+@@ -409,6 +413,10 @@ bool
+ AdvancedBox::handle_release() {
+   if (hint < 0) return false;
+   hint = -1;
++  if (height != pages[page].height) {
++    set_size(kWidth, pages[page].height);
++    interface->open_advanced();
++  }
+   set_redraw();
+   return true;
+ }
+@@ -451,29 +459,11 @@ AdvancedBox::handle_click_left(int x, int y) {
+ 
+   int exit_x = width - 8 - kExitWidth;
+   int exit_y = height - 7 - kExitHeight;
+-  if (page == PageAdvanced && y >= exit_y && y < exit_y + kExitHeight) {
+-    int audio_x = exit_x - 6 - kPageButtonWidth;
+-    int video_x = audio_x - 4 - kPageButtonWidth;
+-    if (x >= video_x && x < video_x + kPageButtonWidth) {
+-      play_sound(Audio::TypeSfxClick);
+-      set_page(PageVideo);
+-      return true;
+-    }
+-    if (x >= audio_x && x < audio_x + kPageButtonWidth) {
+-      play_sound(Audio::TypeSfxClick);
+-      set_page(PageAudio);
+-      return true;
+-    }
+-  }
+   if (x >= exit_x && x < exit_x + kExitWidth &&
+       y >= exit_y && y < exit_y + kExitHeight) {
+     play_sound(Audio::TypeSfxClick);
+-    if (page != PageAdvanced) {
+-      set_page(PageAdvanced);  /* back to Advanced */
+-    } else {
+-      /* Leave the options as well. */
+-      interface->close_advanced();
+-    }
++    /* Back to the Options box (its buttons open the pages). */
++    interface->close_advanced();
+   }
+   return true;
+ }
+diff --git a/src/advanced-box.h b/src/advanced-box.h
+index 027c1e6..fa52652 100644
+--- a/src/advanced-box.h
++++ b/src/advanced-box.h
+@@ -44,7 +44,7 @@ class AdvancedBox : public GuiObject {
+   typedef enum Page {
+     PageAdvanced,
+     PageVideo,     /* sand, rocks, kinds of trees */
+-    PageAudio      /* nothing yet */
++    PageAudio      /* the sound output */
+   } Page;
+ 
+  protected:
+@@ -58,8 +58,12 @@ class AdvancedBox : public GuiObject {
+   explicit AdvancedBox(Interface *interface);
+   virtual ~AdvancedBox() {}
+ 
+- protected:
++  /* The page shown: Advanced, Video or Audio (the buttons of the Options
++     box). */
+   void set_page(Page page);
++  Page get_page() const { return page; }
++
++ protected:
+   virtual void internal_draw();
+   virtual bool handle_click_left(int x, int y);
+   virtual bool handle_press(int x, int y);
+diff --git a/src/audio.h b/src/audio.h
+index 858cac2..3ae3d25 100644
+--- a/src/audio.h
++++ b/src/audio.h
+@@ -26,6 +26,7 @@
+ #include <map>
+ #include <memory>
+ #include <string>
++#include <vector>
+ 
+ #include "src/debug.h"
+ #include "src/random.h"
+@@ -177,6 +178,15 @@ class Audio {
+   virtual PPlayer get_music_player() = 0;
+   /* The sounds or the music now come from another data source. */
+   virtual void data_changed(bool sounds, bool music) {}
++
++  /* The ways out of the sound the platform has (the Amiga: "Paula",
++     "AHI"); none: no choice. */
++  virtual std::vector<std::string> get_outputs() const {
++    return std::vector<std::string>(); }
++  virtual std::string get_output() const { return std::string(); }
++  /* The sound through another output at once; false: not there (the one
++     before stays). */
++  virtual bool set_output(const std::string &output) { return false; }
+ };
+ 
+ #endif  // SRC_AUDIO_H_
+diff --git a/src/box-frame.cc b/src/box-frame.cc
+index ebade7f..0396eaf 100644
+--- a/src/box-frame.cc
++++ b/src/box-frame.cc
+@@ -21,6 +21,9 @@
+ 
+ #include "src/box-frame.h"
+ 
++#include <string>
++#include <vector>
++
+ #include <algorithm>
+ 
+ #include "src/gfx.h"
+@@ -119,3 +122,51 @@ draw_box_frame(Frame *frame, int width, int height) {
+     delete side;
+   }
+ }
++
++/* The words of a hint in lines that fit w (the frame of its box). */
++static std::vector<std::string>
++hint_lines(Frame *frame, int w, const std::string &text) {
++  std::vector<std::string> lines;
++  std::string line, word;
++  std::string all = text + " ";
++  for (char c : all) {
++    if (c != ' ') {
++      word += c;
++      continue;
++    }
++    if (word.empty()) continue;
++    std::string next = line.empty() ? word : line + " " + word;
++    if (frame->get_string_width(next) > w - 12 && !line.empty()) {
++      lines.push_back(line);
++      line = word;
++    } else {
++      line = next;
++    }
++    word.clear();
++  }
++  if (!line.empty()) lines.push_back(line);
++  return lines;
++}
++
++int
++hint_box_height(Frame *frame, int w, const std::string &text) {
++  return 10 + 12 + 10 * static_cast<int>(hint_lines(frame, w, text).size()) + 6;
++}
++
++/* The hint of an option (box-frame.h). */
++void
++draw_hint_box(Frame *frame, int x, int top, int w,
++              const std::string &label, const std::string &text) {
++  std::vector<std::string> lines = hint_lines(frame, w, text);
++  int h = 10 + 12 + 10 * static_cast<int>(lines.size()) + 6;
++  frame->fill_rect(x, top, w, h, Color(0x00, 0x33, 0x1a));
++  frame->draw_rect(x, top, w, h, Color::green);
++  frame->draw_string(x + 6, top + 6, label, Color(0xdd, 0xdd, 0x00),
++                     Color::black);
++  int y = top + 6 + 14;
++  for (const std::string &l : lines) {
++    frame->draw_string(x + 6, y, l, Color::green, Color::black);
++    y += 10;
++  }
++}
++
+diff --git a/src/box-frame.h b/src/box-frame.h
+index d53af0c..af2b690 100644
+--- a/src/box-frame.h
++++ b/src/box-frame.h
+@@ -38,6 +38,13 @@ void draw_box_frame(Frame *frame, int width, int height);
+ void draw_text_button(Frame *frame, int x, int y, int w,
+                       const std::string &text, bool enabled = true);
+ 
++/* The hint of an option (the left button held on its name): its name and
++   what it does, words wrapped, in a dark frame of width w at x, top. */
++void draw_hint_box(Frame *frame, int x, int top, int w,
++                   const std::string &label, const std::string &text);
++/* The height of that box. */
++int hint_box_height(Frame *frame, int w, const std::string &text);
++
+ void draw_small_letters(Frame *frame, int x, int y, const char *const *rows,
+                         int scale = 1, int row_count = 5);
+ 
+diff --git a/src/game-init.cc b/src/game-init.cc
+index 1eee44e..6e52332 100644
+--- a/src/game-init.cc
++++ b/src/game-init.cc
+@@ -257,8 +257,8 @@ static const char *const kLanLarge[8] = {
+ 
+ /* DELETE of Load game, and YES / NO of its question, right of the text. */
+ static const int kDeleteX = 228, kDeleteY = 32, kDeleteWidth = 64;
+-static const int kYesNoWidth = 30;
+-static const int kYesX = 228, kNoX = 262;
++static const int kYesNoWidth = 34;
++static const int kYesX = 228, kNoX = 264;  /* NEIN fits (34 px) */
+ 
+ void
+ GameInitBox::internal_draw() {
+@@ -273,19 +273,19 @@ GameInitBox::internal_draw() {
+   draw_box_frame(frame, width, height);
+   if (preview_pending && game_type != GameLoad) {
+     frame->fill_rect(190, 55, 150, 160, Color::black);
+-    frame->draw_string(190 + 19, 55 + 76, "Making the map", Color::green,
++    frame->draw_string(190 + 19, 55 + 76, _("Making the map"), Color::green,
+                        Color::black);
+   }
+   if (game_type == GameLan) {
+     /* No map here: the server chooses it in the LAN box, which both
+        players see once they are connected. */
+     static const char *const lines[] = {
+-      "The map is chosen", "in the LAN box,", "after the other",
+-      "player joins." };
++      N_("The map is chosen"), N_("in the LAN box,"), N_("after the other"),
++      N_("player joins.") };
+     frame->fill_rect(190, 55, 150, 160, Color::black);
+     for (int i = 0; i < 4; i++) {
+-      std::string line = lines[i];
+-      frame->draw_string(190 + (150 - 8 * static_cast<int>(line.size())) / 2,
++      std::string line = _(lines[i]);
++      frame->draw_string(190 + (150 - frame->get_string_width(line)) / 2,
+                          55 + 60 + 10 * i, line, Color::green, Color::black);
+     }
+   }
+@@ -352,14 +352,9 @@ GameInitBox::internal_draw() {
+       draw_box_icon(5, 0, 263);  // Game type: New game, LAN on its top
+       draw_small_letters(frame, 8 * 5 + 20 + 5, 16 + 3, kLanLarge, 1, 8);
+ 
+-      std::stringstream str_map_size;
+-      str_map_size << mission->get_map_size();
+-
+-      draw_box_string(10, 2, "LAN game");
+-      draw_box_string(10, 18, _("Mapsize:"));
+-      draw_box_string(18, 18, str_map_size.str());
+-
+-      draw_box_icon(25, 0, 265);
++      /* No map size here: the server chooses the map in the LAN box, after
++         the other player joined (SMALLER, LARGER, OTHER MAP). */
++      draw_box_string(10, 2, _("LAN game"));
+ 
+       break;
+     }
+@@ -370,12 +365,13 @@ GameInitBox::internal_draw() {
+       /* DELETE, and after it the question with YES and NO. */
+       if (delete_asked) {
+         size_t n = file_list->get_marked().size();
+-        draw_box_string(10, 18, (n > 1) ? "Delete " + std::to_string(n) +
+-                                          " saves?" : "Delete the save?");
+-        draw_text_button(frame, kYesX, kDeleteY, kYesNoWidth, "YES");
+-        draw_text_button(frame, kNoX, kDeleteY, kYesNoWidth, "NO");
++        draw_box_string(10, 18, (n > 1) ?
++          text_with(_("Delete %u saves?"), std::to_string(n)) :
++          _("Delete the save?"));
++        draw_text_button(frame, kYesX, kDeleteY, kYesNoWidth, _("YES"));
++        draw_text_button(frame, kNoX, kDeleteY, kYesNoWidth, _("NO"));
+       } else {
+-        draw_text_button(frame, kDeleteX, kDeleteY, kDeleteWidth, "DELETE",
++        draw_text_button(frame, kDeleteX, kDeleteY, kDeleteWidth, _("DELETE"),
+                          !file_list->get_selected().empty());
+       }
+ 
+@@ -700,6 +696,17 @@ GameInitBox::handle_click_left(int cx, int cy) {
+     -1
+   };
+ 
++  /* LAN game: no map size buttons (the LAN box chooses the map). */
++  const int clickmap_lan[] = {
++    ActionStartGame,        20,  16, 32, 32,
++    ActionToggleGameType,   60,  16, 32, 32,
++    ActionShowOptions,     308,  16, 32, 32,
++    ActionGenRandom,       244,  16, 16,  8,
++    ActionApplyRandom ,    244,  24, 16, 24,
++    ActionClose,           308, 224, 32, 16,
++    -1
++  };
++
+   const int *clickmap = nullptr;
+   switch (game_type) {
+     case GameMission:
+@@ -707,9 +714,11 @@ GameInitBox::handle_click_left(int cx, int cy) {
+       clickmap = clickmap_mission;
+       break;
+     case GameCustom:
+-    case GameLan:
+       clickmap = clickmap_custom;
+       break;
++    case GameLan:
++      clickmap = clickmap_lan;
++      break;
+     case GameLoad:
+       clickmap = delete_asked ? clickmap_load_question
+                               : clickmap_load_delete;
+diff --git a/src/gfx.cc b/src/gfx.cc
+index 759f4f0..b3aa4bf 100644
+--- a/src/gfx.cc
++++ b/src/gfx.cc
+@@ -151,6 +151,18 @@ Graphics::Graphics()
+   Graphics::instance = this;
+ }
+ 
++bool
++Graphics::set_font(const std::string &name) {
++  font.reset();
++  if (name.empty()) return false;
++  font.reset(new Font());
++  if (!font->load_resource(name)) {
++    font.reset();
++    return false;
++  }
++  return true;
++}
++
+ void
+ Graphics::set_cursor_from_data() {
+   Data::PSource data_source = Data::get_instance().get_data_source();
+@@ -580,6 +592,122 @@ split_lines(const std::string &str) {
+   return lines;
+ }
+ 
++/* The Polish and German letters for the font of the game data (capitals
++   A-Z only): a letter of the font and a mark drawn over or under it. */
++typedef enum Mark {
++  MarkNone, MarkAcute, MarkDot, MarkUmlaut, MarkOgonek, MarkStroke
++} Mark;
++
++static bool
++decompose(uint32_t ch, unsigned char *base, Mark *mark) {
++  static const struct { uint32_t ch; char base; Mark mark; } kLetters[] = {
++    { 0x104, 'A', MarkOgonek }, { 0x105, 'A', MarkOgonek },
++    { 0x106, 'C', MarkAcute }, { 0x107, 'C', MarkAcute },
++    { 0x118, 'E', MarkOgonek }, { 0x119, 'E', MarkOgonek },
++    { 0x141, 'L', MarkStroke }, { 0x142, 'L', MarkStroke },
++    { 0x143, 'N', MarkAcute }, { 0x144, 'N', MarkAcute },
++    { 0xd3, 'O', MarkAcute }, { 0xf3, 'O', MarkAcute },
++    { 0x15a, 'S', MarkAcute }, { 0x15b, 'S', MarkAcute },
++    { 0x179, 'Z', MarkAcute }, { 0x17a, 'Z', MarkAcute },
++    { 0x17b, 'Z', MarkDot }, { 0x17c, 'Z', MarkDot },
++    { 0xc4, 'A', MarkUmlaut }, { 0xe4, 'A', MarkUmlaut },
++    { 0xd6, 'O', MarkUmlaut }, { 0xf6, 'O', MarkUmlaut },
++    { 0xdc, 'U', MarkUmlaut }, { 0xfc, 'U', MarkUmlaut },
++    { 0xdf, 'S', MarkNone },  /* sharp s: the translations write SS */
++  };
++  for (const auto &l : kLetters) {
++    if (l.ch == ch) {
++      *base = static_cast<unsigned char>(l.base);
++      *mark = l.mark;
++      return true;
++    }
++  }
++  return false;
++}
++
++/* Characters the font of the game data has not (it has A-Z, the digits
++   and % - . : ?), drawn as 8x8 pictures in its style: rows of the cell,
++   '#' a pixel; a ninth row is below the cell. */
++static const struct { char ch; const char *rows[9]; } kExtraGlyphs[] = {
++  { ',', { "........", "........", "........", "........", "........", "........", "..##....", "..##....", "..#....." } },
++  { ';', { "........", "........", "..##....", "..##....", "........", "........", "..##....", "..##....", "..#....." } },
++  { '(', { "....##..", "...##...", "..##....", "..##....", "..##....", "..##....", "...##...", "....##..", nullptr } },
++  { ')', { "..##....", "...##...", "....##..", "....##..", "....##..", "....##..", "...##...", "..##....", nullptr } },
++  { '/', { "......##", ".....##.", "....##..", "....##..", "...##...", "..##....", ".##.....", "##......", nullptr } },
++  { '\'', { "...##...", "...##...", "...#....", "........", "........", "........", "........", "........", nullptr } },
++  { '"', { ".##.##..", ".##.##..", ".#..#...", "........", "........", "........", "........", "........", nullptr } },
++  { '>', { ".##.....", "..##....", "...##...", "....##..", "...##...", "..##....", ".##.....", "........", nullptr } },
++  { '<', { ".....##.", "....##..", "...##...", "..##....", "...##...", "....##..", ".....##.", "........", nullptr } },
++  { '!', { "...##...", "...##...", "...##...", "...##...", "...##...", "........", "...##...", "...##...", nullptr } },
++  { '+', { "........", "...##...", "...##...", ".######.", ".######.", "...##...", "...##...", "........", nullptr } },
++  { '=', { "........", "........", ".######.", "........", "........", ".######.", "........", "........", nullptr } },
++  { '_', { "........", "........", "........", "........", "........", "........", "........", "########", nullptr } },
++  { '#', { "..#..#..", ".######.", "..#..#..", "..#..#..", ".######.", "..#..#..", "........", "........", nullptr } },
++  { '*', { "........", ".#.##.#.", "..####..", ".######.", "..####..", ".#.##.#.", "........", "........", nullptr } },
++  { '&', { "..###...", ".##.##..", "..###...", ".###..#.", "##.####.", "##..##..", ".###.##.", "........", nullptr } },
++  { '[', { "..####..", "..##....", "..##....", "..##....", "..##....", "..##....", "..##....", "..####..", nullptr } },
++  { ']', { "..####..", "....##..", "....##..", "....##..", "....##..", "....##..", "....##..", "..####..", nullptr } },
++};
++
++/* An extra character (kExtraGlyphs) at x, y; false: not one of them. */
++bool
++Frame::draw_extra_glyph(int x, int y, uint32_t ch, const Color &color,
++                        const Color &shadow) {
++  for (const auto &g : kExtraGlyphs) {
++    if (static_cast<uint32_t>(static_cast<unsigned char>(g.ch)) != ch) {
++      continue;
++    }
++    for (int pass = (shadow != Color::transparent) ? 0 : 1; pass < 2;
++         pass++) {
++      for (int r = 0; r < 9 && g.rows[r] != nullptr; r++) {
++        for (int c = 0; c < 8; c++) {
++          if (g.rows[r][c] != '#') continue;
++          if (pass == 0) {
++            fill_rect(x + c - 1, y + r, 3, 1, shadow);
++            fill_rect(x + c, y + r - 1, 1, 3, shadow);
++          } else {
++            fill_rect(x + c, y + r, 1, 1, color);
++          }
++        }
++      }
++    }
++    return true;
++  }
++  return false;
++}
++
++/* The pixels of a mark in the 8x8 cell of a letter (the letters fill the
++   cell: the marks over it go one or two rows above, the ogonek below). */
++void
++Frame::draw_mark(int x, int y, int mark, const Color &color,
++                 const Color &shadow) {
++  /* Two pixels wide, as the strokes of the font. */
++  static const int8_t kAcute[] = { 3, -1, 4, -1, 4, -2, 5, -2, -1 };
++  static const int8_t kDot[] = { 3, -2, 4, -2, 3, -1, 4, -1, -1 };
++  static const int8_t kUmlaut[] = { 1, -2, 2, -2, 1, -1, 2, -1,
++                                    5, -2, 6, -2, 5, -1, 6, -1, -1 };
++  static const int8_t kOgonek[] = { 5, 8, 6, 8, 6, 9, 7, 9, -1 };
++  static const int8_t kStroke[] = { 0, 5, 1, 5, 2, 4, 3, 4, -1 };
++  const int8_t *p = nullptr;
++  switch (mark) {
++    case MarkAcute: p = kAcute; break;
++    case MarkDot: p = kDot; break;
++    case MarkUmlaut: p = kUmlaut; break;
++    case MarkOgonek: p = kOgonek; break;
++    case MarkStroke: p = kStroke; break;
++    default: return;
++  }
++  if (shadow != Color::transparent) {
++    for (const int8_t *q = p; q[0] >= 0; q += 2) {
++      fill_rect(x + q[0] - 1, y + q[1], 3, 1, shadow);
++      fill_rect(x + q[0], y + q[1] - 1, 1, 3, shadow);
++    }
++  }
++  for (const int8_t *q = p; q[0] >= 0; q += 2) {
++    fill_rect(x + q[0], y + q[1], 1, 1, color);
++  }
++}
++
+ /* Draw the string str at x, y in the dest frame. */
+ void
+ Frame::draw_string(int x, int y, const std::string &str, const Color &color,
+@@ -589,7 +717,17 @@ Frame::draw_string(int x, int y, const std::string &str, const Color &color,
+     if (font == nullptr) {
+       /* The font sprites of the game data, 8 pixels wide. */
+       for (size_t i = 0; i < line.size(); i++) {
+-        if (line[i] < 0x100) {
++        unsigned char base = 0;
++        Mark mark = MarkNone;
++        if (draw_extra_glyph(x + 8 * static_cast<int>(i), y, line[i], color,
++                             shadow)) {
++          /* Not in the font of the game data: drawn here. */
++        } else if (decompose(line[i], &base, &mark)) {
++          /* A Polish or German letter: its base, then the mark. */
++          draw_char_sprite(x + 8 * static_cast<int>(i), y, base, color,
++                           shadow);
++          draw_mark(x + 8 * static_cast<int>(i), y, mark, color, shadow);
++        } else if (line[i] < 0x100) {
+           draw_char_sprite(x + 8 * static_cast<int>(i), y,
+                            static_cast<unsigned char>(line[i]), color, shadow);
+         }
+diff --git a/src/gfx.h b/src/gfx.h
+index 0c523f1..a2a0b3d 100644
+--- a/src/gfx.h
++++ b/src/gfx.h
+@@ -1,248 +1,258 @@
+-/*
+- * gfx.h - General graphics and data file functions
+- *
+- * Copyright (C) 2012-2019  Jon Lund Steffensen <jonlst@gmail.com>
+- *
+- * This file is part of freeserf.
+- *
+- * freeserf is free software: you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License as published by
+- * the Free Software Foundation, either version 3 of the License, or
+- * (at your option) any later version.
+- *
+- * freeserf is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-#ifndef SRC_GFX_H_
+-#define SRC_GFX_H_
+-
+-#include <cstdint>
+-#include <map>
+-#include <string>
+-#include <unordered_map>
+-#include <memory>
+-
+-#include "src/data.h"
+-#include "src/debug.h"
+-#include "src/video.h"
+-
+-class Font;
+-
+-class ExceptionGFX : public ExceptionFreeserf {
+- public:
+-  explicit ExceptionGFX(const std::string &description);
+-  virtual ~ExceptionGFX();
+-
+-  virtual std::string get_system() const { return "graphics"; }
+-};
+-
+-class Color {
+- protected:
+-  uint8_t r;
+-  uint8_t g;
+-  uint8_t b;
+-  uint8_t a;
+-
+- public:
+-  Color() : r(0), g(0), b(0), a(0) {}
+-  Color(uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a = 0xff) :
+-    r(_r), g(_g), b(_b), a(_a) {}
+-
+-  Color(double c, double m, double y, double k, uint8_t _a) :
+-    r(static_cast<uint8_t>(255. * (1. - c) * (1. - k))),
+-    g(static_cast<uint8_t>(255. * (1. - m) * (1. - k))),
+-    b(static_cast<uint8_t>(255. * (1. - y) * (1. - k))),
+-    a(_a) {
+-  }
+-
+-  uint8_t get_red() const { return r; }
+-  uint8_t get_green() const { return g; }
+-  uint8_t get_blue() const { return b; }
+-  uint8_t get_alpha() const { return a; }
+-  double get_cyan() const;
+-  double get_magenta() const;
+-  double get_yellow() const;
+-  double get_key() const;
+-
+-  static const Color black;
+-  static const Color white;
+-  static const Color green;
+-  static const Color transparent;
+-
+-  bool operator==(const Color &c) const { return (r == c.r) &&
+-                                                 (g == c.g) &&
+-                                                 (b == c.b) &&
+-                                                 (a == c.a); }
+-  inline bool operator!=(const Color &c) const { return !((*this) == c); }
+-};
+-
+-class Image {
+- protected:
+-  int delta_x;
+-  int delta_y;
+-  int offset_x;
+-  int offset_y;
+-  unsigned int width;
+-  unsigned int height;
+-  Video *video;
+-  Video::Image *video_image;
+-
+-  /* A hash table: looked up for every sprite drawn. Both halves of the id
+-     are mixed, size_t may have only 32 bits. */
+-  struct IdHash {
+-    size_t operator()(uint64_t id) const {
+-      return (static_cast<uint32_t>(id >> 32) * 0x9e3779b1u) ^
+-             static_cast<uint32_t>(id);
+-    }
+-  };
+-  typedef std::unordered_map<uint64_t, Image*, IdHash> ImageCache;
+-  static ImageCache image_cache;
+-
+- public:
+-  Image(Video *video, Data::PSprite sprite);
+-  virtual ~Image();
+-
+-  unsigned int get_width() const { return width; }
+-  unsigned int get_height() const { return height; }
+-  int get_delta_x() const { return delta_x; }
+-  int get_delta_y() const { return delta_y; }
+-  int get_offset_x() const { return offset_x; }
+-  int get_offset_y() const { return offset_y; }
+-
+-  void set_offset(int x, int y) { offset_x = x; offset_y = y; }
+-  void set_delta(int x, int y) { delta_x = x; delta_y = y; }
+-
+-  static void cache_image(uint64_t id, Image *image);
+-  static Image *get_cached_image(uint64_t id);
+-  static void clear_cache();
+-
+-  Video::Image *get_video_image() const { return video_image; }
+-};
+-
+-/* Frame. Keeps track of a specific rectangular area of a surface.
+-   Multiple frames can refer to the same surface. */
+-class Frame {
+- protected:
+-  Video *video;
+-  Video::Frame *video_frame;
+-  bool owner;
+-  Data::PSource data_source;
+-
+- public:
+-  Frame(Video *video, unsigned int width, unsigned int height);
+-  Frame(Video *video, Video::Frame *video_frame);
+-  virtual ~Frame();
+-
+-  /* Sprite functions */
+-  void draw_sprite(int x, int y, Data::Resource res, unsigned int index);
+-  void draw_sprite(int x, int y, Data::Resource res, unsigned int index,
+-                   bool use_off);
+-  void draw_sprite(int x, int y, Data::Resource res, unsigned int index,
+-                   bool use_off, float progress);
+-  void draw_sprite(int x, int y, Data::Resource res, unsigned int index,
+-                   bool use_off, const Color &color);
+-  void draw_sprite_relatively(int x, int y, Data::Resource res,
+-                              unsigned int index,
+-                              Data::Resource relative_to_res,
+-                              unsigned int relative_to_index);
+-  /* Variants of the trees, made once and kept like the data's sprites:
+-     mirrored (the other way round), birch (a picture of the program,
+-     tools/make_birch.py, instead of a deciduous tree). */
+-  typedef enum SpriteVariant {
+-    VariantNormal = 0,
+-    VariantMirrored = 1,
+-    VariantBirch = 2,
+-    VariantBirchMirrored = 3,
+-    VariantDarkBrown = 4      /* a pig as a wild boar */
+-  } SpriteVariant;
+-  void draw_sprite_variant(int x, int y, Data::Resource res,
+-                           unsigned int index, int variant);
+-  void draw_masked_sprite(int x, int y, Data::Resource mask_res,
+-                          unsigned int mask_index, Data::Resource res,
+-                          unsigned int index);
+-  bool same_pixels(const Frame &other) const {
+-    return video->frames_equal(video_frame, other.video_frame); }
+-  void draw_waves_sprite(int x, int y, Data::Resource mask_res,
+-                         unsigned int mask_index, Data::Resource res,
+-                         unsigned int index);
+-
+-  /* Drawing functions */
+-  void draw_rect(int x, int y, int width, int height, const Color &color);
+-  void fill_rect(int x, int y, int width, int height, const Color &color);
+-  void draw_line(int x, int y, int x1, int y1, const Color &color);
+-
+-  /* Text functions. The texts are UTF-8, a line of 8 pixels high per
+-     '\n'. The letters are proportional: a part of a line after spaces is
+-     centred where it was with the 8 pixels wide letters of the original
+-     font, as the texts are laid out for them. */
+-  void draw_string(int x, int y, const std::string &str, const Color &color,
+-                   const Color &shadow = Color::transparent);
+-  void draw_number(int x, int y, int value, const Color &color,
+-                   const Color &shadow = Color::transparent);
+-  /* Width of the longest line of str. */
+-  int get_string_width(const std::string &str);
+-
+-  /* Frame functions */
+-  void draw_frame(int dx, int dy, int sx, int sy, Frame *src, int w, int h);
+-  /* Draw an image of the game's resources folder (not original data). */
+-  void draw_resource_image(int x, int y, const std::string &name);
+-  void draw_frame_scaled(int dx, int dy, int dw, int dh, Frame *src,
+-                         int w, int h);
+-
+- protected:
+-  void draw_char_sprite(int x, int y, unsigned char c, const Color &color,
+-                        const Color &shadow);
+-  /* Draw a glyph of the font, returns its advance. */
+-  int draw_glyph(int x, int y, uint32_t ch, const Color &color,
++/*
++ * gfx.h - General graphics and data file functions
++ *
++ * Copyright (C) 2012-2019  Jon Lund Steffensen <jonlst@gmail.com>
++ *
++ * This file is part of freeserf.
++ *
++ * freeserf is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * freeserf is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef SRC_GFX_H_
++#define SRC_GFX_H_
++
++#include <cstdint>
++#include <map>
++#include <string>
++#include <unordered_map>
++#include <memory>
++
++#include "src/data.h"
++#include "src/debug.h"
++#include "src/video.h"
++
++class Font;
++
++class ExceptionGFX : public ExceptionFreeserf {
++ public:
++  explicit ExceptionGFX(const std::string &description);
++  virtual ~ExceptionGFX();
++
++  virtual std::string get_system() const { return "graphics"; }
++};
++
++class Color {
++ protected:
++  uint8_t r;
++  uint8_t g;
++  uint8_t b;
++  uint8_t a;
++
++ public:
++  Color() : r(0), g(0), b(0), a(0) {}
++  Color(uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a = 0xff) :
++    r(_r), g(_g), b(_b), a(_a) {}
++
++  Color(double c, double m, double y, double k, uint8_t _a) :
++    r(static_cast<uint8_t>(255. * (1. - c) * (1. - k))),
++    g(static_cast<uint8_t>(255. * (1. - m) * (1. - k))),
++    b(static_cast<uint8_t>(255. * (1. - y) * (1. - k))),
++    a(_a) {
++  }
++
++  uint8_t get_red() const { return r; }
++  uint8_t get_green() const { return g; }
++  uint8_t get_blue() const { return b; }
++  uint8_t get_alpha() const { return a; }
++  double get_cyan() const;
++  double get_magenta() const;
++  double get_yellow() const;
++  double get_key() const;
++
++  static const Color black;
++  static const Color white;
++  static const Color green;
++  static const Color transparent;
++
++  bool operator==(const Color &c) const { return (r == c.r) &&
++                                                 (g == c.g) &&
++                                                 (b == c.b) &&
++                                                 (a == c.a); }
++  inline bool operator!=(const Color &c) const { return !((*this) == c); }
++};
++
++class Image {
++ protected:
++  int delta_x;
++  int delta_y;
++  int offset_x;
++  int offset_y;
++  unsigned int width;
++  unsigned int height;
++  Video *video;
++  Video::Image *video_image;
++
++  /* A hash table: looked up for every sprite drawn. Both halves of the id
++     are mixed, size_t may have only 32 bits. */
++  struct IdHash {
++    size_t operator()(uint64_t id) const {
++      return (static_cast<uint32_t>(id >> 32) * 0x9e3779b1u) ^
++             static_cast<uint32_t>(id);
++    }
++  };
++  typedef std::unordered_map<uint64_t, Image*, IdHash> ImageCache;
++  static ImageCache image_cache;
++
++ public:
++  Image(Video *video, Data::PSprite sprite);
++  virtual ~Image();
++
++  unsigned int get_width() const { return width; }
++  unsigned int get_height() const { return height; }
++  int get_delta_x() const { return delta_x; }
++  int get_delta_y() const { return delta_y; }
++  int get_offset_x() const { return offset_x; }
++  int get_offset_y() const { return offset_y; }
++
++  void set_offset(int x, int y) { offset_x = x; offset_y = y; }
++  void set_delta(int x, int y) { delta_x = x; delta_y = y; }
++
++  static void cache_image(uint64_t id, Image *image);
++  static Image *get_cached_image(uint64_t id);
++  static void clear_cache();
++
++  Video::Image *get_video_image() const { return video_image; }
++};
++
++/* Frame. Keeps track of a specific rectangular area of a surface.
++   Multiple frames can refer to the same surface. */
++class Frame {
++ protected:
++  Video *video;
++  Video::Frame *video_frame;
++  bool owner;
++  Data::PSource data_source;
++
++ public:
++  Frame(Video *video, unsigned int width, unsigned int height);
++  Frame(Video *video, Video::Frame *video_frame);
++  virtual ~Frame();
++
++  /* Sprite functions */
++  void draw_sprite(int x, int y, Data::Resource res, unsigned int index);
++  void draw_sprite(int x, int y, Data::Resource res, unsigned int index,
++                   bool use_off);
++  void draw_sprite(int x, int y, Data::Resource res, unsigned int index,
++                   bool use_off, float progress);
++  void draw_sprite(int x, int y, Data::Resource res, unsigned int index,
++                   bool use_off, const Color &color);
++  void draw_sprite_relatively(int x, int y, Data::Resource res,
++                              unsigned int index,
++                              Data::Resource relative_to_res,
++                              unsigned int relative_to_index);
++  /* Variants of the trees, made once and kept like the data's sprites:
++     mirrored (the other way round), birch (a picture of the program,
++     tools/make_birch.py, instead of a deciduous tree). */
++  typedef enum SpriteVariant {
++    VariantNormal = 0,
++    VariantMirrored = 1,
++    VariantBirch = 2,
++    VariantBirchMirrored = 3,
++    VariantDarkBrown = 4      /* a pig as a wild boar */
++  } SpriteVariant;
++  void draw_sprite_variant(int x, int y, Data::Resource res,
++                           unsigned int index, int variant);
++  void draw_masked_sprite(int x, int y, Data::Resource mask_res,
++                          unsigned int mask_index, Data::Resource res,
++                          unsigned int index);
++  bool same_pixels(const Frame &other) const {
++    return video->frames_equal(video_frame, other.video_frame); }
++  void draw_waves_sprite(int x, int y, Data::Resource mask_res,
++                         unsigned int mask_index, Data::Resource res,
++                         unsigned int index);
++
++  /* Drawing functions */
++  void draw_rect(int x, int y, int width, int height, const Color &color);
++  void fill_rect(int x, int y, int width, int height, const Color &color);
++  void draw_line(int x, int y, int x1, int y1, const Color &color);
++
++  /* Text functions. The texts are UTF-8, a line of 8 pixels high per
++     '\n'. The letters are proportional: a part of a line after spaces is
++     centred where it was with the 8 pixels wide letters of the original
++     font, as the texts are laid out for them. */
++  void draw_string(int x, int y, const std::string &str, const Color &color,
++                   const Color &shadow = Color::transparent);
++  void draw_number(int x, int y, int value, const Color &color,
++                   const Color &shadow = Color::transparent);
++  /* Width of the longest line of str. */
++  int get_string_width(const std::string &str);
++
++  /* Frame functions */
++  void draw_frame(int dx, int dy, int sx, int sy, Frame *src, int w, int h);
++  /* Draw an image of the game's resources folder (not original data). */
++  void draw_resource_image(int x, int y, const std::string &name);
++  void draw_frame_scaled(int dx, int dy, int dw, int dh, Frame *src,
++                         int w, int h);
++
++ protected:
++  /* A character the font of the game data has not (gfx.cc). */
++  bool draw_extra_glyph(int x, int y, uint32_t ch, const Color &color,
++                        const Color &shadow);
++  /* A mark of a Polish or German letter (gfx.cc). */
++  void draw_mark(int x, int y, int mark, const Color &color,
+                  const Color &shadow);
+-  void draw_sprite(int x, int y, Data::Resource res, unsigned int index,
+-                   bool use_off, const Color &color, float progress);
+-};
+-
+-class Graphics {
+- protected:
+-  static Graphics *instance;
+-  Video *video;
+-  /* Magnification of the map view on top of the screen zoom. */
+-  float map_zoom;
+-  /* The font of the texts; the font sprites of the game data without it. */
+-  std::unique_ptr<Font> font;
+-
+-  Graphics();
+-  void set_cursor_from_data();
+-
+- public:
+-  virtual ~Graphics();
+-
+-  static Graphics &get_instance();
+-
+-  /* Frame functions */
+-  Frame *create_frame(unsigned int width, unsigned int height);
+-
+-  /* Screen functions */
+-  Frame *get_screen_frame();
+-  void set_resolution(unsigned int width, unsigned int height, bool fullscreen);
+-  void get_resolution(unsigned int *width, unsigned int *height);
+-  void set_fullscreen(bool enable);
+-  bool is_fullscreen();
+-
+-  void swap_buffers();
+-
+-  float get_zoom_factor();
+-  bool set_zoom_factor(float factor);
+-  /* The graphics now come from another data source: forget the images
+-     and take the cursor from it. */
+-  void data_changed();
+-  Font *get_font() const { return font.get(); }
+-  float get_map_zoom() const { return map_zoom; }
+-  void set_map_zoom(float zoom) { map_zoom = zoom; }
+-  void get_screen_factor(float *fx, float *fy);
+-};
+-
+-#endif  // SRC_GFX_H_
++  void draw_char_sprite(int x, int y, unsigned char c, const Color &color,
++                        const Color &shadow);
++  /* Draw a glyph of the font, returns its advance. */
++  int draw_glyph(int x, int y, uint32_t ch, const Color &color,
++                 const Color &shadow);
++  void draw_sprite(int x, int y, Data::Resource res, unsigned int index,
++                   bool use_off, const Color &color, float progress);
++};
++
++class Graphics {
++ protected:
++  static Graphics *instance;
++  Video *video;
++  /* Magnification of the map view on top of the screen zoom. */
++  float map_zoom;
++  /* The font of the texts; the font sprites of the game data without it. */
++  std::unique_ptr<Font> font;
++
++  Graphics();
++  void set_cursor_from_data();
++
++ public:
++  virtual ~Graphics();
++
++  static Graphics &get_instance();
++
++  /* Frame functions */
++  Frame *create_frame(unsigned int width, unsigned int height);
++
++  /* Screen functions */
++  Frame *get_screen_frame();
++  void set_resolution(unsigned int width, unsigned int height, bool fullscreen);
++  void get_resolution(unsigned int *width, unsigned int *height);
++  void set_fullscreen(bool enable);
++  bool is_fullscreen();
++
++  void swap_buffers();
++
++  float get_zoom_factor();
++  bool set_zoom_factor(float factor);
++  /* The graphics now come from another data source: forget the images
++     and take the cursor from it. */
++  void data_changed();
++  Font *get_font() const { return font.get(); }
++  /* The font of the texts by its name (the Amiga port: "readable"); an
++     empty name or one that does not load: the font of the game data.
++     False: no font loaded. */
++  bool set_font(const std::string &name);
++  float get_map_zoom() const { return map_zoom; }
++  void set_map_zoom(float zoom) { map_zoom = zoom; }
++  void get_screen_factor(float *fx, float *fy);
++};
++
++#endif  // SRC_GFX_H_
+diff --git a/src/interface.cc b/src/interface.cc
+index 3025c70..332e4c2 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -234,6 +234,21 @@ Interface::apply_settings() {
+     int current = static_cast<int>(volume->get_volume() * 100.f + 0.5f);
+     volume->set_volume(settings.get("options", "volume", current) / 100.f);
+   }
++  /* The volumes of the music and of the effects (Advanced -> Audio). */
++  if (music) {
++    Audio::PVolumeController c = music->get_volume_controller();
++    if (c) {
++      int current = static_cast<int>(c->get_volume() * 100.f + 0.5f);
++      c->set_volume(settings.get("options", "music_volume", current) / 100.f);
++    }
++  }
++  if (sound) {
++    Audio::PVolumeController c = sound->get_volume_controller();
++    if (c) {
++      int current = static_cast<int>(c->get_volume() * 100.f + 0.5f);
++      c->set_volume(settings.get("options", "sound_volume", current) / 100.f);
++    }
++  }
+ 
+   /* Messages: 3 all, 2 most, 1 few, 0 none. */
+   message_level = std::max(0, std::min(3, settings.get("options", "messages",
+@@ -275,6 +290,11 @@ Interface::apply_settings() {
+                                                   100u));
+   Translation::get_instance().set_language(
+     settings.get("advanced", "language", std::string()));
++#ifdef __AMIGA__
++  /* The font of the texts: the original one, or "readable". */
++  Graphics::get_instance().set_font(
++    settings.get("advanced", "font", std::string()));
++#endif
+ 
+   /* Data source of each category, by name (DOS, Amiga, Custom). */
+   static const char *data_keys[] = { "graphics", "sound", "music" };
+@@ -303,6 +323,20 @@ Interface::store_settings() {
+     settings.set("options", "volume",
+                  static_cast<int>(volume->get_volume() * 100.f + 0.5f));
+   }
++  if (music) {
++    Audio::PVolumeController c = music->get_volume_controller();
++    if (c) {
++      settings.set("options", "music_volume",
++                   static_cast<int>(c->get_volume() * 100.f + 0.5f));
++    }
++  }
++  if (sound) {
++    Audio::PVolumeController c = sound->get_volume_controller();
++    if (c) {
++      settings.set("options", "sound_volume",
++                   static_cast<int>(c->get_volume() * 100.f + 0.5f));
++    }
++  }
+   settings.set("options", "fullscreen",
+                Graphics::get_instance().is_fullscreen());
+ 
+@@ -332,6 +366,11 @@ Interface::store_settings() {
+   settings.set("advanced", "dead_trees", dead_tree_percent);
+   settings.set("advanced", "language",
+                Translation::get_instance().get_language());
++#ifdef __AMIGA__
++  settings.set("advanced", "font",
++               std::string(Graphics::get_instance().get_font() != nullptr
++                           ? "readable" : ""));
++#endif
+   if (Data::get_instance().get_mixed_source()) {
+     settings.set("data", "graphics", get_data_source_name(0));
+     settings.set("data", "sound", get_data_source_name(1));
+@@ -341,6 +380,16 @@ Interface::store_settings() {
+   settings.save();
+ }
+ 
++/* The Advanced box on a page (0 Advanced, 1 Video, 2 Audio: the buttons
++   of the Options box). */
++void
++Interface::open_advanced_page(int page) {
++  open_advanced();
++  if (advanced_box->get_page() != static_cast<AdvancedBox::Page>(page)) {
++    advanced_box->set_page(static_cast<AdvancedBox::Page>(page));
++  }
++}
++
+ void
+ Interface::open_advanced() {
+   if (advanced_box == nullptr) {
+@@ -473,8 +522,12 @@ Interface::layout_popup() {
+   if (popup != nullptr) {
+     /* The Save box 2.5 times as wide: the names of the files whole. */
+     int popup_width = (popup->get_box() == PopupBox::TypeLoadSave)
+-                      ? PopupBox::kSaveBoxWidth : 144;
+-    int popup_height = 160;
++                      ? PopupBox::kSaveBoxWidth
++                      : (popup->get_box() == PopupBox::TypeOptions)
++                      ? PopupBox::kOptionsBoxWidth : 144;
++    /* Options: a row more (Font). */
++    int popup_height = (popup->get_box() == PopupBox::TypeOptions)
++                       ? PopupBox::kOptionsBoxHeight : 160;
+     int popup_x = (width - popup_width) / 2;
+     int popup_y = (height - popup_height) / 2;
+     popup->move_to(popup_x, popup_y);
+@@ -534,7 +587,8 @@ Interface::close_advanced() {
+     panel->set_enabled(true);
+   }
+   viewport->set_enabled(true);
+-  close_popup();
++  /* Back to the Options box under it, as from the Amiga box. */
++  if (popup != nullptr) popup->set_redraw();
+   layout();
+   store_settings();
+ }
+@@ -1428,7 +1482,21 @@ Interface::next_data_source(int category) {
+   }
+ }
+ 
+-/* Advanced option: off, then every 10, 20, 30 or 60 minutes. */
++/* Options -> Font: the original font and the readable one in turn, kept
++   at once. */
++void
++Interface::next_font() {
++  Graphics &gfx = Graphics::get_instance();
++  bool readable = gfx.get_font() == nullptr;
++  gfx.set_font(readable ? "readable" : "");
++  Settings &settings = Settings::get_instance();
++  settings.set("advanced", "font",
++               std::string(gfx.get_font() != nullptr ? "readable" : ""));
++  settings.save();
++  invalidate();
++}
++
++/* Options -> Language: the next one, kept at once. */
+ void
+ Interface::next_language() {
+   Translation &translation = Translation::get_instance();
+@@ -1441,6 +1509,11 @@ Interface::next_language() {
+                 (static_cast<size_t>(it - languages.begin()) + 1) %
+                 languages.size();
+   translation.set_language(languages[next]);
++  /* Kept at once (not only at the end of the program): the next start is
++     in this language. With no setting the game starts in English. */
++  Settings &settings = Settings::get_instance();
++  settings.set("advanced", "language", translation.get_language());
++  settings.save();
+   /* All the texts again. */
+   invalidate();
+ }
+@@ -1465,6 +1538,77 @@ Interface::less_rocks() {
+   rock_percent = (rock_percent >= 10) ? rock_percent - 10 : 0;
+ }
+ 
++bool
++Interface::is_music_on() const {
++  Audio::PPlayer player = Audio::get_instance().get_music_player();
++  return player && player->is_enabled();
++}
++
++bool
++Interface::is_sound_on() const {
++  Audio::PPlayer player = Audio::get_instance().get_sound_player();
++  return player && player->is_enabled();
++}
++
++void
++Interface::switch_music() {
++  Audio::PPlayer player = Audio::get_instance().get_music_player();
++  if (player) player->enable(!player->is_enabled());
++}
++
++void
++Interface::switch_sound() {
++  Audio::PPlayer player = Audio::get_instance().get_sound_player();
++  if (player) player->enable(!player->is_enabled());
++}
++
++/* A volume 10% up or down (dir 1, -1): all (player nullptr), the music or
++   the effects. */
++static void
++change_volume(Audio::PPlayer player, bool all, int dir) {
++  if (all) {
++    Audio::VolumeController *c = Audio::get_instance().get_volume_controller();
++    if (c == nullptr) return;
++    if (dir > 0) c->volume_up(); else c->volume_down();
++    return;
++  }
++  if (!player) return;
++  Audio::PVolumeController c = player->get_volume_controller();
++  if (!c) return;
++  if (dir > 0) c->volume_up(); else c->volume_down();
++}
++
++void Interface::volume_up() { change_volume(nullptr, true, 1); }
++void Interface::volume_down() { change_volume(nullptr, true, -1); }
++void Interface::music_volume_up() {
++  change_volume(Audio::get_instance().get_music_player(), false, 1);
++}
++void Interface::music_volume_down() {
++  change_volume(Audio::get_instance().get_music_player(), false, -1);
++}
++void Interface::sound_volume_up() {
++  change_volume(Audio::get_instance().get_sound_player(), false, 1);
++}
++void Interface::sound_volume_down() {
++  change_volume(Audio::get_instance().get_sound_player(), false, -1);
++}
++
++void
++Interface::next_audio_output() {
++  Audio &audio = Audio::get_instance();
++  std::vector<std::string> outputs = audio.get_outputs();
++  if (outputs.empty()) return;
++  std::string now = audio.get_output();
++  size_t i = 0;
++  while (i < outputs.size() && outputs[i] != now) i++;
++  std::string next = outputs[(i + 1) % outputs.size()];
++  if (audio.set_output(next)) {
++    Settings &settings = Settings::get_instance();
++    settings.set("audio", "output", next);
++    settings.save();
++  }
++}
++
+ void
+ Interface::switch_terraforming() {
+   terraforming = !terraforming;
+diff --git a/src/interface.h b/src/interface.h
+index a5aaaf6..9f3ba92 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -247,6 +247,21 @@ class Interface : public GuiObject, public GameManager::Handler {
+   void switch_wild_boars() { wild_boars = !wild_boars; }
+   bool get_terraforming() const { return terraforming; }
+   void switch_terraforming();
++  /* Advanced -> Audio: the way out of the sound (Amiga: Paula, AHI), at
++     once and kept in the settings. */
++  void next_audio_output();
++  /* Advanced -> Audio: the music and the effects on or off, the volume of
++     all, of the music and of the effects (steps of 10%, kept). */
++  bool is_music_on() const;
++  bool is_sound_on() const;
++  void switch_music();
++  void switch_sound();
++  void volume_up();
++  void volume_down();
++  void music_volume_up();
++  void music_volume_down();
++  void sound_volume_up();
++  void sound_volume_down();
+   bool get_fast_building() const { return fast_building; }
+   void switch_fast_building() { fast_building = !fast_building; }
+   bool get_fast_mapclick() const { return fast_mapclick; }
+@@ -279,6 +294,8 @@ class Interface : public GuiObject, public GameManager::Handler {
+   void less_dead_trees();
+   /* The next language with a translation, then the original English. */
+   void next_language();
++  /* Options -> Font: the original font of the game, the readable one. */
++  void next_font();
+ 
+   /* Settings kept between the runs (Settings): the options of the options
+      and advanced boxes. */
+@@ -327,6 +344,8 @@ class Interface : public GuiObject, public GameManager::Handler {
+   void close_game_init();
+   /* Box of the advanced options; closing it closes the options too. */
+   void open_advanced();
++  /* On a page: 0 Advanced, 1 Video, 2 Audio. */
++  void open_advanced_page(int page);
+   void close_advanced();
+   void open_keys_box();
+   void close_keys_box();
+diff --git a/src/keys-box.cc b/src/keys-box.cc
+index e363752..99f4e9b 100644
+--- a/src/keys-box.cc
++++ b/src/keys-box.cc
+@@ -28,6 +28,7 @@
+ #include "src/box-frame.h"
+ #include "src/audio.h"
+ #include "src/data.h"
++#include "src/translation.h"
+ 
+ static const int kExitWidth = 16;
+ static const int kExitHeight = 16;
+@@ -40,18 +41,18 @@ static const struct {
+   const char *key;
+   const char *text;
+ } keys[] = {
+-  { "+", "Game speed up" },
+-  { "-", "Game speed down" },
+-  { "0", "Normal speed" },
+-  { "Z", "Zoom" },
+-  { "Wheel", "Zoom in and out" },
+-  { "P", "Pause" },
+-  { "M", "Music on-off" },
+-  { "S", "Sound on-off" },
+-  { "Ctrl+Z", "Quick save" },
+-  { "F9", "Screenshot" },
+-  { "I", "This box" },
+-  { "Shift+Esc", "Quit" }
++  { "+", N_("Game speed up") },
++  { "-", N_("Game speed down") },
++  { "0", N_("Normal speed") },
++  { "Z", N_("Zoom") },
++  { N_("Wheel"), N_("Zoom in and out") },
++  { "P", N_("Pause") },
++  { "M", N_("Music on-off") },
++  { "S", N_("Sound on-off") },
++  { "Ctrl+Z", N_("Quick save") },
++  { "F9", N_("Screenshot") },
++  { "I", N_("This box") },
++  { "Shift+Esc", N_("Quit") }
+ };
+ 
+ KeysBox::KeysBox(Interface *_interface)
+@@ -79,12 +80,12 @@ KeysBox::internal_draw() {
+   }
+   draw_box_frame(frame, width, height);
+ 
+-  std::string title = "Keys";
++  std::string title = _("Keys");
+   frame->draw_string((width - frame->get_string_width(title)) / 2, 9, title,
+                      Color::green, Color::black);
+   int y = kFirstRowY;
+   for (const auto &k : keys) {
+-    std::string key = k.key;
++    std::string key = _(k.key);
+     std::string with_spaces = key;
+     for (char &c : with_spaces) {
+       if (c == '+') c = ' ';
+@@ -95,7 +96,7 @@ KeysBox::internal_draw() {
+         draw_plus(frame, kKeyX + 8 * static_cast<int>(i), y);
+       }
+     }
+-    frame->draw_string(kTextX, y, k.text, Color::green, Color::black);
++    frame->draw_string(kTextX, y, _(k.text), Color::green, Color::black);
+     y += kRowHeight;
+   }
+ 
+diff --git a/src/lan-box.cc b/src/lan-box.cc
+index 1d9bfaf..1039a11 100644
+--- a/src/lan-box.cc
++++ b/src/lan-box.cc
+@@ -45,6 +45,7 @@
+ #include "src/map-generator.h"
+ #include "src/map-geometry.h"
+ #include "src/event_loop.h"
++#include "src/translation.h"
+ 
+ static const int kExitSize = 16;
+ static const int kButtonWidth = 112;
+@@ -114,11 +115,12 @@ static const size_t kChatNameShown = 7;
+ static const size_t kChatTextMax = 32;
+ /* The player who joined: answers about the map with one click, under the
+    chat: another map, the map is average, the map is great. */
+-static const char *const kQuickAnswers[] = { "CHANGE", "AVERAGE", "GREAT" };
++static const char *const kQuickAnswers[] = { N_("CHANGE"), N_("AVERAGE"),
++                                              N_("GREAT") };
+ static const int kQuickCount = 3;
+ static const int kQuickX = 16, kQuickWidth = 64, kQuickStep = 68;
+ 
+-static const char kNoNetwork[] = "No network in this version.";
++static const char kNoNetwork[] = N_("No network in this version.");
+ 
+ /* Letters, digits, spaces and - _ . of a name. */
+ static bool
+@@ -527,7 +529,7 @@ LanBox::update() {
+       if (interface->start_lan_game(data, false)) {
+         return;
+       }
+-      message = "Bad settings from the server.";
++      message = _("Bad settings from the server.");
+     } else if (type >= LanGame::MessageSaveBegin &&
+                type <= LanGame::MessageSaveEnd) {
+       if (type == LanGame::MessageSaveEnd && save_size != 0 &&
+@@ -538,7 +540,7 @@ LanBox::update() {
+                                                 save_delay)) {
+           return;
+         }
+-        message = "The saved game could not be read.";
++        message = _("The saved game could not be read.");
+       } else {
+         receive_save(type, data);
+       }
+@@ -558,12 +560,12 @@ LanBox::receive_save(int type, const std::string &data) {
+   } else if (type == LanGame::MessageSaveData) {
+     save_in += data;
+   } else {
+-    message = "The saved game came broken.";
++    message = _("The saved game came broken.");
+     save_size = 0;
+     return;
+   }
+   if (save_size != 0) {
+-    message = "Receiving the game... " +
++    message = _("Receiving the game... ") +
+               std::to_string(save_in.size() * 100 / save_size) + "%";
+   }
+ }
+@@ -572,12 +574,12 @@ bool
+ LanBox::use_saved_game(const std::string &path) {
+   Game game;
+   if (path.empty() || !GameStore::get_instance().load(path, &game)) {
+-    message = "Choose a saved game.";
++    message = _("Choose a saved game.");
+     return false;
+   }
+   Player *other = game.get_player(1);
+   if (other == nullptr || other->is_ai()) {
+-    message = "Player 2 is not a person there.";
++    message = _("Player 2 is not a person there.");
+     return false;
+   }
+   save_path = path;
+@@ -719,8 +721,8 @@ LanBox::draw_lobby() {
+   /* The map, or what is played. */
+   if (!preview->is_displayed()) {
+     frame->fill_rect(kMapX, kMapY, kMapSize, kMapSize, Color::black);
+-    std::string text = saved ? "Saved game" : "Making the map...";
+-    if (!saved && !preview_mission) text = "No map yet.";
++    std::string text = saved ? _("Saved game") : _("Making the map...");
++    if (!saved && !preview_mission) text = _("No map yet.");
+     frame->draw_string(kMapX + (kMapSize - frame->get_string_width(text)) / 2,
+                        kMapY + kMapSize / 2 - 4, text, Color::green);
+   }
+@@ -733,7 +735,7 @@ LanBox::draw_lobby() {
+       if (preview_mission->get_player(i)->get_face() < 12) ai++;
+     }
+   }
+-  std::string game_label = saved ? "Saved" : "Map size";
++  std::string game_label = saved ? _("Saved") : _("Map size");
+   std::string game_value = server
+     ? (saved ? save_name : std::to_string(mission->get_map_size()))
+     : (saved ? lobby_save_name
+@@ -748,9 +750,9 @@ LanBox::draw_lobby() {
+     ai_value = std::to_string(own_ai);
+   }
+   const std::string rows[][2] = {
+-    { "Server", (server ? own : other).substr(0, 12) },
+-    { "Player 2", (server ? other : own).substr(0, 12) },
+-    { "Response", ping_text() },
++    { _("Server"), (server ? own : other).substr(0, 12) },
++    { _("Player 2"), (server ? other : own).substr(0, 12) },
++    { _("Response"), ping_text() },
+     { game_label, game_value.substr(0, kSaveNameShown) },
+     { "AI", ai_value },
+   };
+@@ -762,23 +764,23 @@ LanBox::draw_lobby() {
+   }
+ 
+   if (server) {
+-    draw_text_button(kInfoLeftX, kSizeButtonsY, kHalfWidth, "SMALLER",
++    draw_text_button(kInfoLeftX, kSizeButtonsY, kHalfWidth, _("SMALLER"),
+                      !saved && mission->get_map_size() > 1);
+-    draw_text_button(kInfoRightX, kSizeButtonsY, kHalfWidth, "LARGER",
++    draw_text_button(kInfoRightX, kSizeButtonsY, kHalfWidth, _("LARGER"),
+                      !saved && mission->get_map_size() < 10);
+-    draw_text_button(kInfoLeftX, kMapButtonsY, kHalfWidth, "OTHER MAP",
++    draw_text_button(kInfoLeftX, kMapButtonsY, kHalfWidth, _("OTHER MAP"),
+                      !saved);
+     draw_text_button(kInfoRightX, kMapButtonsY, kHalfWidth,
+-                     saved ? "NEW MAP" : "LOAD GAME");
++                     saved ? _("NEW MAP") : _("LOAD GAME"));
+   } else {
+-    frame->draw_string(kInfoX, kSizeButtonsY + 4, "The server chooses",
++    frame->draw_string(kInfoX, kSizeButtonsY + 4, _("The server chooses"),
+                        Color::green, Color::black);
+-    frame->draw_string(kInfoX, kSizeButtonsY + 14, "the map. Agree on",
++    frame->draw_string(kInfoX, kSizeButtonsY + 14, _("the map. Agree on"),
+                        Color::green, Color::black);
+-    frame->draw_string(kInfoX, kSizeButtonsY + 24, "it in the chat.",
++    frame->draw_string(kInfoX, kSizeButtonsY + 24, _("it in the chat."),
+                        Color::green, Color::black);
+   }
+-  frame->draw_string(kInfoX, kMapButtonsY + 28, "Chat: type, Return",
++  frame->draw_string(kInfoX, kMapButtonsY + 28, _("Chat: type, Return"),
+                      Color::green, Color::black);
+ 
+   /* The chat: the last lines, the field to write in below. */
+@@ -798,16 +800,16 @@ LanBox::draw_lobby() {
+   }
+ 
+   if (server) {
+-    draw_text_button(kLeftButtonX, kLobbyButtonsY, kButtonWidth, "CANCEL");
++    draw_text_button(kLeftButtonX, kLobbyButtonsY, kButtonWidth, _("CANCEL"));
+     draw_text_button(kRightButtonX, kLobbyButtonsY, kButtonWidth,
+-                     "START GAME");
++                     _("START GAME"));
+   } else {
+     for (int i = 0; i < kQuickCount; i++) {
+       draw_text_button(kQuickX + i * kQuickStep, kLobbyButtonsY, kQuickWidth,
+-                       kQuickAnswers[i]);
++                       _(kQuickAnswers[i]));
+     }
+     draw_text_button(kRightButtonX, kLobbyButtonsY, kButtonWidth,
+-                     "DISCONNECT");
++                     _("DISCONNECT"));
+   }
+   if (!message.empty()) {
+     frame->draw_string(kLabelX, kLobbyMessageY, message, Color::green,
+@@ -824,7 +826,7 @@ LanBox::lobby_click(int x, int y) {
+       if (inside(x, y, kQuickX + i * kQuickStep, kLobbyButtonsY, kQuickWidth,
+                  kButtonHeight)) {
+         play_sound(Audio::TypeSfxClick);
+-        send_chat(kQuickAnswers[i]);
++        send_chat(_(kQuickAnswers[i]));
+         return true;
+       }
+     }
+@@ -941,7 +943,7 @@ LanBox::internal_draw() {
+     }
+   }
+   draw_box_frame(frame, width, height);
+-  draw_centered(9, "LAN game");
++  draw_centered(9, _("LAN game"));
+ 
+   LanLink::State state = link_state();
+   if (lobby()) {
+@@ -952,46 +954,46 @@ LanBox::internal_draw() {
+   }
+   switch (view) {
+     case ViewChoose:
+-      draw_centered(26, "Two players on two Amigas");
+-      draw_centered(36, "in one network.");
+-      draw_text_button(kButtonX, kServerButtonY, kButtonWidth, "START SERVER");
+-      draw_centered(kServerButtonY + 20, "This Amiga sets up the game.");
+-      draw_text_button(kButtonX, kJoinButtonY, kButtonWidth, "JOIN SERVER");
+-      draw_centered(kJoinButtonY + 20, "Find the server or type");
+-      draw_centered(kJoinButtonY + 30, "its address and connect.");
++      draw_centered(26, _("Two players on two Amigas"));
++      draw_centered(36, _("in one network."));
++      draw_text_button(kButtonX, kServerButtonY, kButtonWidth, _("START SERVER"));
++      draw_centered(kServerButtonY + 20, _("This Amiga sets up the game."));
++      draw_text_button(kButtonX, kJoinButtonY, kButtonWidth, _("JOIN SERVER"));
++      draw_centered(kJoinButtonY + 20, _("Find the server or type"));
++      draw_centered(kJoinButtonY + 30, _("its address and connect."));
+       draw_text_button(kButtonX, kInternetButtonY, kButtonWidth,
+-                       "INTERNET GAME");
+-      draw_centered(kInternetButtonY + 20, "Both connect to the game server,");
+-      draw_centered(kInternetButtonY + 30, "no router to set up.");
++                       _("INTERNET GAME"));
++      draw_centered(kInternetButtonY + 20, _("Both connect to the game server,"));
++      draw_centered(kInternetButtonY + 30, _("no router to set up."));
+       break;
+     case ViewInternet: {
+       /* The game server on the internet (to come): its address from the
+          settings ([lan] relay = host:port). */
+       std::string relay = Settings::get_instance().get("lan", "relay",
+                                                        std::string());
+-      draw_centered(26, "A game over the game server");
++      draw_centered(26, _("A game over the game server"));
+       const std::string rows[][2] = {
+-        { "Game server", relay.empty() ? "not set yet" : relay },
+-        { "Your name", player_name_field->get_text() },
++        { _("Game server"), relay.empty() ? _("not set yet") : relay },
++        { _("Your name"), player_name_field->get_text() },
+       };
+       draw_rows(kInternetRowsY, rows, sizeof(rows) / sizeof(rows[0]),
+                 kServerRowStep);
+-      draw_centered(kInternetRowsY + 30, "Coming soon: the game server");
+-      draw_centered(kInternetRowsY + 40, "is being made.");
++      draw_centered(kInternetRowsY + 30, _("Coming soon: the game server"));
++      draw_centered(kInternetRowsY + 40, _("is being made."));
+       draw_text_button(kLeftButtonX, kInternetButtonsY, kButtonWidth,
+-                       "NEW GAME", false);
++                       _("NEW GAME"), false);
+       draw_text_button(kRightButtonX, kInternetButtonsY, kButtonWidth,
+-                       "JOIN GAME", false);
+-      draw_text_button(kButtonX, kInternetBackY, kButtonWidth, "BACK");
++                       _("JOIN GAME"), false);
++      draw_text_button(kButtonX, kInternetBackY, kButtonWidth, _("BACK"));
+       break;
+     }
+     case ViewServer: {
+       bool running = state == LanLink::StateServing ||
+                      state == LanLink::StateConnected;
+       bool joined = state == LanLink::StateConnected;
+-      draw_centered(26, joined ? "A player has joined."
+-                    : running ? "Waiting for a player..."
+-                              : "RUN SERVER to be found.");
++      draw_centered(26, joined ? _("A player has joined.")
++                    : running ? _("Waiting for a player...")
++                              : _("RUN SERVER to be found."));
+       int ai = 0;
+       for (size_t i = 0; i < mission->get_player_count(); i++) {
+         if (mission->get_player(i)->get_face() < 12) ai++;
+@@ -1008,60 +1010,61 @@ LanBox::internal_draw() {
+         if (!link()->get_external_address(&external)) {
+           external = "...";
+         } else if (external.empty()) {
+-          external = "none";
++          external = _("none");
+         }
+       }
+       const std::string rows[][2] = {
+-        { "Server name", "" },
+-        { "Server address", own_address.empty() ? "-" : own_address },
+-        { "Internet address", external },
+-        { "Port", running ? std::to_string(port_in_use) : "" },
++        { _("Server name"), "" },
++        { _("Server address"), own_address.empty() ? "-" : own_address },
++        { _("Internet address"), external },
++        { _("Port"), running ? std::to_string(port_in_use) : "" },
+         { "", "" },
+-        { saved ? "Saved game" : "Map size",
++        { saved ? _("Saved game") : _("Map size"),
+           saved ? save_name : std::to_string(mission->get_map_size()) },
+-        { saved ? "Map size" : "AI players",
++        { saved ? _("Map size") : _("AI players"),
+           saved ? std::to_string(save_map_size) : std::to_string(ai) },
+         { "", "" },
+-        { "Player 2", joined ? link()->get_peer_name() : "-" },
+-        { "Address", joined ? link()->get_peer_address() : "-" },
+-        { "Response", joined ? ping_text() : "-" },
++        { _("Player 2"), joined ? link()->get_peer_name() : "-" },
++        { _("Address"), joined ? link()->get_peer_address() : "-" },
++        { _("Response"), joined ? ping_text() : "-" },
+       };
+       draw_rows(kServerRowsY, rows, sizeof(rows) / sizeof(rows[0]),
+                 kServerRowStep);
+       draw_text_button(kLeftButtonX, kRunY, kButtonWidth,
+-                       running ? "STOP SERVER" : "RUN SERVER");
+-      draw_text_button(kRightButtonX, kRunY, kButtonWidth, "START GAME",
++                       running ? _("STOP SERVER") : _("RUN SERVER"));
++      draw_text_button(kRightButtonX, kRunY, kButtonWidth, _("START GAME"),
+                        joined);
+       draw_text_button(kLeftButtonX, kCancelY, kButtonWidth,
+-                       saved ? "NEW MAP" : "LOAD GAME");
+-      draw_text_button(kRightButtonX, kCancelY, kButtonWidth, "CANCEL");
++                       saved ? _("NEW MAP") : _("LOAD GAME"));
++      draw_text_button(kRightButtonX, kCancelY, kButtonWidth, _("CANCEL"));
+       break;
+     }
+     case ViewLoad:
+-      frame->draw_string(kListX, 24, "Go on with a saved game", Color::green,
++      frame->draw_string(kListX, 24, _("Go on with a saved game"), Color::green,
+                          Color::black);
+-      draw_text_button(kLeftButtonX, kJoinButtonsY, kButtonWidth, "USE GAME");
+-      draw_text_button(kDeleteX, kJoinButtonsY, kDeleteWidth, "DELETE",
++      draw_text_button(kLeftButtonX, kJoinButtonsY, kButtonWidth, _("USE GAME"));
++      draw_text_button(kDeleteX, kJoinButtonsY, kDeleteWidth, _("DELETE"),
+                        !save_list->get_selected().empty() && !delete_asked);
+-      draw_text_button(kRightButtonX, kJoinButtonsY, kButtonWidth, "BACK");
++      draw_text_button(kRightButtonX, kJoinButtonsY, kButtonWidth, _("BACK"));
+       if (delete_asked) {
+         size_t n = save_list->get_marked().size();
+-        draw_centered(kQuestionY, (n > 1) ? "Delete " + std::to_string(n) +
+-                                            " saves?" : "Delete the save?");
+-        draw_text_button(kYesX, kYesNoY, kYesNoWidth, "YES");
+-        draw_text_button(kNoX, kYesNoY, kYesNoWidth, "NO");
++        draw_centered(kQuestionY, (n > 1) ?
++          text_with(_("Delete %u saves?"), std::to_string(n)) :
++          _("Delete the save?"));
++        draw_text_button(kYesX, kYesNoY, kYesNoWidth, _("YES"));
++        draw_text_button(kNoX, kYesNoY, kYesNoWidth, _("NO"));
+       }
+       break;
+     case ViewJoin: {
+       bool searching = state == LanLink::StateSearching;
+-      frame->draw_string(kListX, 24, searching ? "Searching the network..."
+-                                               : "Servers found",
++      frame->draw_string(kListX, 24, searching ? _("Searching the network...")
++                                               : _("Servers found"),
+                          Color::green, Color::black);
+       frame->fill_rect(kListX, kListY, kListW, kListH, Color::black);
+       if (servers.empty() && !searching) {
+-        frame->draw_string(kListX + 4, kListY + 4, "None - SEARCH or type",
++        frame->draw_string(kListX + 4, kListY + 4, _("None - SEARCH or type"),
+                            Color::green);
+-        frame->draw_string(kListX + 4, kListY + 12, "the address below.",
++        frame->draw_string(kListX + 4, kListY + 12, _("the address below."),
+                            Color::green);
+       }
+       for (size_t i = 0; i < servers.size() && i < kListRows; i++) {
+@@ -1073,34 +1076,34 @@ LanBox::internal_draw() {
+         std::string a = s.address + (same ? "" : " (" + s.version + ")");
+         frame->draw_string(kListX + 4 + 136, y, a, c);
+       }
+-      draw_text_button(kSearchX, kSearchY, kSearchW, "SEARCH", !searching);
+-      frame->draw_string(kLabelX, kJoinNameY, "Your name", Color::green,
++      draw_text_button(kSearchX, kSearchY, kSearchW, _("SEARCH"), !searching);
++      frame->draw_string(kLabelX, kJoinNameY, _("Your name"), Color::green,
+                          Color::black);
+-      frame->draw_string(kLabelX, kAddressY, "Server address", Color::green,
++      frame->draw_string(kLabelX, kAddressY, _("Server address"), Color::green,
+                          Color::black);
+-      frame->draw_string(kLabelX, kJoinPortY, "Port", Color::green,
++      frame->draw_string(kLabelX, kJoinPortY, _("Port"), Color::green,
+                          Color::black);
+       bool connecting = state == LanLink::StateConnecting;
+       draw_text_button(kLeftButtonX, kJoinButtonsY, kButtonWidth,
+-                       connecting ? "CONNECTING" : "CONNECT", !connecting);
+-      draw_text_button(kRightButtonX, kJoinButtonsY, kButtonWidth, "BACK");
++                       connecting ? _("CONNECTING") : _("CONNECT"), !connecting);
++      draw_text_button(kRightButtonX, kJoinButtonsY, kButtonWidth, _("BACK"));
+       break;
+     }
+     case ViewJoined: {
+-      draw_centered(26, "Connected. Waiting for the");
+-      draw_centered(36, "server to start the game.");
++      draw_centered(26, _("Connected. Waiting for the"));
++      draw_centered(36, _("server to start the game."));
+       const std::string rows[][2] = {
+-        { "Server name", link()->get_peer_name() },
+-        { "Server address", link()->get_peer_address() },
+-        { "Port", std::to_string(port_in_use) },
++        { _("Server name"), link()->get_peer_name() },
++        { _("Server address"), link()->get_peer_address() },
++        { _("Port"), std::to_string(port_in_use) },
+         { "", "" },
+-        { "Your name", player_name_field->get_text() },
+-        { "Your address", own_address.empty() ? "-" : own_address },
+-        { "Response", ping_text() },
++        { _("Your name"), player_name_field->get_text() },
++        { _("Your address"), own_address.empty() ? "-" : own_address },
++        { _("Response"), ping_text() },
+       };
+       draw_rows(kRowsY + 20, rows, sizeof(rows) / sizeof(rows[0]),
+                 kServerRowStep);
+-      draw_text_button(kButtonX, kCancelY, kButtonWidth, "DISCONNECT");
++      draw_text_button(kButtonX, kCancelY, kButtonWidth, _("DISCONNECT"));
+       break;
+     }
+   }
+@@ -1161,7 +1164,7 @@ LanBox::handle_click_left(int x, int y) {
+           inside(x, y, kRightButtonX, kInternetButtonsY, kButtonWidth,
+                  kButtonHeight)) {
+         play_sound(Audio::TypeSfxNotAccepted);
+-        message = "The game server is not ready yet.";
++        message = _("The game server is not ready yet.");
+         set_redraw();
+       } else if (inside(x, y, kButtonX, kInternetBackY, kButtonWidth,
+                         kButtonHeight)) {
+@@ -1174,7 +1177,7 @@ LanBox::handle_click_left(int x, int y) {
+         play_sound(Audio::TypeSfxClick);
+         message.clear();
+         if (l == nullptr) {
+-          message = kNoNetwork;
++          message = _(kNoNetwork);
+         } else if (state == LanLink::StateIdle) {
+           port_in_use = take_port();
+           l->start_server(server_name_field->get_text(), port_in_use);
+@@ -1199,7 +1202,7 @@ LanBox::handle_click_left(int x, int y) {
+                                                             delay)) {
+               return true;  /* This box is gone. */
+             }
+-            message = "The saved game could not be read.";
++            message = _("The saved game could not be read.");
+             set_redraw();
+             return true;
+           }
+@@ -1211,7 +1214,7 @@ LanBox::handle_click_left(int x, int y) {
+               interface->start_lan_game(setup, true)) {
+             return true;  /* This box is gone. */
+           }
+-          message = "The game did not start.";
++          message = _("The game did not start.");
+           set_redraw();
+         }
+       } else if (inside(x, y, kLeftButtonX, kCancelY, kButtonWidth,
+@@ -1239,7 +1242,7 @@ LanBox::handle_click_left(int x, int y) {
+       } else if (inside(x, y, kSearchX, kSearchY, kSearchW, kButtonHeight)) {
+         if (l == nullptr || state == LanLink::StateSearching) {
+           play_sound(Audio::TypeSfxNotAccepted);
+-          message = l == nullptr ? kNoNetwork : "";
++          message = l == nullptr ? _(kNoNetwork) : std::string();
+         } else {
+           play_sound(Audio::TypeSfxClick);
+           message.clear();
+@@ -1253,12 +1256,12 @@ LanBox::handle_click_left(int x, int y) {
+         if (l == nullptr || address.empty() ||
+             state == LanLink::StateConnecting) {
+           play_sound(Audio::TypeSfxNotAccepted);
+-          message = l == nullptr ? kNoNetwork
+-                    : address.empty() ? "Type the server address." : "";
++          message = l == nullptr ? _(kNoNetwork)
++                    : address.empty() ? _("Type the server address.") : "";
+         } else {
+           play_sound(Audio::TypeSfxClick);
+           port_in_use = take_port();
+-          message = "Connecting to " + address + ":" +
++          message = _("Connecting to ") + address + ":" +
+                     std::to_string(port_in_use) + "...";
+           l->connect(address, player_name_field->get_text(), port_in_use);
+         }
+@@ -1290,7 +1293,7 @@ LanBox::handle_click_left(int x, int y) {
+           play_sound(Audio::TypeSfxAhhh);
+         } else {
+           play_sound(Audio::TypeSfxNotAccepted);
+-          message = "A save was not deleted.";
++          message = _("A save was not deleted.");
+         }
+         if (!paths.empty()) save_list->refresh();
+         set_redraw();
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index fe150aa..6260f97 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -44,6 +44,7 @@
+ #include "src/game-manager.h"
+ #include "src/viewport.h"
+ #include "src/popup.h"
++#include "src/translation.h"
+ 
+ /* The largest screen of a LAN game. */
+ static const unsigned int kMaxWidth = 640;
+@@ -299,8 +300,8 @@ LanGame::dump(bool sync_error) {
+     f << text;
+   }
+   Log::Warn["lan"] << "LAN dump at step " << steps << ": " << base;
+-  add_chat(-1, std::string(), saved ? "GAME SAVED: SYNC ERROR"
+-                                    : "GAME NOT SAVED");
++  add_chat(-1, std::string(), saved ? _("GAME SAVED: SYNC ERROR")
++                                    : _("GAME NOT SAVED"));
+   chat_shown_until = EventLoop::get_instance().get_ticks() + 10000;
+   update_chat_box(true);
+ 
+@@ -331,7 +332,7 @@ LanGame::resync() {
+   own_sums.clear();
+   if (!server) {
+     resync_waiting = true;
+-    add_chat(-1, std::string(), "RESYNC: WAITING FOR THE SERVER");
++    add_chat(-1, std::string(), _("RESYNC: WAITING FOR THE SERVER"));
+     chat_shown_until = EventLoop::get_instance().get_ticks() + 10000;
+     update_chat_box(true);
+     return;
+@@ -340,7 +341,7 @@ LanGame::resync() {
+   if (!game) return;
+   std::ostringstream out;
+   if (!GameStore::get_instance().write(&out, game.get())) {
+-    add_chat(-1, std::string(), "RESYNC FAILED");
++    add_chat(-1, std::string(), _("RESYNC FAILED"));
+     return;
+   }
+   std::string data = out.str();
+@@ -359,7 +360,7 @@ LanGame::resync() {
+                                     std::string()));
+   Log::Warn["lan"] << "Resync at step " << steps << ": " << data.size()
+                    << " bytes to the other side";
+-  add_chat(-1, std::string(), "RESYNC: THE GAME GOES TO THE OTHER SIDE");
++  add_chat(-1, std::string(), _("RESYNC: THE GAME GOES TO THE OTHER SIDE"));
+   chat_shown_until = EventLoop::get_instance().get_ticks() + 10000;
+   update_chat_box(true);
+ }
+@@ -385,7 +386,7 @@ LanGame::receive_resync(int type, const std::string &data) {
+     resync_ready = resync_in.size() == resync_size &&
+                    lan_data_checksum(resync_in) == resync_sum;
+     if (!resync_ready) {
+-      add_chat(-1, std::string(), "RESYNC: THE GAME CAME BROKEN");
++      add_chat(-1, std::string(), _("RESYNC: THE GAME CAME BROKEN"));
+       Log::Warn["lan"] << "Resync data broken";
+       /* Stay apart rather than stop: the game goes on as it was. */
+       resync_waiting = false;
+@@ -414,7 +415,7 @@ LanGame::load_resync() {
+   }
+   interface->close_popup();
+   if (!GameManager::get_instance().load_game_text(text)) {
+-    add_chat(-1, std::string(), "RESYNC FAILED");
++    add_chat(-1, std::string(), _("RESYNC FAILED"));
+     Log::Warn["lan"] << "Resync: the game could not be read";
+     return false;
+   }
+@@ -431,7 +432,7 @@ LanGame::load_resync() {
+     interface->del_float(chat_box.get());
+     chat_box.reset();
+   }
+-  add_chat(-1, std::string(), "RESYNC DONE - THE GAMES ARE THE SAME");
++  add_chat(-1, std::string(), _("RESYNC DONE - THE GAMES ARE THE SAME"));
+   chat_shown_until = EventLoop::get_instance().get_ticks() + 10000;
+   update_chat_box(true);
+   Log::Warn["lan"] << "Resync done at step " << steps;
+@@ -512,8 +513,8 @@ LanGame::receive_file(int type, const std::string &data) {
+     }
+     if (file_in_name.size() > 4 &&
+         file_in_name.compare(file_in_name.size() - 4, 4, ".txt") == 0) {
+-      add_chat(-1, std::string(), ok ? "STATE OF THE OTHER SIDE RECEIVED"
+-                                     : "STATE OF THE OTHER SIDE BROKEN");
++      add_chat(-1, std::string(), ok ? _("STATE OF THE OTHER SIDE RECEIVED")
++                                     : _("STATE OF THE OTHER SIDE BROKEN"));
+       chat_shown_until = EventLoop::get_instance().get_ticks() + 10000;
+       update_chat_box(true);
+     }
+@@ -557,21 +558,21 @@ LanGame::other_side_ended() {
+   end_seen = true;
+   bool saved = save_at_end();
+   unsigned int now = EventLoop::get_instance().get_ticks();
+-  std::string who = peer_name.empty() ? std::string("The other player")
+-                                      : peer_name;
++  std::string who = peer_name.empty() ? _("The other player") : peer_name;
+   /* Both sides end: the game of one player alone would no longer be the
+      LAN game (a save of it could not go on together). */
+   if (other_left_on_purpose) {
+     /* The other player chose to end it (Quit, asked whether to save). */
+-    notice = std::string(server ? "The player " : "The server ") + who +
+-             " ended the game.";
++    notice = text_with(server ? _("The player %s ended the game.")
++                              : _("The server %s ended the game."), who);
+   } else if (other_quit) {
+-    notice = who + (server ? " left the game." : " ended the game.");
++    notice = text_with(server ? _("%s left the game.")
++                              : _("%s ended the game."), who);
+   } else {
+-    notice = "The connection to " + who + " is lost.";
++    notice = text_with(_("The connection to %s is lost."), who);
+   }
+   if (saved) {
+-    notice += " Game saved.";
++    notice += " " + _("Game saved.");
+   }
+   notice_until = now + 4000;
+   leave_at = now + 4000;
+@@ -790,7 +791,7 @@ LanGame::compare() {
+     if (mine->second != theirs->second && !out_of_step) {
+       out_of_step = true;
+       out_of_step_at = theirs->first;
+-      note("OUT OF STEP AT " + std::to_string(out_of_step_at));
++      note(_("OUT OF STEP AT ") + std::to_string(out_of_step_at));
+       Log::Warn["lan"] << "Out of step at " << out_of_step_at;
+       /* Both sides save the game at the same step: the server asks (the
+          player who joined sees the same sums). */
+@@ -825,23 +826,23 @@ LanGame::problem_text() {
+   bool waiting = waiting_since != 0 &&
+                  EventLoop::get_instance().get_ticks() - waiting_since >
+                    kShowWaitingMs;
+-  if (link == nullptr) return "LAN: NO CONNECTION";
+-  if (gone) return "LAN: PLAYER GONE";
++  if (link == nullptr) return _("LAN: NO CONNECTION");
++  if (gone) return _("LAN: PLAYER GONE");
+   if (out_of_step) {
+-    return "LAN: OUT OF STEP " + std::to_string(out_of_step_at);
++    return _("LAN: OUT OF STEP ") + std::to_string(out_of_step_at);
+   }
+   if (!save_out.empty()) {
+-    return "LAN: SENDING THE GAME " +
++    return _("LAN: SENDING THE GAME ") +
+            std::to_string(save_sent * 100 / save_out.size()) + "%";
+   }
+   if (waiting) {
+     std::string name = link->get_peer_name();
+-    return "LAN: WAITING FOR " + (name.empty() ? std::string("PLAYER")
++    return _("LAN: WAITING FOR ") + (name.empty() ? _("PLAYER")
+                                                : name);
+   }
+   int ms = link->get_ping_ms();
+   if (ms > static_cast<int>(delay * kTurnSteps * 20)) {
+-    return "LAN: SLOW CONNECTION " + std::to_string(ms) + " MS";
++    return _("LAN: SLOW CONNECTION ") + std::to_string(ms) + " MS";
+   }
+   return std::string();
+ }
+@@ -947,7 +948,7 @@ LanGame::send_chat() {
+   if (chat_input.empty()) return;
+   int player = static_cast<int>(interface->get_player()->get_index());
+   if (link == nullptr || gone) {
+-    add_chat(-1, std::string(), "NOT SENT - NO CONNECTION");
++    add_chat(-1, std::string(), _("NOT SENT - NO CONNECTION"));
+     return;
+   }
+   link->send(MessageChat, std::string(1, static_cast<char>(player)) +
+diff --git a/src/popup.cc b/src/popup.cc
+index 00afabf..961dc9d 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -294,12 +294,16 @@ typedef enum Action {
+   ACTION_OPTIONS_VOLUME_PLUS,
+   ACTION_DEMOLISH,
+   ACTION_OPTIONS_SFX,
++  ACTION_OPTIONS_LANGUAGE,
+   ACTION_SAVE,
+   ACTION_OPTIONS_ADVANCED,
+   ACTION_NEW_NAME,
+   ACTION_OPTIONS_SCREEN_PREV,
+   ACTION_OPTIONS_SCREEN_NEXT,
+-  ACTION_OPTIONS_ASPECT
++  ACTION_OPTIONS_ASPECT,
++  ACTION_OPTIONS_FONT,
++  ACTION_OPTIONS_VIDEO,
++  ACTION_OPTIONS_AUDIO
+ } Action;
+ 
+ #ifdef __AMIGA__
+@@ -307,9 +311,10 @@ typedef enum Action {
+    the aspect chosen there (4:3 - with 640x400 - or the wide 16:9). The
+    lowest is 400x300: the game's boxes were made for the Amiga's PAL
+    overscan screen (start box 360x254, panel 352 wide), which 320x200
+-   cannot show. */
++   and 320x256 cannot show. 640x512 (5:4, the PAL screen doubled, a
++   mode of the Warp's driver) goes with the 4:3 ones. */
+ static const unsigned int amiga_modes_4_3[][2] = {
+-  { 400, 300 }, { 640, 400 }, { 640, 480 }, { 800, 600 }
++  { 400, 300 }, { 640, 400 }, { 640, 480 }, { 640, 512 }, { 800, 600 }
+ };
+ /* 1280x720 is not among them (0.106): 15-17 fps, too slow on a large map;
+    MODE=1280x720 for tests. */
+@@ -334,6 +339,7 @@ PopupBox::PopupBox(Interface *_interface)
+   opaque = true;
+   lan_save_ask = false;
+   quit_after_save = false;
++  options_hint = -1;
+   repeat_click = false;
+   repeat_used = false;
+ 
+@@ -2022,71 +2028,118 @@ PopupBox::draw_no_save_quit_confirm_box() {
+   draw_green_centered_at(112, 125, _("No"));
+ }
+ 
++/* The names and hints of the rows of the Options box, top to bottom. */
++static const char *const kOptionsHints[][2] = {
++  { N_("Language"),
++    N_("The language of the texts: English, Deutsch, Polski. A click: the "
++       "next one, kept for the next start.") },
++  { N_("Font"),
++    N_("The letters of the texts: Original, the font of the game; "
++       "Readable, plainer letters with small letters. A click: the other "
++       "one, kept for the next start.") },
++  { N_("Messages"),
++    N_("How many messages the game shows: None, Few, Most, All.") },
++#ifdef __AMIGA__
++  { N_("Aspect"),
++    N_("The shape of the screen, 4:3 or 16:9: it chooses the modes of "
++       "Screen. A click: the other one.") },
++  { N_("Screen"),
++    N_("The screen mode; the arrows change it at once. Kept for the next "
++       "start.") },
++#endif
++};
++static const int kOptionsHintCount =
++  sizeof(kOptionsHints) / sizeof(kOptionsHints[0]);
++
+ void
+ PopupBox::draw_options_box() {
+-  draw_box_background(PatternDiagonalGreen);
+-
+-  draw_green_string(1, 14, _("Music"));
+-  draw_green_lines(1, 30, _("Sound\neffects"), 9);
+-  draw_green_string(1, 54, _("Volume"));
+-
+-  Audio &audio = Audio::get_instance();
+-  Audio::PPlayer player = audio.get_music_player();
+-  // Music
+-  draw_popup_icon(13, 10, ((player) && player->is_enabled()) ? 288 : 220);
+-  player = audio.get_sound_player();
+-  // Sfx
+-  draw_popup_icon(13, 30, ((player) && player->is_enabled()) ? 288 :220);
+-  draw_popup_icon(11, 50, 220); /* Volume minus */
+-  draw_popup_icon(13, 50, 221); /* Volume plus */
+-
+-  float volume = 0.f;
+-  Audio::VolumeController *volume_controller = audio.get_volume_controller();
+-  if (volume_controller != nullptr) {
+-    volume = 99.f * volume_controller->get_volume();
++  /* Wide (kOptionsBoxWidth), the frame of the boxes of the port: a name
++     on the left, its value from the middle, the buttons on the right. */
++  for (int ly = 0; ly < height; ly += 16) {
++    for (int lx = 0; lx < width; lx += 16) {
++      frame->draw_sprite(lx, ly, Data::AssetIcon, PatternDiagonalGreen);
++    }
+   }
+-  std::stringstream str;
+-  str << static_cast<int>(volume);
+-  draw_green_string(8, 54, str.str());
++  draw_box_frame(frame, width, height);
++  text_shadow = true;
++  const int value_col = 15;    /* the values, x 120 */
++  /* The buttons end 24 pixels from the right edge, as in the Advanced box:
++     - at x 200, + and the check boxes at x 216. */
++  const int minus_col = 24;
++  const int plus_col = 26;
++
++  draw_green_string(1, 10, _("Language"));
++  draw_green_string(value_col, 10,
++    Translation::get_instance().get_language_name(
++      Translation::get_instance().get_language()));
++  draw_green_string(1, 26, _("Font"));
++  draw_green_string(value_col, 26,
++                    Graphics::get_instance().get_font() != nullptr
++                    ? _("Readable") : _("Original"));
+ 
+   const char *const levels[] = {
+     NC_("messages", "None"), NC_("messages", "Few"),
+     NC_("messages", "Most"), NC_("messages", "All")
+   };
+   const char *value = levels[interface->get_message_level()];
++  draw_green_string(1, 42, _("Messages"));
++  draw_green_string(value_col, 42, C_("messages", value));
+ #ifdef __AMIGA__
+-  /* Amiga port: no "Fullscreen video" (the game has its own screen);
+-     Messages under Volume, then the aspect of the screen (it chooses the
+-     modes of Screen) and the screen mode, with arrows for the previous
+-     and the next mode, as the volume. */
+-  draw_green_string(1, 74, _("Messages"));
+-  draw_green_string(11, 74, C_("messages", value));
+-
++  /* Amiga port: no "Fullscreen video" (the game has its own screen); the
++     aspect of the screen (it chooses the modes of Screen) and the screen
++     mode, with arrows for the previous and the next mode. */
+   unsigned int sw = 0, sh = 0;
+   Graphics::get_instance().get_resolution(&sw, &sh);
+-  draw_green_string(1, 90, _("Aspect"));
+-  draw_green_string(11, 90, amiga_wide_screen(sw, sh) ? "16:9" : "4:3");
+-  draw_green_string(1, 106, _("Screen"));
+-  draw_green_string(1, 115, std::to_string(sw) + "x" + std::to_string(sh));
+-  draw_popup_icon(11, 106, 220); /* previous mode */
+-  draw_popup_icon(13, 106, 221); /* next mode */
++  draw_green_string(1, 58, _("Aspect"));
++  draw_green_string(value_col, 58, amiga_wide_screen(sw, sh) ? "16:9" : "4:3");
++  draw_green_string(1, 74, _("Screen"));
++  draw_green_string(value_col, 74,
++                    std::to_string(sw) + "x" + std::to_string(sh));
++  draw_popup_icon(minus_col, 70, 220); /* previous mode */
++  draw_popup_icon(plus_col, 70, 221); /* next mode */
+ #else
+-  draw_green_lines(1, 70, _("Fullscreen\nvideo"), 9);
+-
+-  draw_popup_icon(13, 70,   /* Fullscreen mode */
++  draw_green_string(1, 58, _("Fullscreen video"));
++  draw_popup_icon(plus_col, 54,   /* Fullscreen mode */
+                   Graphics::get_instance().is_fullscreen() ? 288 : 220);
+-
+-  draw_green_string(1, 94, _("Messages"));
+-  draw_green_string(11, 94, C_("messages", value));
+ #endif
+ 
+-  /* Advanced options (not in the original game) */
+-  frame->draw_resource_image(8 * 0 + 8, 128 + 9, "button-advanced.png");
+-  /* And the platform's box (the Amiga port: "Amiga"). */
++  /* Advanced options (not in the original game), its Video and Audio
++     pages and the platform's box (the Amiga port: "Amiga"), side by side:
++     56, 38, 38 and 38 pixels wide. */
++  frame->draw_resource_image(8, 128 + 9, "button-advanced.png");
++  frame->draw_resource_image(8 + 56, 128 + 9, "button-video.png");
++  frame->draw_resource_image(8 + 94, 128 + 9, "button-audio.png");
+   if (Interface::platform_box_factory) {
+-    frame->draw_resource_image(8 * 7 + 8, 128 + 9, "button-amiga.png");
++    frame->draw_resource_image(8 + 132, 128 + 9, "button-amiga.png");
+   }
+-  draw_popup_icon(14, 128, 60); /* exit */
++  draw_popup_icon(28, 128, 60); /* exit, as in the other boxes */
++
++  if (options_hint >= 0) {
++    draw_hint_box(frame, 12, 12, width - 24, _(kOptionsHints[options_hint][0]),
++                  _(kOptionsHints[options_hint][1]));
++  }
++}
++
++/* The left button down on the name of an option of the Options box: its
++   hint until the button goes up (the rows of draw_options_box). */
++bool
++PopupBox::handle_press(int x, int y) {
++  if (box != TypeOptions) return false;
++  int cx = x - 8, cy = y - 8;
++  if (cx < 0 || cx >= 112) return false;   /* the names, not the values */
++  int row = (cy - 6) / 16;
++  if (cy < 6 || row >= kOptionsHintCount) return false;
++  options_hint = row;
++  set_redraw();
++  return true;
++}
++
++bool
++PopupBox::handle_release() {
++  if (options_hint < 0) return false;
++  options_hint = -1;
++  set_redraw();
++  return true;
+ }
+ 
+ void
+@@ -2920,6 +2973,10 @@ PopupBox::internal_draw() {
+     draw_save_box();
+     return;
+   }
++  if (box == TypeOptions) {
++    draw_options_box();  /* wide, its own frame */
++    return;
++  }
+   draw_popup_box_frame();
+   text_shadow = false;
+ 
+@@ -3660,7 +3717,15 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     break;
+   case ACTION_OPTIONS_ADVANCED:
+     play_sound(Audio::TypeSfxClick);
+-    interface->open_advanced();
++    interface->open_advanced_page(0);
++    break;
++  case ACTION_OPTIONS_VIDEO:
++    play_sound(Audio::TypeSfxClick);
++    interface->open_advanced_page(1);
++    break;
++  case ACTION_OPTIONS_AUDIO:
++    play_sound(Audio::TypeSfxClick);
++    interface->open_advanced_page(2);
+     break;
+   case ACTION_OPTIONS_MESSAGE_COUNT_1:
+     interface->next_message_level();
+@@ -3846,6 +3911,20 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+   case ACTION_SETT_8_CASTLE_DEF_INC:
+     setting(LanCommand::SettingCastleKnights, 1);
+     break;
++  case ACTION_OPTIONS_FONT:
++    /* The original letters, the readable ones: all the texts at once. */
++    play_sound(Audio::TypeSfxClick);
++    interface->next_font();
++    interface->set_redraw();
++    set_redraw();
++    break;
++  case ACTION_OPTIONS_LANGUAGE:
++    /* English, Deutsch, Polski (the po drawer): all the texts at once. */
++    play_sound(Audio::TypeSfxClick);
++    interface->next_language();
++    interface->set_redraw();
++    set_redraw();
++    break;
+   case ACTION_OPTIONS_MUSIC: {
+     Audio &audio = Audio::get_instance();
+     Audio::PPlayer player = audio.get_music_player();
+@@ -4044,22 +4123,22 @@ PopupBox::handle_box_close_clk(int cx, int cy) {
+ 
+ void
+ PopupBox::handle_box_options_clk(int cx, int cy) {
++  /* The wide box (draw_options_box): - at x 192, + and check boxes 208. */
+   const int clkmap[] = {
+-    ACTION_OPTIONS_MUSIC, 106, 10, 16, 16,
+-    ACTION_OPTIONS_SFX, 106, 30, 16, 16,
+-    ACTION_OPTIONS_VOLUME_MINUS, 90, 50, 16, 16,
+-    ACTION_OPTIONS_VOLUME_PLUS, 106, 50, 16, 16,
+-    ACTION_CLOSE_OPTIONS, 112, 126, 16, 16,
++    ACTION_OPTIONS_LANGUAGE, 0, 6, 240, 16,
++    ACTION_OPTIONS_FONT, 0, 22, 240, 16,
++    ACTION_OPTIONS_MESSAGE_COUNT_1, 0, 38, 240, 16,
++    ACTION_CLOSE_OPTIONS, 224, 126, 16, 16,
+     ACTION_OPTIONS_ADVANCED, 0, 126, 56, 16,
+-    ActionShowPlatform, 56, 126, 38, 16,
++    ACTION_OPTIONS_VIDEO, 56, 126, 38, 16,
++    ACTION_OPTIONS_AUDIO, 94, 126, 38, 16,
++    ActionShowPlatform, 132, 126, 38, 16,
+ #ifdef __AMIGA__
+-    ACTION_OPTIONS_MESSAGE_COUNT_1, 0, 70, 128, 16,
+-    ACTION_OPTIONS_ASPECT, 0, 86, 128, 16,
+-    ACTION_OPTIONS_SCREEN_PREV, 90, 106, 16, 16,
+-    ACTION_OPTIONS_SCREEN_NEXT, 106, 106, 16, 16,
++    ACTION_OPTIONS_ASPECT, 0, 54, 190, 16,
++    ACTION_OPTIONS_SCREEN_PREV, 192, 70, 16, 16,
++    ACTION_OPTIONS_SCREEN_NEXT, 208, 70, 16, 16,
+ #else
+-    ACTION_OPTIONS_FULLSCREEN, 106, 70, 16, 16,
+-    ACTION_OPTIONS_MESSAGE_COUNT_1, 90, 90, 32, 16,
++    ACTION_OPTIONS_FULLSCREEN, 208, 54, 16, 16,
+ #endif
+     -1
+   };
+@@ -4890,7 +4969,8 @@ void
+ PopupBox::set_box(Type box_) {
+   if (box_ != TypeQuitConfirm) lan_save_ask = false;
+   if (box_ != TypeLoadSave) quit_after_save = false;
+-  bool wide = (box == TypeLoadSave) != (box_ == TypeLoadSave);
++  bool wide = ((box == TypeLoadSave) != (box_ == TypeLoadSave)) ||
++              ((box == TypeOptions) != (box_ == TypeOptions));
+   box = box_;
+   if (wide) {
+     interface->layout_popup();  /* the Save box is wider */
+diff --git a/src/popup.h b/src/popup.h
+index d381fd6..7cb581d 100644
+--- a/src/popup.h
++++ b/src/popup.h
+@@ -38,6 +38,10 @@ class PopupBox : public GuiObject {
+  public:
+   /* The Save box: 2.5 times the width of a popup. */
+   static const int kSaveBoxWidth = 360;
++  /* The Options box wider than the original's 144: the texts of other
++     languages (and Language, its first row). */
++  static const int kOptionsBoxWidth = 256;
++  static const int kOptionsBoxHeight = 160;
+   /* The longest name of a file on an Amiga disk (FFS). */
+   static const size_t kMaxFileName = 30;
+ 
+@@ -159,6 +163,9 @@ class PopupBox : public GuiObject {
+      YES -> the Save box, and the game ends after the save. */
+   bool lan_save_ask;
+   bool quit_after_save;
++  /* The Options box: the row whose hint shows (the left button held on
++     its name), -1: none. */
++  int options_hint;
+   /* The left button is held (auto repeat): only the + and - buttons act,
+      repeat_used says one did. */
+   bool repeat_click;
+@@ -325,6 +332,8 @@ class PopupBox : public GuiObject {
+   virtual bool handle_click_left(int x, int y);
+   virtual bool handle_click_right(int x, int y);
+   virtual bool handle_hold(int x, int y);
++  virtual bool handle_press(int x, int y);
++  virtual bool handle_release();
+ };
+ 
+ #endif  // SRC_POPUP_H_
+diff --git a/src/translation.h b/src/translation.h
+index bc2fed1..a50b258 100644
+--- a/src/translation.h
++++ b/src/translation.h
+@@ -61,6 +61,16 @@ class Translation {
+ };
+ 
+ #define _(msgid) Translation::get_instance().translate(msgid)
++
++/* A translated text with %s (or %u) put in: the translations may put the
++   value elsewhere in the sentence. */
++inline std::string
++text_with(const std::string &pattern, const std::string &value) {
++  size_t at = pattern.find("%s");
++  if (at == std::string::npos) at = pattern.find("%u");
++  if (at == std::string::npos) return pattern + " " + value;
++  return pattern.substr(0, at) + value + pattern.substr(at + 2);
++}
+ #define C_(context, msgid) Translation::get_instance().translate(context, msgid)
+ #define N_(msgid) msgid
+ #define NC_(context, msgid) msgid
+-- 
+2.45.2.windows.1
+

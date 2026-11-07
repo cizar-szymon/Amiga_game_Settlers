@@ -587,6 +587,13 @@ EventLoopAmiga::run() {
                 bufs ? ticks / bufs * 1000 /
                        static_cast<unsigned long>(amiga_eclock_per_ms())
                      : 0UL);
+        {
+          int peak = 0;
+          unsigned long full = 0;
+          amiga_audio_levels(&peak, &full);
+          fprintf(f, "AUDIO LEVEL peak %d  full scale %lu samples\n", peak,
+                  full);
+        }
         fprintf(f, "MAP SOUNDS %u/s  TILES DRAWN SO FAR %u (%u ms)  PATH CHANGES %u"
                 "  HEIGHT CHANGES %u\n", Viewport::map_sounds * 1000 / span,
                 Viewport::tiles_drawn, Viewport::tiles_ms,

@@ -97,12 +97,17 @@ USTAWIENIA W GRZE
 -----------------
 
 Options:
+  Language   jezyk napisow gry: English, Deutsch, Polski (pliki szuflady po
+             obok gry; litery polskie i niemieckie dorysowane do czcionki)
+  Font       litery napisow: Original (czcionka gry) albo Readable
+             (czytelniejsza, w podobnym stylu, z malymi literami);
+             zapamietana na kolejne uruchomienie
   Messages   ile wiadomosci (None, Few, Most, All)
   Aspect     proporcje ekranu 4:3 albo 16:9 (klikniecie zmienia; zawsze
              zaczyna od najmniejszej rozdzielczosci: 400x300 / 640x360)
   Screen     rozdzielczosc: strzalki obok zmieniaja ja od razu, w ramach
              wybranych proporcji - 4:3: 400x300, 640x400, 640x480,
-             800x600; 16:9: 640x360, 960x540; wybor jest zapamietany
+             640x512, 800x600; 16:9: 640x360, 960x540; wybor jest zapamietany
              na nastepny raz
 Options -> Amiga:
   dane Amigi; z akceleratorem Warp zegar CPU: MC68060 50-100 MHz co 10 MHz
@@ -112,7 +117,7 @@ Options -> Advanced:
   Invert scrolling, Large numbers, Autosave, Stock box until occupied,
   Show FPS (licznik klatek w rogu ekranu),
   Show ping in LAN game (czas odpowiedzi sieci w grze LAN, na lewo od FPS)
-Options -> Advanced -> VIDEO:
+Options -> Video:
   (Lewy przycisk przytrzymany na nazwie opcji: opis, co robi.)
   Sand on new maps (ilosc pustyn na nowych mapach: None, 10% of normal
     ... Normal, przyciski - +),
@@ -126,6 +131,16 @@ Options -> Advanced -> VIDEO:
     sie na stale w trawe; drwale scinaja tez suche drzewa (najpierw, bez
     drewna z nich), kamieniarze rozbijaja brazowe skaly (bez kamienia);
     nowe gry i biezaca gra, w grze LAN ustawienie serwera)
+Options -> Audio:
+  Sound output: Paula (uklad dzwieku Amigi, audio.device, 8 bitow) albo
+    AHI (ahi.device, 16 bitow: karta dzwiekowa, dzwiek karty Warp -
+    warp.audio, albo Paula przez sterowniki AHI; tryb w ustawieniach AHI).
+    Klikniecie przelacza od razu, wybor zostaje na nastepny raz; gdy AHI
+    sie nie otworzy, zostaje Paula.
+  Music, Sound effects: muzyka i efekty wl. / wyl. (tez klawisze M i S)
+  Volume: glosnosc wszystkiego, 0-100 co 10
+  Music volume, Effects volume: osobna glosnosc muzyki i efektow, 0-100
+    (razy Volume)
 
 Ustawienia zapisuja sie w pliku Settlers.ini obok gry, zapisy gier
 w szufladzie freeserf.
@@ -150,7 +165,7 @@ Zakladajacy gre (MASTER):
    trzecia po New game i Start mission).
 2. Ustaw mape jak w New game: rozmiar, liczba losowa, gracze komputerowi
    (gracz 1 to Ty, gracz 2 - drugi czlowiek). Piasek i skaly na mapie:
-   Options -> Advanced -> VIDEO; obowiazuja ustawienia zakladajacego.
+   Options -> Video; obowiazuja ustawienia zakladajacego.
 3. Start -> START SERVER. Wpisz nazwe serwera (PLAYER 1), w razie
    potrzeby port (Port, 6810) i kliknij RUN SERVER - serwer oglasza sie
    w sieci. Okno pokazuje adres Amigi w sieci lokalnej (Server address)

@@ -1,4 +1,4 @@
-/* Paula output for the Settlers port (amiga_audio.c). */
+/* Audio output for the Settlers port: Paula or AHI (amiga_audio.c). */
 #ifndef AMIGA_AUDIO_H
 #define AMIGA_AUDIO_H
 
@@ -14,12 +14,19 @@ typedef void (*AmigaAudioFill)(short *out, int frames, void *user);
 int amiga_audio_open(int samples_per_buffer, AmigaAudioFill fill,
                      void *user);
 void amiga_audio_close(void);
+/* AHI (ahi.device) instead of Paula for the next amiga_audio_open. */
+void amiga_audio_use_ahi(int on);
+/* The output running is AHI. */
+int amiga_audio_is_ahi(void);
 /* Output rate in Hz (22030 on PAL). */
 int amiga_audio_rate(void);
 /* The game's side of the shared mixer state. */
 void amiga_audio_lock(void);
 void amiga_audio_unlock(void);
 /* Diagnostics: gaps, buffers rendered, E-clock ticks rendering, period. */
+/* STATS: the peak of the mix and its samples at full scale since the last
+   call. */
+void amiga_audio_levels(int *peak, unsigned long *full);
 void amiga_audio_stats(unsigned long *underruns, unsigned long *buffers,
                        unsigned long *ticks, int *period, int *pal);
 
