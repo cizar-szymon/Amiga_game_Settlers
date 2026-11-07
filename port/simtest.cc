@@ -114,7 +114,16 @@ static bool build_castle_near_centre(Game *game) {
   return best_d >= 0 && game->build_castle(best, player);
 }
 
+/* The parts of Game::update (game.cc, -p). */
+extern unsigned long (*game_prof_ms)();
+extern unsigned long (*game_prof_detail_ms)();
+extern unsigned long game_prof[64];
+extern unsigned long game_prof_serf[64], game_prof_serf_n[64];
+extern unsigned long flag_search_count[8];
+static unsigned long prof_now() { return now_ms(); }
+
 int main(int argc, char *argv[]) {
+  bool profile = false, detail = false;
   int mission = 0;
   unsigned int steps = 2000;
   unsigned int every = 500;
@@ -133,6 +142,8 @@ int main(int argc, char *argv[]) {
     else if (!strcmp(a, "-s") && v) { out_file = v; i++; }
     else if (!strcmp(a, "-r") && v) { seed = v; i++; }
     else if (!strcmp(a, "-c")) { castle = true; }
+    else if (!strcmp(a, "-p")) { profile = true; }
+    else if (!strcmp(a, "-P")) { profile = true; detail = true; }
     else if (!strcmp(a, "-z") && v) {
       map_size = strtoul(v, nullptr, 10);
       i++;
@@ -197,6 +208,8 @@ int main(int argc, char *argv[]) {
          static_cast<unsigned long>(crc32(save_state(game.get()))));
 
   uint32_t tsum = 0, tmax = 0;
+  if (profile) game_prof_ms = prof_now;
+  if (detail) game_prof_detail_ms = prof_now;
   for (unsigned int s = 1; s <= steps; s++) {
     uint32_t a = now_ms();
     game->update();
@@ -220,6 +233,34 @@ int main(int argc, char *argv[]) {
   }
   printf("done: %u steps in %u ms\n", steps,
          static_cast<unsigned>(tsum));
+  printf("searches %lu/step, flags visited %lu/step, failed %lu/step, "
+         "call_transporter %lu/step, send_serf_to_flag %lu/step\n",
+         flag_search_count[0] / steps, flag_search_count[1] / steps,
+         flag_search_count[2] / steps, flag_search_count[3] / steps,
+         flag_search_count[4] / steps);
+  if (profile) {
+    static const char *names[] = { "request failure", "map", "players",
+      "AI site scan", "AI damping+emergency", "AI update", "knight morale",
+      "inventories", "flags", "buildings", "serfs", "game stats" };
+    for (int i = 0; i < 12; i++) {
+      printf("  %-22s %7lu ms  %lu.%02lu ms/step\n", names[i], game_prof[i],
+             game_prof[i] / steps, (game_prof[i] * 100 / steps) % 100);
+    }
+    printf("  (in flags) known dest %lu ms, unknown dest %lu ms\n",
+           game_prof[12], game_prof[13]);
+    printf("  (in buildings) request serf %lu ms\n", game_prof[14]);
+    for (int t = 0; t < 64; t++) {
+      if (game_prof_serf_n[t] != 0) {
+        printf("  serf state %2d: %6lu ms, %lu serfs/step\n", t,
+               game_prof_serf[t], game_prof_serf_n[t] / steps);
+      }
+    }
+    for (int t = 0; t < 32; t++) {
+      if (game_prof[16 + t] >= 20) {
+        printf("  building type %2d: %lu ms\n", t, game_prof[16 + t]);
+      }
+    }
+  }
 #ifdef __AMIGA__
   amiga_time_close();
 #endif

@@ -110,9 +110,11 @@ Options:
              640x512, 800x600; 16:9: 640x360, 960x540; wybor jest zapamietany
              na nastepny raz
 Options -> Amiga:
-  dane Amigi; z akceleratorem Warp zegar CPU: MC68060 50-100 MHz co 10 MHz
-  (podnoszenie tylko dla rev. 6 - podkrecanie, moze zawiesic system),
-  MC68040 20-50 MHz co 1 MHz
+  dane Amigi; z akceleratorem Warp zegar CPU: tylko MC68060 rev. 6,
+  50-100 MHz co 1 MHz (podnoszenie to podkrecanie, moze zawiesic system);
+  inne procesory bez zmiany zegara. Model, firmware i zegar podaje program
+  WarpTool (SYS:C, C: albo SYS:Tools ...); bez niego okno pokazuje tylko,
+  ze jest karta Warp (z listy kart, jak ShowConfig), bez zegara.
 Options -> Advanced:
   Invert scrolling, Large numbers, Autosave, Stock box until occupied,
   Show FPS (licznik klatek w rogu ekranu),
@@ -131,6 +133,11 @@ Options -> Video:
     sie na stale w trawe; drwale scinaja tez suche drzewa (najpierw, bez
     drewna z nich), kamieniarze rozbijaja brazowe skaly (bez kamienia);
     nowe gry i biezaca gra, w grze LAN ustawienie serwera)
+  Large games (duze gry): gdy duza gra przerasta procesor - Smooth (jeden
+    krok gry na klatke: najplynniejszy obraz, gra wolniejsza), Balanced
+    (domyslnie: kroki przez mniej wiecej czas klatki), Full speed (do
+    pieciu krokow na klatke: gra najszybsza, mniej klatek). Male gry
+    i tak ida w pelnym tempie.
 Options -> Audio:
   Sound output: Paula (uklad dzwieku Amigi, audio.device, 8 bitow) albo
     AHI (ahi.device, 16 bitow: karta dzwiekowa, dzwiek karty Warp -

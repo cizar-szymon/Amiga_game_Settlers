@@ -6,6 +6,24 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.126 (7.11.2026, wydanie beta)
+-------------------------------
+
+- Duze gry wyraznie szybsze: logika gry (budynki, flagi, postacie) liczy
+  sie kilka razy szybciej - w grze z ok. 2500 postaciami ok. 30 klatek
+  na sekunde na 68060.
+- Options -> Video -> Large games: gdy duza gra przerasta procesor -
+  Smooth (najplynniejszy obraz), Balanced (domyslnie), Full speed
+  (najszybsza gra).
+- Menu startowe: w czasie tworzenia mapy procent i pasek postepu; mapy
+  juz policzone (nowa gra, misja, samouczek) pokazuja sie od razu przy
+  przelaczaniu; START nie liczy mapy drugi raz; mapy tworza sie ok. dwa
+  razy szybciej.
+- Options -> Amiga: zegar CPU co 1 MHz (MC68060 rev. 6, 50-100 MHz);
+  bez programu WarpTool okno pokazuje karte Warp z listy kart.
+- Gra LAN: obie strony musza miec wersje 0.126.
+
+
 0.125 (7.11.2026, wydanie beta)
 -------------------------------
 

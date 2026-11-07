@@ -424,6 +424,17 @@ view_probe(int part) {
   view_last = now;
 }
 
+/* A frame as in run(), now: the interface draws (what changed) and the
+   screen shows it. */
+void
+EventLoopAmiga::draw_now() {
+  if (screen_frame == nullptr) return;
+  notify_draw(screen_frame);
+  draw_message(screen_frame);
+  Graphics::get_instance().swap_buffers();
+  frames_shown++;
+}
+
 void
 EventLoopAmiga::run() {
   static const int kMaxCatchUpSteps = 5;
@@ -431,6 +442,7 @@ EventLoopAmiga::run() {
   Graphics &gfx = Graphics::get_instance();
   VideoAmiga &video = static_cast<VideoAmiga &>(Video::get_instance());
   Frame *screen = gfx.get_screen_frame();
+  screen_frame = screen;
 
   unsigned int next_step = get_ticks() + TICK_LENGTH;
   unsigned int stats_start = get_ticks();
@@ -480,8 +492,17 @@ EventLoopAmiga::run() {
 
     int steps = 0;
     unsigned int t0 = get_ticks();
+    /* Late steps are made up, but only for about one frame of time (at
+       least one step): when the game logic itself is slower than the
+       game (a large game), five steps before every frame made 5 frames a
+       second; one step a frame keeps the picture going, as the original
+       does, and the game just runs slower. */
+    static const unsigned int kStepBudgetMs = TICK_LENGTH;
+    const int max_steps = catch_up_mode == 0 ? 1 : kMaxCatchUpSteps;
     while (static_cast<int>(now - next_step) >= 0 &&
-           steps < kMaxCatchUpSteps) {
+           steps < max_steps &&
+           (steps == 0 || catch_up_mode == 2 ||
+            get_ticks() - t0 < kStepBudgetMs)) {
       notify_update();
       next_step += TICK_LENGTH;
       steps++;
@@ -496,6 +517,7 @@ EventLoopAmiga::run() {
     draw_message(screen);
     if (settlers_frame_check != nullptr) settlers_frame_check("frame");
     gfx.swap_buffers();
+    frames_shown++;
 
     logic_ms += t1 - t0;
     draw_ms += t2 - t1;

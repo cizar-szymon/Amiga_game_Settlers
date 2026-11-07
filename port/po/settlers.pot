@@ -51,7 +51,7 @@ msgstr ""
 msgid "In a LAN game the time there and back of the connection in milliseconds, left of the FPS."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:145 port/amiga-box.cc:85
+#: freeserf/src/advanced-box.cc:145 port/amiga-box.cc:83
 msgid "Graphics"
 msgstr ""
 
@@ -59,131 +59,151 @@ msgstr ""
 msgid "Sounds"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:148 freeserf/src/advanced-box.cc:247
+#: freeserf/src/advanced-box.cc:148 freeserf/src/advanced-box.cc:264
 msgid "Music"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:150 freeserf/src/popup.cc:2032 freeserf/src/popup.cc:2070
+#: freeserf/src/advanced-box.cc:150 freeserf/src/popup.cc:2033 freeserf/src/popup.cc:2071
 msgid "Language"
 msgstr ""
 
+#: freeserf/src/advanced-box.cc:158
+msgid "Smooth"
+msgstr ""
+
+#: freeserf/src/advanced-box.cc:159
+msgid "Full speed"
+msgstr ""
+
 #: freeserf/src/advanced-box.cc:160
-msgid "Fast mapclick"
-msgstr ""
-
-#: freeserf/src/advanced-box.cc:162
-msgid "An option of the original. A double click with the right mouse button on the map opens the map window."
-msgstr ""
-
-#: freeserf/src/advanced-box.cc:164
-msgid "Fast building"
-msgstr ""
-
-#: freeserf/src/advanced-box.cc:166
-msgid "An option of the original. A double click on a free building site opens the choice of buildings at once."
+msgid "Balanced"
 msgstr ""
 
 #: freeserf/src/advanced-box.cc:169
-msgid "Sand on new maps"
+msgid "Fast mapclick"
 msgstr ""
 
 #: freeserf/src/advanced-box.cc:171
+msgid "An option of the original. A double click with the right mouse button on the map opens the map window."
+msgstr ""
+
+#: freeserf/src/advanced-box.cc:173
+msgid "Fast building"
+msgstr ""
+
+#: freeserf/src/advanced-box.cc:175
+msgid "An option of the original. A double click on a free building site opens the choice of buildings at once."
+msgstr ""
+
+#: freeserf/src/advanced-box.cc:178
+msgid "Sand on new maps"
+msgstr ""
+
+#: freeserf/src/advanced-box.cc:180
 msgid "How much desert new maps get: None, 10% of normal ... Normal. Not the missions. In a LAN game the setting of the server counts."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:174
+#: freeserf/src/advanced-box.cc:183
 msgid "Rocks on new maps"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:176
+#: freeserf/src/advanced-box.cc:185
 msgid "How many brown boulders new maps get, the same way. They stand in the way of roads and buildings. In a LAN game the server's setting counts."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:181
+#: freeserf/src/advanced-box.cc:190
 msgid "Dead trees on new maps"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:183
+#: freeserf/src/advanced-box.cc:192
 msgid "How many dead trees new maps get, the same way. They stand in the way of buildings. In a LAN game the server's setting counts."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:186
+#: freeserf/src/advanced-box.cc:195
 msgid "More kinds of trees"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:188
+#: freeserf/src/advanced-box.cc:197
 msgid "Mirrored trees and birches among the trees of the map. Only the picture: the game stays the same."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:191
+#: freeserf/src/advanced-box.cc:200
 msgid "Wild boars"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:193
+#: freeserf/src/advanced-box.cc:202
 msgid "A few dark brown wild boars among the trees, with their sounds. Only the picture: the game stays the same."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:197
+#: freeserf/src/advanced-box.cc:206
 msgid "Terraforming wasteland"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:199
+#: freeserf/src/advanced-box.cc:208
 msgid "Foresters plant on sand first, the sand around a new tree turns to grass for good. Lumberjacks fell dead trees first (no lumber), stonecutters break the brown boulders (no stone). New games and the game now; in a LAN game the server's setting counts."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:241
-msgid "Sound output"
+#: freeserf/src/advanced-box.cc:213
+msgid "Large games"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:243
-msgid "Paula: the sound chip of the Amiga (audio.device), 8 bits. AHI: ahi.device in 16 bits - a sound card, or Paula through the AHI drivers (AHI prefs). A click: the other one, at once; kept for the next start. If AHI does not open, Paula stays."
-msgstr ""
-
-#: freeserf/src/advanced-box.cc:248
-msgid "The music of the game on or off (the M key)."
-msgstr ""
-
-#: freeserf/src/advanced-box.cc:249
-msgid "Sound effects"
-msgstr ""
-
-#: freeserf/src/advanced-box.cc:251
-msgid "The sounds of the game on or off (the S key)."
-msgstr ""
-
-#: freeserf/src/advanced-box.cc:252
-msgid "Volume"
-msgstr ""
-
-#: freeserf/src/advanced-box.cc:254
-msgid "How loud the sounds and the music are together, 0 to 100."
-msgstr ""
-
-#: freeserf/src/advanced-box.cc:255
-msgid "Music volume"
-msgstr ""
-
-#: freeserf/src/advanced-box.cc:257
-msgid "How loud the music is, 0 to 100 (times Volume)."
+#: freeserf/src/advanced-box.cc:215
+msgid "When a large game is too much for the CPU: Smooth - one game step a frame, the smoothest picture, the game slower; Balanced - steps for about a frame of time; Full speed - up to five steps a frame, the game fastest, fewer frames. Small games run at full speed anyway."
 msgstr ""
 
 #: freeserf/src/advanced-box.cc:258
-msgid "Effects volume"
+msgid "Sound output"
 msgstr ""
 
 #: freeserf/src/advanced-box.cc:260
+msgid "Paula: the sound chip of the Amiga (audio.device), 8 bits. AHI: ahi.device in 16 bits - a sound card, or Paula through the AHI drivers (AHI prefs). A click: the other one, at once; kept for the next start. If AHI does not open, Paula stays."
+msgstr ""
+
+#: freeserf/src/advanced-box.cc:265
+msgid "The music of the game on or off (the M key)."
+msgstr ""
+
+#: freeserf/src/advanced-box.cc:266
+msgid "Sound effects"
+msgstr ""
+
+#: freeserf/src/advanced-box.cc:268
+msgid "The sounds of the game on or off (the S key)."
+msgstr ""
+
+#: freeserf/src/advanced-box.cc:269
+msgid "Volume"
+msgstr ""
+
+#: freeserf/src/advanced-box.cc:271
+msgid "How loud the sounds and the music are together, 0 to 100."
+msgstr ""
+
+#: freeserf/src/advanced-box.cc:272
+msgid "Music volume"
+msgstr ""
+
+#: freeserf/src/advanced-box.cc:274
+msgid "How loud the music is, 0 to 100 (times Volume)."
+msgstr ""
+
+#: freeserf/src/advanced-box.cc:275
+msgid "Effects volume"
+msgstr ""
+
+#: freeserf/src/advanced-box.cc:277
 msgid "How loud the sound effects are, 0 to 100 (times Volume); a sound already playing keeps its volume."
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:280
+#: freeserf/src/advanced-box.cc:297
 msgid "Video"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:282
+#: freeserf/src/advanced-box.cc:299
 msgid "Audio"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:324
+#: freeserf/src/advanced-box.cc:341
 msgid "Nothing here yet."
 msgstr ""
 
@@ -207,75 +227,79 @@ msgstr ""
 msgid "%u% of normal"
 msgstr ""
 
-#: freeserf/src/game-init.cc:276
+#: freeserf/src/game-init.cc:279 freeserf/src/game-init.cc:291
 msgid "Making the map"
 msgstr ""
 
-#: freeserf/src/game-init.cc:283
+#: freeserf/src/game-init.cc:290
+msgid "Starting the game"
+msgstr ""
+
+#: freeserf/src/game-init.cc:305
 msgid "The map is chosen"
 msgstr ""
 
-#: freeserf/src/game-init.cc:283
+#: freeserf/src/game-init.cc:305
 msgid "in the LAN box,"
 msgstr ""
 
-#: freeserf/src/game-init.cc:283
+#: freeserf/src/game-init.cc:305
 msgid "after the other"
 msgstr ""
 
-#: freeserf/src/game-init.cc:284
+#: freeserf/src/game-init.cc:306
 msgid "player joins."
 msgstr ""
 
-#: freeserf/src/game-init.cc:313
+#: freeserf/src/game-init.cc:335
 msgid "Start mission"
 msgstr ""
 
-#: freeserf/src/game-init.cc:314
+#: freeserf/src/game-init.cc:336
 msgid "Mission:"
 msgstr ""
 
-#: freeserf/src/game-init.cc:328
+#: freeserf/src/game-init.cc:350
 msgid "Start tutorial"
 msgstr ""
 
-#: freeserf/src/game-init.cc:329
+#: freeserf/src/game-init.cc:351
 msgid "Tutorial:"
 msgstr ""
 
-#: freeserf/src/game-init.cc:343
+#: freeserf/src/game-init.cc:365
 msgid "New game"
 msgstr ""
 
-#: freeserf/src/game-init.cc:344
+#: freeserf/src/game-init.cc:366
 msgid "Mapsize:"
 msgstr ""
 
-#: freeserf/src/game-init.cc:357 freeserf/src/lan-box.cc:946
+#: freeserf/src/game-init.cc:379 freeserf/src/lan-box.cc:946
 msgid "LAN game"
 msgstr ""
 
-#: freeserf/src/game-init.cc:364
+#: freeserf/src/game-init.cc:386
 msgid "Load game"
 msgstr ""
 
-#: freeserf/src/game-init.cc:369 freeserf/src/lan-box.cc:1052
+#: freeserf/src/game-init.cc:391 freeserf/src/lan-box.cc:1052
 msgid "Delete %u saves?"
 msgstr ""
 
-#: freeserf/src/game-init.cc:370 freeserf/src/lan-box.cc:1053
+#: freeserf/src/game-init.cc:392 freeserf/src/lan-box.cc:1053
 msgid "Delete the save?"
 msgstr ""
 
-#: freeserf/src/game-init.cc:371 freeserf/src/lan-box.cc:1054
+#: freeserf/src/game-init.cc:393 freeserf/src/lan-box.cc:1054
 msgid "YES"
 msgstr ""
 
-#: freeserf/src/game-init.cc:372 freeserf/src/lan-box.cc:1055
+#: freeserf/src/game-init.cc:394 freeserf/src/lan-box.cc:1055
 msgid "NO"
 msgstr ""
 
-#: freeserf/src/game-init.cc:374 freeserf/src/lan-box.cc:1046
+#: freeserf/src/game-init.cc:396 freeserf/src/lan-box.cc:1046
 msgid "DELETE"
 msgstr ""
 
@@ -823,356 +847,360 @@ msgstr ""
 msgid "Your knights\njust lost the\nfight"
 msgstr ""
 
-#: freeserf/src/popup.cc:1687
+#: freeserf/src/popup.cc:1688
 msgid "GROUND-ANALYSIS:"
 msgstr ""
 
-#: freeserf/src/popup.cc:1851
+#: freeserf/src/popup.cc:1852
 msgctxt "knight occupation"
 msgid "Minimum"
 msgstr ""
 
-#: freeserf/src/popup.cc:1851
+#: freeserf/src/popup.cc:1852
 msgctxt "knight occupation"
 msgid "Weak"
 msgstr ""
 
-#: freeserf/src/popup.cc:1852
+#: freeserf/src/popup.cc:1853
 msgctxt "knight occupation"
 msgid "Medium"
 msgstr ""
 
-#: freeserf/src/popup.cc:1852
+#: freeserf/src/popup.cc:1853
 msgctxt "knight occupation"
 msgid "Good"
 msgstr ""
 
-#: freeserf/src/popup.cc:1853
+#: freeserf/src/popup.cc:1854
 msgctxt "knight occupation"
 msgid "Full"
 msgstr ""
 
-#: freeserf/src/popup.cc:2003
+#: freeserf/src/popup.cc:2004
 msgid "Do you want\nto quit\nSettlers?"
 msgstr ""
 
-#: freeserf/src/popup.cc:2005
+#: freeserf/src/popup.cc:2006
 msgid "Do you want\nto quit\nthis game?"
 msgstr ""
 
-#: freeserf/src/popup.cc:2011 freeserf/src/popup.cc:2013 freeserf/src/popup.cc:2018
+#: freeserf/src/popup.cc:2012 freeserf/src/popup.cc:2014 freeserf/src/popup.cc:2019
 msgid "Yes"
 msgstr ""
 
-#: freeserf/src/popup.cc:2012
+#: freeserf/src/popup.cc:2013
 msgid "Do you want\nto save\nthe game?"
 msgstr ""
 
-#: freeserf/src/popup.cc:2014 freeserf/src/popup.cc:2019 freeserf/src/popup.cc:2027
+#: freeserf/src/popup.cc:2015 freeserf/src/popup.cc:2020 freeserf/src/popup.cc:2028
 msgid "No"
 msgstr ""
 
-#: freeserf/src/popup.cc:2024
+#: freeserf/src/popup.cc:2025
 msgid "The game has not\nbeen saved\nrecently.\nAre you\nsure?"
 msgstr ""
 
-#: freeserf/src/popup.cc:2033
+#: freeserf/src/popup.cc:2034
 msgid "The language of the texts: English, Deutsch, Polski. A click: the next one, kept for the next start."
 msgstr ""
 
-#: freeserf/src/popup.cc:2035 freeserf/src/popup.cc:2074
+#: freeserf/src/popup.cc:2036 freeserf/src/popup.cc:2075
 msgid "Font"
 msgstr ""
 
-#: freeserf/src/popup.cc:2036
+#: freeserf/src/popup.cc:2037
 msgid "The letters of the texts: Original, the font of the game; Readable, plainer letters with small letters. A click: the other one, kept for the next start."
 msgstr ""
 
-#: freeserf/src/popup.cc:2039 freeserf/src/popup.cc:2084
+#: freeserf/src/popup.cc:2040 freeserf/src/popup.cc:2085
 msgid "Messages"
 msgstr ""
 
-#: freeserf/src/popup.cc:2040
+#: freeserf/src/popup.cc:2041
 msgid "How many messages the game shows: None, Few, Most, All."
 msgstr ""
 
-#: freeserf/src/popup.cc:2042 freeserf/src/popup.cc:2092
+#: freeserf/src/popup.cc:2043 freeserf/src/popup.cc:2093
 msgid "Aspect"
 msgstr ""
 
-#: freeserf/src/popup.cc:2043
+#: freeserf/src/popup.cc:2044
 msgid "The shape of the screen, 4:3 or 16:9: it chooses the modes of Screen. A click: the other one."
 msgstr ""
 
-#: freeserf/src/popup.cc:2045 freeserf/src/popup.cc:2094 port/amiga-box.cc:87
+#: freeserf/src/popup.cc:2046 freeserf/src/popup.cc:2095 port/amiga-box.cc:85
 msgid "Screen"
 msgstr ""
 
-#: freeserf/src/popup.cc:2046
+#: freeserf/src/popup.cc:2047
 msgid "The screen mode; the arrows change it at once. Kept for the next start."
 msgstr ""
 
-#: freeserf/src/popup.cc:2077
+#: freeserf/src/popup.cc:2078
 msgid "Readable"
 msgstr ""
 
-#: freeserf/src/popup.cc:2077
+#: freeserf/src/popup.cc:2078
 msgid "Original"
 msgstr ""
 
-#: freeserf/src/popup.cc:2080
+#: freeserf/src/popup.cc:2081
 msgctxt "messages"
 msgid "None"
 msgstr ""
 
-#: freeserf/src/popup.cc:2080
+#: freeserf/src/popup.cc:2081
 msgctxt "messages"
 msgid "Few"
 msgstr ""
 
-#: freeserf/src/popup.cc:2081
+#: freeserf/src/popup.cc:2082
 msgctxt "messages"
 msgid "Most"
 msgstr ""
 
-#: freeserf/src/popup.cc:2081
+#: freeserf/src/popup.cc:2082
 msgctxt "messages"
 msgid "All"
 msgstr ""
 
-#: freeserf/src/popup.cc:2100
+#: freeserf/src/popup.cc:2101
 msgid "Fullscreen video"
 msgstr ""
 
-#: freeserf/src/popup.cc:2245
+#: freeserf/src/popup.cc:2246
 msgid "MINING\nOUTPUT:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2274
+#: freeserf/src/popup.cc:2275
 msgid "Ordered\nBuilding"
 msgstr ""
 
-#: freeserf/src/popup.cc:2354
+#: freeserf/src/popup.cc:2355
 msgid "Defenders:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2364
+#: freeserf/src/popup.cc:2365
 msgid "State:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2431
+#: freeserf/src/popup.cc:2432
 msgid "Transport Info:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2443
+#: freeserf/src/popup.cc:2444
 msgid "Index:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2782
+#: freeserf/src/popup.cc:2783
 msgid "Stock of\nthis building:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2854
+#: freeserf/src/popup.cc:2855
 msgid "CONGRATULATIONS."
 msgstr ""
 
-#: freeserf/src/popup.cc:2855
+#: freeserf/src/popup.cc:2856
 msgid "YOUR ENEMIES\nRESIGN. YOU\nHAVE WON THIS\nMISSION."
 msgstr ""
 
-#: freeserf/src/popup.cc:2861
+#: freeserf/src/popup.cc:2862
 msgid "NEW PASSWORD:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2865
+#: freeserf/src/popup.cc:2866
 msgid "SORRY, ONLY ONE\nOF YOUR ENEMIES\nHAS GAINED THE\nSUPERIORITY IN\nTHIS MISSION"
 msgstr ""
 
-#: freeserf/src/popup.cc:2871
+#: freeserf/src/popup.cc:2872
 msgid "WELL DONE."
 msgstr ""
 
-#: freeserf/src/popup.cc:2872
+#: freeserf/src/popup.cc:2873
 msgid "YOU COMPLETED\nTHIS TUTORIAL\nGAME."
 msgstr ""
 
-#: freeserf/src/popup.cc:2878
+#: freeserf/src/popup.cc:2879
 msgid "THE BLUE\nSETTLERS HAVE\nGAINED THE\nSUPERIORITY"
 msgstr ""
 
-#: freeserf/src/popup.cc:2879
+#: freeserf/src/popup.cc:2880
 msgid "THE RED\nSETTLERS HAVE\nGAINED THE\nSUPERIORITY"
 msgstr ""
 
-#: freeserf/src/popup.cc:2880
+#: freeserf/src/popup.cc:2881
 msgid "THE VIOLET\nSETTLERS HAVE\nGAINED THE\nSUPERIORITY"
 msgstr ""
 
-#: freeserf/src/popup.cc:2881
+#: freeserf/src/popup.cc:2882
 msgid "THE YELLOW\nSETTLERS HAVE\nGAINED THE\nSUPERIORITY"
 msgstr ""
 
-#: freeserf/src/popup.cc:2896
+#: freeserf/src/popup.cc:2897
 msgid "Build a guard hut and a guard tower and a fortress."
 msgstr ""
 
-#: freeserf/src/popup.cc:2897
+#: freeserf/src/popup.cc:2898
 msgid "Produce five planks and five stones."
 msgstr ""
 
-#: freeserf/src/popup.cc:2898
+#: freeserf/src/popup.cc:2899
 msgid "Produce five fish and five meat and five bread."
 msgstr ""
 
-#: freeserf/src/popup.cc:2899
+#: freeserf/src/popup.cc:2900
 msgid "Smelt five steel bars and five gold bars."
 msgstr ""
 
-#: freeserf/src/popup.cc:2900
+#: freeserf/src/popup.cc:2901
 msgid "Make ten weapons and ten tools."
 msgstr ""
 
-#: freeserf/src/popup.cc:2901
+#: freeserf/src/popup.cc:2902
 msgid "Conquer all the land of the enemy."
 msgstr ""
 
-#: freeserf/src/popup.cc:2911
+#: freeserf/src/popup.cc:2912
 msgid "TUTORIAL %d"
 msgstr ""
 
-#: freeserf/src/popup.cc:2917
+#: freeserf/src/popup.cc:2918
 msgid "ORDERS:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2946
+#: freeserf/src/popup.cc:2947
 msgid "Demolish:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2947
+#: freeserf/src/popup.cc:2948
 msgid "Click here"
 msgstr ""
 
-#: freeserf/src/popup.cc:2948
+#: freeserf/src/popup.cc:2949
 msgid "if you are\nsure"
 msgstr ""
 
-#: freeserf/src/popup.cc:2963
+#: freeserf/src/popup.cc:2964
 msgid "Save Game"
 msgstr ""
 
-#: freeserf/src/popup.cc:499
+#: freeserf/src/popup.cc:500
 msgctxt "thousands"
 msgid "K"
 msgstr ""
 
-#: freeserf/src/popup.cc:503 freeserf/src/popup.cc:506
+#: freeserf/src/popup.cc:504 freeserf/src/popup.cc:507
 msgctxt "millions"
 msgid "M"
 msgstr ""
 
-#: freeserf/src/popup.cc:573
+#: freeserf/src/popup.cc:574
 msgctxt "ground analysis"
 msgid "Not Present"
 msgstr ""
 
-#: freeserf/src/popup.cc:574
+#: freeserf/src/popup.cc:575
 msgctxt "ground analysis"
 msgid "Minimum"
 msgstr ""
 
-#: freeserf/src/popup.cc:575
+#: freeserf/src/popup.cc:576
 msgctxt "ground analysis"
 msgid "Very Few"
 msgstr ""
 
-#: freeserf/src/popup.cc:576
+#: freeserf/src/popup.cc:577
 msgctxt "ground analysis"
 msgid "Few"
 msgstr ""
 
-#: freeserf/src/popup.cc:577
+#: freeserf/src/popup.cc:578
 msgctxt "ground analysis"
 msgid "Below Average"
 msgstr ""
 
-#: freeserf/src/popup.cc:578
+#: freeserf/src/popup.cc:579
 msgctxt "ground analysis"
 msgid "Average"
 msgstr ""
 
-#: freeserf/src/popup.cc:579
+#: freeserf/src/popup.cc:580
 msgctxt "ground analysis"
 msgid "Above Average"
 msgstr ""
 
-#: freeserf/src/popup.cc:580
+#: freeserf/src/popup.cc:581
 msgctxt "ground analysis"
 msgid "Much"
 msgstr ""
 
-#: freeserf/src/popup.cc:581
+#: freeserf/src/popup.cc:582
 msgctxt "ground analysis"
 msgid "Very Much"
 msgstr ""
 
-#: freeserf/src/popup.cc:582
+#: freeserf/src/popup.cc:583
 msgctxt "ground analysis"
 msgid "Perfect"
 msgstr ""
 
-#: port/amiga-box.cc:100
-msgid "not found."
-msgstr ""
-
-#: port/amiga-box.cc:103
+#: port/amiga-box.cc:100 port/amiga-box.cc:113
 msgid "Accelerator"
 msgstr ""
 
-#: port/amiga-box.cc:107
+#: port/amiga-box.cc:105
+msgid "WarpTool not found:"
+msgstr ""
+
+#: port/amiga-box.cc:106
+msgid "no CPU clock, no firmware."
+msgstr ""
+
+#: port/amiga-box.cc:117
 msgid "Firmware"
 msgstr ""
 
-#: port/amiga-box.cc:112
+#: port/amiga-box.cc:122
 msgid "CPU clock"
 msgstr ""
 
-#: port/amiga-box.cc:128
+#: port/amiga-box.cc:138
 msgid "Raising the clock overclocks"
 msgstr ""
 
-#: port/amiga-box.cc:129
+#: port/amiga-box.cc:139
 msgid "the CPU - the system may hang."
 msgstr ""
 
-#: port/amiga-box.cc:130
-msgid "MC68040: 20 to 50 MHz."
+#: port/amiga-box.cc:140
+msgid "MC68060 rev. 6: 50-100 MHz."
 msgstr ""
 
-#: port/amiga-box.cc:130
+#: port/amiga-box.cc:141
 msgid "Only for a MC68060 rev. 6."
 msgstr ""
 
-#: port/amiga-box.cc:131
+#: port/amiga-box.cc:142
 msgid "The clock changes at once."
 msgstr ""
 
-#: port/amiga-box.cc:79
+#: port/amiga-box.cc:77
 msgid "Processor"
 msgstr ""
 
-#: port/amiga-box.cc:80
+#: port/amiga-box.cc:78
 msgid "yes"
 msgstr ""
 
-#: port/amiga-box.cc:80
+#: port/amiga-box.cc:78
 msgid "no"
 msgstr ""
 
-#: port/amiga-box.cc:86
+#: port/amiga-box.cc:84
 msgid "Card memory"
 msgstr ""
 
-#: port/amiga-box.cc:98
-msgid "No Warp: SYS:C/WarpTool"
+#: port/amiga-box.cc:96
+msgid "No Warp found."
 msgstr ""
 

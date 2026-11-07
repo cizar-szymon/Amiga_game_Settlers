@@ -7,12 +7,16 @@
 #include <utility/tagitem.h>
 #include <libraries/Picasso96.h>
 
+#include <libraries/configvars.h>
+
 #include <proto/exec.h>
 #include <proto/dos.h>
+#include <proto/expansion.h>
 #include <proto/Picasso96.h>
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "amiga_sysinfo.h"
 
@@ -29,8 +33,17 @@ __asm__(".text\n"
         "\t.short 0x4e7a,0x0808\n"
         "\trte\n");
 
-static const char kWarpTool[] = "SYS:C/WarpTool";
+/* WarpTool: where CS-Lab's installer puts it, else other places of the
+   system; the one found is used to set the clock too. */
+static const char *const kWarpTools[] = {
+  "SYS:C/WarpTool", "C:WarpTool", "SYS:Tools/WarpTool",
+  "SYS:Utilities/WarpTool", "SYS:System/WarpTool", "SYS:WarpTool"
+};
+static const char *warp_tool = NULL;
 static const char kDiagFile[] = "RAM:Settlers-warp.txt";
+/* The expansion boards of a Warp (as ShowConfig lists them: "CS-LAB Warp
+   DDR3 FastRam", "Warp GFX RAM" ...): manufacturer 5120 ($1400). */
+#define CSLAB_MANUFACTURER 5120
 
 /* Runs a command with no input and its output to a file (or NIL:). */
 static LONG run(const char *command, const char *out)
@@ -68,14 +81,45 @@ static void diag_value(const char *line, char *value, size_t size)
   value[n] = 0;
 }
 
+/* Without WarpTool: a Warp among the expansion boards (the list that
+   ShowConfig shows), so the box still names the accelerator. */
+static int warp_board(void)
+{
+  struct Library *ExpansionBase;
+  struct ConfigDev *cd;
+  int found = 0;
+  ExpansionBase = OpenLibrary((CONST_STRPTR)"expansion.library", 37);
+  if (ExpansionBase == NULL) return 0;
+  cd = FindConfigDev(NULL, CSLAB_MANUFACTURER, -1);
+  found = cd != NULL;
+  CloseLibrary(ExpansionBase);
+  return found;
+}
+
 static void read_warp(AmigaInfo *info)
 {
-  char line[160], value[64];
-  BPTR lock = Lock((CONST_STRPTR)kWarpTool, SHARED_LOCK);
+  char line[160], value[64], command[64];
   FILE *f;
-  if (lock == 0) return;
-  UnLock(lock);
-  if (run("SYS:C/WarpTool Diag", kDiagFile) != 0) return;
+  size_t i;
+  warp_tool = NULL;
+  /* Tests: SetEnv SETTLERS_NOWARPTOOL 1 - as if there were no WarpTool. */
+  for (i = 0; getenv("SETTLERS_NOWARPTOOL") == NULL && i < sizeof(kWarpTools) / sizeof(kWarpTools[0]); i++) {
+    BPTR lock = Lock((CONST_STRPTR)kWarpTools[i], SHARED_LOCK);
+    if (lock != 0) {
+      UnLock(lock);
+      warp_tool = kWarpTools[i];
+      break;
+    }
+  }
+  if (warp_tool == NULL) {
+    if (warp_board()) {
+      info->warp = 2;
+      strcpy(info->warp_model, "CS-Lab Warp");
+    }
+    return;
+  }
+  snprintf(command, sizeof(command), "%s Diag", warp_tool);
+  if (run(command, kDiagFile) != 0) return;
   f = fopen(kDiagFile, "r");
   if (f == NULL) return;
   while (fgets(line, sizeof(line), f) != NULL) {
@@ -103,6 +147,11 @@ static void read_warp(AmigaInfo *info)
   }
   fclose(f);
   DeleteFile((CONST_STRPTR)kDiagFile);
+  /* WarpTool there but without an answer: the boards then. */
+  if (!info->warp && warp_board()) {
+    info->warp = 2;
+    strcpy(info->warp_model, "CS-Lab Warp");
+  }
 }
 
 void amiga_info_read(AmigaInfo *info)
@@ -148,7 +197,7 @@ void amiga_info_read(AmigaInfo *info)
 int amiga_warp_set_mhz(int mhz)
 {
   char command[64];
-  if (mhz < 20 || mhz > 100) return -1;
-  snprintf(command, sizeof(command), "%s CPUFreqHz=%d000000", kWarpTool, mhz);
+  if (mhz < 20 || mhz > 100 || warp_tool == NULL) return -1;
+  snprintf(command, sizeof(command), "%s CPUFreqHz=%d000000", warp_tool, mhz);
   return run(command, "NIL:") == 0 ? 0 : -1;
 }

@@ -13,8 +13,8 @@ card and a 68040/68060, at up to 800×600. It is a port of
 game (GPL-3.0), with a native Amiga backend (no SDL): an 8-bit Picasso96 screen,
 Paula or AHI sound, the game's own music module and the original Amiga graphics.
 
-**Current version: 0.125 (beta, 7.11.2026)** – the archive is
-[`releases/amiga/Settlers-0.125.zip`](releases/amiga/Settlers-0.125.zip)
+**Current version: 0.126 (beta, 7.11.2026)** – the archive is
+[`releases/amiga/Settlers-0.126.zip`](releases/amiga/Settlers-0.126.zip)
 (the same files unpacked: [`releases/amiga/Settlers`](releases/amiga/Settlers)).
 
 ![The game at 640×480 on a 68060](docs/shots/v1.png)
@@ -26,6 +26,9 @@ Paula or AHI sound, the game's own music module and the original Amiga graphics.
 - English, Polish and German texts; the original font or a readable one
 - sound through Paula or AHI (e.g. the sound of a Warp card), separate volumes
   of the music and the effects; a hint for every option
+- large games kept playable: a game logic tuned for the 68060 (a game with about
+  2500 serfs at about 30 frames a second), a choice between a smooth picture and
+  the game speed; maps made with a progress bar
 - game speed x0.5 … x3, quick save, the keys box
 - a LAN game for two players on two Amigas (plus up to two computer players),
   with a chat; also over the internet with a forwarded port – played between
@@ -51,7 +54,7 @@ Paula or AHI sound, the game's own music module and the original Amiga graphics.
 
 ## Getting started
 
-1. Unpack the archive to your hard disk, e.g. `UnZip Settlers-0.125.zip -d Work:Games`.
+1. Unpack the archive to your hard disk, e.g. `UnZip Settlers-0.126.zip -d Work:Games`.
 2. Copy from the original disks to `Settlers/data/amiga`:
    from disk 3 `gfxheader`, `gfxfast`, `gfxchip`, `sounds`, `extro`;
    from disk 2 `gfxpics`, `music`.

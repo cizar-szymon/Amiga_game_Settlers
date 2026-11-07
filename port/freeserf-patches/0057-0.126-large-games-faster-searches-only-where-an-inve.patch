@@ -1,0 +1,2393 @@
+From f4d539448a7bc0971912013d4cd12040b504cc89 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sat, 7 Nov 2026 13:10:13 +0100
+Subject: [PATCH] 0.126: large games faster (searches only where an inventory
+ can answer, road network parts, direction cycles without division, compact
+ flags and map tiles, static tables, serfs read once), map preview progress
+ and cache, the start takes the preview map, Large games option, profiling
+ probes for simtest
+
+---
+ src/advanced-box.cc  |  19 ++-
+ src/building.cc      |  22 ++-
+ src/event_loop.cc    |   2 +
+ src/event_loop.h     |  15 +++
+ src/flag.cc          |  81 +++++++++--
+ src/flag.h           |  16 ++-
+ src/game-init.cc     | 182 +++++++++++++++++++++++--
+ src/game-init.h      |  18 +++
+ src/game.cc          | 203 ++++++++++++++++++++++++----
+ src/game.h           |  16 ++-
+ src/interface.cc     |  16 +++
+ src/interface.h      |   3 +
+ src/inventory.h      |  10 +-
+ src/map-generator.cc | 313 ++++++++++++++++++++++++-------------------
+ src/map-generator.h  |  47 +++++--
+ src/map-geometry.h   |  11 +-
+ src/map.h            |  18 ++-
+ src/objects.h        |   9 ++
+ src/player.cc        |  26 ++--
+ src/serf.cc          |  34 ++---
+ src/serf.h           |   4 +-
+ 21 files changed, 815 insertions(+), 250 deletions(-)
+
+diff --git a/src/advanced-box.cc b/src/advanced-box.cc
+index 9226d0a..18b71b1 100644
+--- a/src/advanced-box.cc
++++ b/src/advanced-box.cc
+@@ -152,6 +152,15 @@ static const Option options[] = {
+ };
+ 
+ /* The Video box: what the map looks like. */
++static std::string
++large_games_text(const Interface *interface) {
++  switch (interface->get_large_game_mode()) {
++    case 0: return _("Smooth");
++    case 2: return _("Full speed");
++    default: return _("Balanced");
++  }
++}
++
+ static const Option video_options[] = {
+   /* Options of the original game, first and in its order: a double
+      special click on the map opens the map window; a double click on a
+@@ -200,6 +209,14 @@ static const Option video_options[] = {
+        "to grass for good. Lumberjacks fell dead trees first (no lumber), "
+        "stonecutters break the brown boulders (no stone). New games and "
+        "the game now; in a LAN game the server's setting counts.") },
++  /* When the logic of a large game is slower than the game. */
++  { N_("Large games"), nullptr, large_games_text,
++    &Interface::next_large_game_mode, nullptr,
++    N_("When a large game is too much for the CPU: Smooth - one game step "
++       "a frame, the smoothest picture, the game slower; Balanced - steps "
++       "for about a frame of time; Full speed - up to five steps a frame, "
++       "the game fastest, fewer frames. Small games run at full speed "
++       "anyway.") },
+ };
+ 
+ /* A volume as 0 .. 100. */
+@@ -278,7 +295,7 @@ static const PageInfo pages[] = {
+   { nullptr, options, sizeof(options) / sizeof(options[0]), 256 },
+ #endif
+   { N_("Video"), video_options,
+-    sizeof(video_options) / sizeof(video_options[0]), 224 },
++    sizeof(video_options) / sizeof(video_options[0]), 244 },
+   { N_("Audio"), audio_options,
+     sizeof(audio_options) / sizeof(audio_options[0]), 184 },
+ };
+diff --git a/src/building.cc b/src/building.cc
+index 6d50d62..c1948db 100644
+--- a/src/building.cc
++++ b/src/building.cc
+@@ -506,7 +506,7 @@ Building::burnup() {
+ /* Calculate the flag state of military buildings (distance to enemy). */
+ void
+ Building::update_military_flag_state() {
+-  const int border_check_offsets[] = {
++  static const int border_check_offsets[] = {
+     31,  32,  33,  34,  35,  36,  37,  38,  39,  40,  41,  42,
+     100, 101, 102, 103, 104, 105, 106, 107, 108,
+     259, 260, 261, 262, 263, 264,
+@@ -537,6 +537,10 @@ Building::update_military_flag_state() {
+   }
+ }
+ 
++/* Profiling (game.cc, simtest -p). */
++extern unsigned long (*game_prof_detail_ms)();
++extern unsigned long game_prof[64];
++
+ void
+ Building::update(unsigned int tick) {
+   if (burning) {
+@@ -547,6 +551,10 @@ Building::update(unsigned int tick) {
+     } else {
+       game->building_burned_down(this);
+     }
++  } else if (game_prof_detail_ms) {
++    unsigned long p0 = game_prof_detail_ms();
++    update();
++    game_prof[16 + (get_type() & 31)] += game_prof_detail_ms() - p0;
+   } else {
+     update();
+   }
+@@ -627,7 +635,7 @@ Building::request_serf_if_needed() {
+     Resource::Type res_type_2;
+   } Request;
+ 
+-  Request requests[] = {
++  static const Request requests[] = {
+     {Serf::TypeNone       , Resource::TypeNone   , Resource::TypeNone  },
+     {Serf::TypeFisher     , Resource::TypeRod    , Resource::TypeNone  },
+     {Serf::TypeLumberjack , Resource::TypeAxe    , Resource::TypeNone  },
+@@ -667,7 +675,9 @@ Building::request_serf_if_needed() {
+ void
+ Building::update() {
+   if (!constructing) {
++    unsigned long p0 = game_prof_detail_ms ? game_prof_detail_ms() : 0;
+     request_serf_if_needed();
++    if (game_prof_detail_ms) game_prof[14] += game_prof_detail_ms() - p0;
+ 
+     switch (get_type()) {
+       case TypeBoatbuilder:
+@@ -1181,17 +1191,17 @@ Building::update_castle() {
+ 
+ void
+ Building::update_military() {
+-  const int hut_occupants_from_level[] = {
++  static const int hut_occupants_from_level[] = {
+     1, 1, 2, 2, 3,
+     1, 1, 1, 1, 2
+   };
+ 
+-  const int tower_occupants_from_level[] = {
++  static const int tower_occupants_from_level[] = {
+     1, 2, 3, 4, 6,
+     1, 1, 2, 3, 4
+   };
+ 
+-  const int fortress_occupants_from_level[] = {
++  static const int fortress_occupants_from_level[] = {
+     1, 3, 6, 9, 12,
+     1, 2, 4, 6, 8
+   };
+@@ -1285,7 +1295,7 @@ Building::update_military() {
+ 
+ int
+ building_get_score_from_type(Building::Type type) {
+-  const int building_score_from_type[] = {
++  static const int building_score_from_type[] = {
+     2, 2, 2, 2, 5, 5, 5, 5, 2, 10,
+     3, 6, 4, 6, 5, 4, 7, 7, 9, 4,
+     8, 15, 6, 20
+diff --git a/src/event_loop.cc b/src/event_loop.cc
+index a1f8bff..bcb91a5 100644
+--- a/src/event_loop.cc
++++ b/src/event_loop.cc
+@@ -23,6 +23,8 @@
+ 
+ #include <algorithm>
+ 
++int EventLoop::catch_up_mode = 1;
++
+ EventLoop *
+ EventLoop::instance = nullptr;
+ 
+diff --git a/src/event_loop.h b/src/event_loop.h
+index e33d1cf..a5d3378 100644
+--- a/src/event_loop.h
++++ b/src/event_loop.h
+@@ -120,6 +120,21 @@ class EventLoop {
+   virtual void deferred_call(DeferredCall call, void *data) = 0;
+   /* Milliseconds since the start. */
+   virtual unsigned int get_ticks() = 0;
++  /* A whole frame drawn and shown at once, from inside a long piece of
++     work (the progress of making a map); nothing where not supported. */
++  virtual void draw_now() {}
++  /* When the game logic is late (a large game): 0 one step a frame (the
++     smoothest picture, the game slower), 1 steps for about a frame of
++     time (default), 2 up to five steps a frame (the game fastest, fewer
++     frames). Options -> Video -> Large games. */
++  static int catch_up_mode;
++  /* Frames shown on the screen so far (where the loop counts them). */
++  unsigned int get_frames_shown() const { return frames_shown; }
++
++ protected:
++  unsigned int frames_shown = 0;
++
++ public:
+ 
+   void add_handler(Handler *handler);
+   void del_handler(Handler *handler);
+diff --git a/src/flag.cc b/src/flag.cc
+index 516ec4a..95e42c6 100644
+--- a/src/flag.cc
++++ b/src/flag.cc
+@@ -30,9 +30,34 @@
+ 
+ #define SEARCH_MAX_DEPTH  0x10000
+ 
++/* Counters (simtest -p): searches, flags visited, failed searches. */
++unsigned long flag_search_count[8];
++
++/* Raised by every change of the road network (paths added or removed,
++   ends linked, flags made or read): Game::flag_land_component() makes
++   the parts of the network again when it changed. */
++unsigned int flag_graph_version = 1;
++
++/* Queues of finished searches, used again (a search a few dozen times a
++   step otherwise allocated its queue each time). */
++static std::vector<std::vector<Flag*>> search_queue_pool;
++
+ FlagSearch::FlagSearch(Game *game_) {
+   game = game_;
+   id = game->next_search_id();
++  if (!search_queue_pool.empty()) {
++    queue.swap(search_queue_pool.back());
++    search_queue_pool.pop_back();
++    queue.clear();
++  } else {
++    queue.reserve(64);
++  }
++}
++
++FlagSearch::~FlagSearch() {
++  queue.clear();
++  search_queue_pool.push_back(std::vector<Flag*>());
++  search_queue_pool.back().swap(queue);
+ }
+ 
+ void
+@@ -44,9 +69,14 @@ FlagSearch::add_source(Flag *flag) {
+ bool
+ FlagSearch::execute(flag_search_func *callback, bool land,
+                     bool transporter, void *data) {
+-  for (int i = 0; i < SEARCH_MAX_DEPTH && !queue.empty(); i++) {
+-    Flag *flag = queue.front();
+-    queue.erase(queue.begin());
++  /* The front of the queue by an index: erasing the first element of the
++     vector moved all the others each time - a search over a large road
++     network took the square of its flags (Amiga port; same order). */
++  size_t head = 0;
++  flag_search_count[0]++;
++  for (int i = 0; i < SEARCH_MAX_DEPTH && head < queue.size(); i++) {
++    Flag *flag = queue[head++];
++    flag_search_count[1]++;
+ 
+     if (callback(flag, data)) {
+       /* Clean up */
+@@ -68,6 +98,7 @@ FlagSearch::execute(flag_search_func *callback, bool land,
+ 
+   /* Clean up */
+   queue.clear();
++  flag_search_count[2]++;
+ 
+   return false;
+ }
+@@ -103,6 +134,7 @@ Flag::Flag(Game *game, unsigned int index)
+   , inventory_building(false)
+   , serfs_accepted(false)
+   , resources_accepted(false) {
++  flag_graph_version++;
+   for (int j = 0; j < FLAG_MAX_RES_COUNT; j++) {
+     slot[j].type = Resource::TypeNone;
+     slot[j].dest = 0;
+@@ -112,6 +144,7 @@ Flag::Flag(Game *game, unsigned int index)
+ 
+ void
+ Flag::add_path(Direction dir, bool water) {
++  flag_graph_version++;
+   path_con |= BIT(dir);
+   if (water) {
+     land_path_set &= ~BIT(dir);
+@@ -123,6 +156,7 @@ Flag::add_path(Direction dir, bool water) {
+ 
+ void
+ Flag::del_path(Direction dir) {
++  flag_graph_version++;
+   path_con &= ~BIT(dir);
+   land_path_set &= ~BIT(dir);
+   transporter_set &= ~BIT(dir);
+@@ -280,7 +314,7 @@ Flag::schedule_slot_to_unknown_dest(int slot_num) {
+   /* Resources which should be routed directly to
+    buildings requesting them. Resources not listed
+    here will simply be moved to an inventory. */
+-  const int routable[] = {
++  static const int routable[] = {
+     1,  // RESOURCE_FISH
+     1,  // RESOURCE_PIG
+     1,  // RESOURCE_MEAT
+@@ -604,6 +638,7 @@ Flag::get_endpoint_bits() const {
+ 
+ void
+ Flag::set_endpoint_bits(int bits) {
++  flag_graph_version++;
+   land_path_set = bits & 0x3f;
+   building_connected = BIT_TEST(bits, 6);
+   resources_waiting = BIT_TEST(bits, 7);
+@@ -662,13 +697,14 @@ Flag::link_with_flag(Flag *dest_flag, bool water_path, size_t length_,
+   dest_flag->set_length_bits(in_dir, static_cast<int>(len << 4));
+   set_length_bits(out_dir, static_cast<int>(len << 4));
+ 
++  flag_graph_version++;
+   dest_flag->other_endpoint.f[in_dir] = this;
+   other_endpoint.f[out_dir] = dest_flag;
+ }
+ 
+ void
+ Flag::restore_path_serf_info(Direction dir, SerfPathInfo *data) {
+-  const int max_path_serfs[] = { 1, 2, 3, 4, 6, 8, 11, 15 };
++  static const int max_path_serfs[] = { 1, 2, 3, 4, 6, 8, 11, 15 };
+ 
+   Flag *other_flag = game->get_flag(data->flag_index);
+   Direction other_dir = data->flag_dir;
+@@ -692,6 +728,7 @@ Flag::restore_path_serf_info(Direction dir, SerfPathInfo *data) {
+   other_end_direction[dir] = other_dir;
+   other_flag->other_end_direction[other_dir] = dir;
+ 
++  flag_graph_version++;
+   other_endpoint.f[dir] = other_flag;
+   other_flag->other_endpoint.f[other_dir] = this;
+ 
+@@ -848,7 +885,7 @@ Flag::fill_path_serf_info(Game *game, MapPos pos, Direction dir,
+ 
+ void
+ Flag::merge_paths(MapPos pos_) {
+-  const int max_transporters[] = { 1, 2, 3, 4, 6, 8, 11, 15 };
++  static const int max_transporters[] = { 1, 2, 3, 4, 6, 8, 11, 15 };
+ 
+   PMap map = game->get_map();
+   if (!map->paths(pos_)) {
+@@ -888,6 +925,7 @@ Flag::merge_paths(MapPos pos_) {
+   flag_1->other_end_direction[dir_1] = dir_2;
+   flag_2->other_end_direction[dir_2] = dir_1;
+ 
++  flag_graph_version++;
+   flag_1->other_endpoint.f[dir_1] = flag_2;
+   flag_2->other_endpoint.f[dir_2] = flag_1;
+ 
+@@ -925,9 +963,13 @@ Flag::merge_paths(MapPos pos_) {
+   }
+ }
+ 
++/* Profiling (game.cc, simtest -p). */
++extern unsigned long (*game_prof_detail_ms)();
++extern unsigned long game_prof[64];
++
+ void
+ Flag::update() {
+-  const int max_transporters[] = { 1, 2, 3, 4, 6, 8, 11, 15 };
++  static const int max_transporters[] = { 1, 2, 3, 4, 6, 8, 11, 15 };
+ 
+   /* Count and store in bitfield which directions
+    have strictly more than 0,1,2,3 slots waiting. */
+@@ -957,13 +999,17 @@ Flag::update() {
+          been scheduled for fetch. */
+         int res_dir = slot[slot_].dir;
+         if (res_dir < 0) {
++          unsigned long p0 = game_prof_detail_ms ? game_prof_detail_ms() : 0;
++          int part = 12;
+           if (slot[slot_].dest != 0) {
+             /* Destination is known */
+             schedule_slot_to_known_dest(slot_, res_waiting);
+           } else {
+             /* Destination is not known */
+             schedule_slot_to_unknown_dest(slot_);
++            part = 13;
+           }
++          if (game_prof_detail_ms) game_prof[part] += game_prof_detail_ms() - p0;
+         }
+       }
+     }
+@@ -1036,7 +1082,13 @@ send_serf_to_road_search_cb(Flag *flag, void *data) {
+ 
+ bool
+ Flag::call_transporter(Direction dir, bool water) {
++  flag_search_count[3]++;
++  /* No inventory of the player has a transporter (sailor) or a serf to
++     make one: the search over the roads would fail. */
+   Flag *src_2 = other_endpoint.f[dir];
++  if (!game->inventory_could_send_transporter(this, src_2, water)) {
++    return false;
++  }
+   Direction dir_2 = get_other_end_dir(dir);
+ 
+   search_dir = DirectionRight;
+@@ -1116,6 +1168,7 @@ Flag::unlink_building() {
+ 
+ SaveReaderBinary&
+ operator >> (SaveReaderBinary &reader, Flag &flag) {
++  flag_graph_version++;
+   flag.pos = 0; /* Set correctly later. */
+   uint16_t val16;
+   reader >> val16;  // 0
+@@ -1202,6 +1255,7 @@ operator >> (SaveReaderBinary &reader, Flag &flag) {
+ 
+ SaveReaderText&
+ operator >> (SaveReaderText &reader, Flag &flag) {
++  flag_graph_version++;
+   unsigned int x = 0;
+   unsigned int y = 0;
+   reader.value("pos")[0] >> x;
+@@ -1245,9 +1299,16 @@ operator >> (SaveReaderText &reader, Flag &flag) {
+   }
+ 
+   for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
+-    reader.value("slot.type")[i] >> flag.slot[i].type;
+-    reader.value("slot.dir")[i] >> flag.slot[i].dir;
+-    reader.value("slot.dest")[i] >> flag.slot[i].dest;
++    /* Through temporaries: the slots are bit fields. */
++    Resource::Type type;
++    Direction dir;
++    unsigned int dest;
++    reader.value("slot.type")[i] >> type;
++    reader.value("slot.dir")[i] >> dir;
++    reader.value("slot.dest")[i] >> dest;
++    flag.slot[i].type = type;
++    flag.slot[i].dir = dir;
++    flag.slot[i].dest = dest;
+   }
+ 
+   reader.value("bld_flags") >> bits;
+diff --git a/src/flag.h b/src/flag.h
+index f583aef..271e391 100644
+--- a/src/flag.h
++++ b/src/flag.h
+@@ -50,11 +50,14 @@ class Flag : public GameObject {
+   /* The consistency check after loading reads them too. */
+   friend class IntegrityCheck;
+  protected:
++  /* 4 bytes instead of 12 (bit fields of the same types): Flag::update
++     reads all eight slots of every flag on every step, and a 68060 waits
++     for memory on each cache line (Amiga port). */
+   class ResourceSlot {
+    public:
+-    Resource::Type type;
+-    Direction dir;
+-    unsigned int dest;
++    Resource::Type type : 8;   /* -1 .. 25 */
++    Direction dir : 8;         /* -1 .. 5 */
++    unsigned int dest : 16;    /* a flag index */
+   };
+ 
+  protected:
+@@ -71,15 +74,15 @@ class Flag : public GameObject {
+   int transporter_set;        /* Directions with transporters. */
+   bool serf_request_failed;   /* A transporter was requested in vain. */
+   /* Of each path. */
+-  unsigned int free_transporters[6];
+-  unsigned int path_length_category[6];
++  uint8_t free_transporters[6];      /* 0 .. 15 */
++  uint8_t path_length_category[6];   /* 0 .. 7 */
+   bool transporter_requested[6];
+   union other_endpoint {
+     Building *b[6];
+     Flag *f[6];
+     void *v[6];
+   } other_endpoint;
+-  unsigned int pickup_slot[6];     /* The slot scheduled for pickup. */
++  uint8_t pickup_slot[6];     /* The slot scheduled for pickup (0 .. 7). */
+   Direction other_end_direction[6];
+   bool pickup_scheduled[6];
+ 
+@@ -259,6 +262,7 @@ class FlagSearch {
+ 
+  public:
+   explicit FlagSearch(Game *game);
++  ~FlagSearch();
+ 
+   int get_id() { return id; }
+   void add_source(Flag *flag);
+diff --git a/src/game-init.cc b/src/game-init.cc
+index 6e52332..78b277d 100644
+--- a/src/game-init.cc
++++ b/src/game-init.cc
+@@ -24,6 +24,7 @@
+ #include <cstdio>
+ 
+ #include <algorithm>
++#include <list>
+ #include <memory>
+ #include <sstream>
+ #include <string>
+@@ -45,6 +46,26 @@
+ #include "src/popup.h"
+ #include "src/translation.h"
+ 
++/* The maps of the last previews and what they were made from: going back
++   to a game type, a mission, the tutorial or a map seen before shows it at
++   once instead of making it again (the generator gives the same map for
++   the same values). Kept for the program, the last few. */
++struct PreviewMap {
++  unsigned int size;
++  std::string random;
++  unsigned int sand, rocks, dead_trees;
++  PMap map;
++};
++static std::list<PreviewMap> preview_maps;
++static const size_t kPreviewMaps = 4;
++/* And at most this many tiles together (24 bytes each: about 14 MB; one map
++   of size 10 alone, or several smaller), the newest map always kept. */
++static const unsigned int kPreviewTiles = 600000;
++
++/* The start box that makes a map now (mapgen_progress). */
++static GameInitBox *progress_box = nullptr;
++static void map_progress(int percent);
++
+ class RandomInput : public TextInput {
+  protected:
+   std::string saved_text;
+@@ -118,6 +139,8 @@ GameInitBox::GameInitBox(Interface *interface)
+   , file_list(new ListSavedFiles()) {
+   this->interface = interface;
+   opaque = true;
++  progress_start = false;
++  progress_percent = -1;
+ 
+   game_type = GameCustom;
+   game_mission = 0;
+@@ -126,6 +149,8 @@ GameInitBox::GameInitBox(Interface *interface)
+   delete_asked = false;
+   start_requested = false;
+   preview_due = 0;
++  preview_note_drawn = false;
++  preview_note_frame = 0;
+   preview_sand = 100;
+   preview_rocks = 100;
+   preview_dead_trees = 100;
+@@ -151,7 +176,9 @@ GameInitBox::GameInitBox(Interface *interface)
+   minimap->set_size(150, 160);
+   add_float(minimap.get(), 190, 55);
+ 
+-  generate_map_preview();
++  /* Made once the box is on the screen, with its progress (a large map
++     takes long: under the start picture it looked like a hang). */
++  request_map_preview();
+ 
+   random_input->set_random(custom_mission->get_random_base());
+   random_input->set_displayed(true);
+@@ -262,19 +289,31 @@ static const int kYesX = 228, kNoX = 264;  /* NEIN fits (34 px) */
+ 
+ void
+ GameInitBox::internal_draw() {
+-  if (preview_pending && game_type != GameLoad &&
+-      static_cast<int>(EventLoop::get_instance().get_ticks() -
+-                       preview_due) >= 0) {
+-    /* The last frame showed the note below. */
+-    generate_map_preview();
+-  }
+-
+   draw_background();
+   draw_box_frame(frame, width, height);
+   if (preview_pending && game_type != GameLoad) {
+     frame->fill_rect(190, 55, 150, 160, Color::black);
+     frame->draw_string(190 + 19, 55 + 76, _("Making the map"), Color::green,
+                        Color::black);
++    if (!preview_note_drawn) {
++      preview_note_drawn = true;
++      preview_note_frame = EventLoop::get_instance().get_frames_shown();
++    }
++  }
++  if (progress_percent >= 0) {
++    /* The map is being made (show_map_progress): what, how far, a bar. */
++    const int x = 190, y = 55 + 66;
++    frame->fill_rect(x, y, 150, 36, Color::black);
++    std::string title = progress_start ? _("Starting the game")
++                                       : _("Making the map");
++    frame->draw_string(x + (150 - frame->get_string_width(title)) / 2,
++                       y + 2, title, Color::green, Color::black);
++    std::string value = std::to_string(progress_percent) + "%";
++    frame->draw_string(x + (150 - frame->get_string_width(value)) / 2,
++                       y + 13, value, Color::green, Color::black);
++    frame->draw_rect(x + 15, y + 25, 120, 7, Color::green);
++    frame->fill_rect(x + 16, y + 26, 118 * progress_percent / 100, 5,
++                     Color(0xdd, 0xdd, 0x00));
+   }
+   if (game_type == GameLan) {
+     /* No map here: the server chooses it in the LAN box, which both
+@@ -476,7 +515,20 @@ GameInitBox::handle_action(int action) {
+           return;
+         }
+       } else {
+-        if (!GameManager::get_instance().start_game(mission)) {
++        /* A new game makes its map again: the progress over the preview
++           (the screen stays as it is until the game shows). */
++        progress_box = this;
++        progress_start = true;
++        minimap->set_displayed(false);  /* it would cover the progress */
++        mapgen_progress = map_progress;
++        show_map_progress(0);
++        bool started = GameManager::get_instance().start_game(mission);
++        mapgen_progress = nullptr;
++        progress_box = nullptr;
++        progress_percent = -1;
++        if (!started) {
++          minimap->set_displayed(true);
++          set_redraw();
+           return;
+         }
+       }
+@@ -861,11 +913,66 @@ GameInitBox::update_preview() {
+        interface->get_dead_tree_percent() != preview_dead_trees)) {
+     request_map_preview();
+   }
++  /* The map of the preview: due, and the start box with its note is on
++     the screen (a frame after it was drawn) - made here, between the
++     frames, not while the screen is being drawn. */
+   if (preview_pending && game_type != GameLoad &&
+       static_cast<int>(EventLoop::get_instance().get_ticks() -
+                        preview_due) >= 0) {
+-    set_redraw();
++    /* A frame shown after the one that drew the note. */
++    if (preview_note_drawn && !redraw &&
++        EventLoop::get_instance().get_frames_shown() != preview_note_frame) {
++      generate_map_preview();
++    } else {
++      set_redraw();
++    }
++  }
++}
++
++/* What the map of the preview is made from now. */
++void
++GameInitBox::preview_values(unsigned int *sand, unsigned int *rocks,
++                            unsigned int *dead_trees) const {
++  if (game_type == GameMission || game_type == GameTutorial) {
++    *sand = *rocks = *dead_trees = 100;
++  } else {
++    *sand = interface->get_sand_percent();
++    *rocks = interface->get_rock_percent();
++    *dead_trees = interface->get_dead_tree_percent();
++  }
++}
++
++/* The preview from a map made before with the same values; false: none. */
++bool
++GameInitBox::use_preview_made_before() {
++  unsigned int sand = 0, rocks = 0, dead_trees = 0;
++  preview_values(&sand, &rocks, &dead_trees);
++  std::string random = std::string(mission->get_random_base());
++  for (auto it = preview_maps.begin(); it != preview_maps.end(); ++it) {
++    if (it->size == mission->get_map_size() && it->random == random &&
++        it->sand == sand && it->rocks == rocks &&
++        it->dead_trees == dead_trees) {
++      map = it->map;
++      preview_maps.splice(preview_maps.begin(), preview_maps, it);
++      preview_pending = false;
++      if (game_type != GameMission && game_type != GameTutorial) {
++        preview_sand = sand;
++        preview_rocks = rocks;
++        preview_dead_trees = dead_trees;
++      }
++      landscape_cache.map = map;
++      landscape_cache.size = mission->get_map_size();
++      landscape_cache.random = random;
++      landscape_cache.sand = sand;
++      landscape_cache.rocks = rocks;
++      landscape_cache.dead_trees = dead_trees;
++      minimap->set_map(map);
++      minimap->set_displayed(true);
++      set_redraw();
++      return true;
++    }
+   }
++  return false;
+ }
+ 
+ void
+@@ -877,17 +984,43 @@ GameInitBox::request_map_preview() {
+     set_redraw();
+     return;
+   }
++  /* A map seen before: at once, no "Making the map". */
++  if (game_type != GameLoad && use_preview_made_before()) {
++    return;
++  }
+   preview_pending = true;
++  preview_note_drawn = false;
+   preview_due = EventLoop::get_instance().get_ticks() + 400;
+   minimap->set_displayed(false);
+   set_redraw();
+ }
+ 
++
++static void
++map_progress(int percent) {
++  if (progress_box != nullptr) progress_box->show_map_progress(percent);
++}
++
++void
++GameInitBox::show_map_progress(int percent) {
++  progress_percent = percent;
++  set_redraw();
++  EventLoop::get_instance().draw_now();
++}
++
+ void
+ GameInitBox::generate_map_preview() {
+   preview_pending = false;
+-  minimap->set_displayed(game_type != GameLoad);
++  /* The map preview stays hidden while the map is made: it is drawn over
++     the box, its progress under it. */
++  minimap->set_displayed(false);
++  progress_box = this;
++  progress_start = false;
++  mapgen_progress = map_progress;
++  show_map_progress(0);
+   map.reset(new Map(MapGeometry(mission->get_map_size())));
++  landscape_cache = LandscapeCache();
++  unsigned int sand = 100, rocks = 100, dead_trees = 100;
+   if (game_type == GameMission || game_type == GameTutorial) {
+     ClassicMissionMapGenerator generator(*map, mission->get_random_base());
+     generator.init();
+@@ -904,9 +1037,36 @@ GameInitBox::generate_map_preview() {
+     generator.set_dead_tree_percent(preview_dead_trees);
+     generator.generate();
+     map->init_tiles(generator);
++    sand = preview_sand;
++    rocks = preview_rocks;
++    dead_trees = preview_dead_trees;
+   }
++  /* For the start of this game (Game::init takes it when the values are
++     the same). */
++  landscape_cache.map = map;
++  landscape_cache.size = mission->get_map_size();
++  landscape_cache.random = std::string(mission->get_random_base());
++  landscape_cache.sand = sand;
++  landscape_cache.rocks = rocks;
++  landscape_cache.dead_trees = dead_trees;
++  /* Kept for going back to it (use_preview_made_before). */
++  preview_maps.push_front(PreviewMap{landscape_cache.size,
++                                     landscape_cache.random, sand, rocks,
++                                     dead_trees, map});
++  while (preview_maps.size() > 1) {
++    unsigned int tiles = 0;
++    for (const PreviewMap &p : preview_maps) {
++      tiles += p.map->geom().tile_count();
++    }
++    if (preview_maps.size() <= kPreviewMaps && tiles <= kPreviewTiles) break;
++    preview_maps.pop_back();
++  }
++  mapgen_progress = nullptr;
++  progress_box = nullptr;
++  progress_percent = -1;
+ 
+   minimap->set_map(map);
++  minimap->set_displayed(game_type != GameLoad);
+ 
+   set_redraw();
+ }
+diff --git a/src/game-init.h b/src/game-init.h
+index 451be6f..5b5b5cd 100644
+--- a/src/game-init.h
++++ b/src/game-init.h
+@@ -77,6 +77,11 @@ class GameInitBox : public GuiObject {
+   /* A save was double clicked: Start in the next update. */
+   bool start_requested;
+   unsigned int preview_due;
++  /* The note "Making the map" was drawn (and shown) since the preview was
++     asked for: the map is made only then, outside the drawing, so that
++     its progress goes over the whole start box on the screen. */
++  bool preview_note_drawn;
++  unsigned int preview_note_frame;
+   /* The Sand (%) of the shown preview of a new map. */
+   unsigned int preview_sand;
+   unsigned int preview_rocks;
+@@ -122,6 +127,19 @@ class GameInitBox : public GuiObject {
+   unsigned int get_next_character(unsigned int player);
+   void apply_random(Random rnd);
+   void generate_map_preview();
++  void preview_values(unsigned int *sand, unsigned int *rocks,
++                      unsigned int *dead_trees) const;
++  bool use_preview_made_before();
++ public:
++  /* The progress of making a map (map-generator.h), drawn at once on the
++     screen over the place of the preview: the box itself is not drawn
++     again while the map is made. */
++  void show_map_progress(int percent);
++ protected:
++  /* Making the map for the start of a game (not the preview). */
++  bool progress_start;
++  /* Its percent while the map is made, -1 otherwise. */
++  int progress_percent;
+   void request_map_preview();
+ 
+   virtual void internal_draw();
+diff --git a/src/game.cc b/src/game.cc
+index a15903c..4bcf8c7 100644
+--- a/src/game.cc
++++ b/src/game.cc
+@@ -40,6 +40,10 @@
+ #include "src/inventory.h"
+ #include "src/map.h"
+ #include "src/map-generator.h"
++
++/* Profiling (simtest -p), defined below. */
++extern unsigned long (*game_prof_detail_ms)();
++extern unsigned long game_prof_serf[64], game_prof_serf_n[64];
+ #include "src/map-geometry.h"
+ 
+ #define GROUND_ANALYSIS_RADIUS  25
+@@ -209,7 +213,7 @@ Game::update_inventories_cb(Flag *flag, void *d) {
+    resources that are needed outside of the inventory into the out queue. */
+ void
+ Game::update_inventories() {
+-  const Resource::Type arr_1[] = {
++  static const Resource::Type arr_1[] = {
+     Resource::TypePlank,
+     Resource::TypeStone,
+     Resource::TypeSteel,
+@@ -225,7 +229,7 @@ Game::update_inventories() {
+     Resource::TypeNone,
+   };
+ 
+-  const Resource::Type arr_2[] = {
++  static const Resource::Type arr_2[] = {
+     Resource::TypeStone,
+     Resource::TypeIronOre,
+     Resource::TypeGoldOre,
+@@ -241,7 +245,7 @@ Game::update_inventories() {
+     Resource::TypeNone,
+   };
+ 
+-  const Resource::Type arr_3[] = {
++  static const Resource::Type arr_3[] = {
+     Resource::GroupFood,
+     Resource::TypeWheat,
+     Resource::TypePig,
+@@ -347,6 +351,7 @@ Game::update_inventories() {
+ void
+ Game::update_flags() {
+   for (Flag *flag : flags) {
++    flag->serf_request_clear();
+     flag->update();
+   }
+ }
+@@ -440,6 +445,103 @@ Game::send_serf_to_flag_search_cb(Flag *flag, void *d) {
+   return false;
+ }
+ 
++/* The part of the land road network a flag is in (flags joined by land
++   paths, either way): flags of different parts cannot reach each other
++   by a land search. Made again when the network changed. */
++extern unsigned int flag_graph_version;
++
++unsigned int
++Game::flag_land_component(Flag *flag) {
++  if (land_parts_version != flag_graph_version) {
++    land_parts_version = flag_graph_version;
++    unsigned int n = flags.get_max_index() + 1;
++    land_part.assign(n, 0);
++    for (unsigned int i = 0; i < n; i++) land_part[i] = i;
++    /* Union-find, the root of a part the lowest index. */
++    auto find = [this](unsigned int x) {
++      while (land_part[x] != x) {
++        land_part[x] = land_part[land_part[x]];
++        x = land_part[x];
++      }
++      return x;
++    };
++    for (Flag *f : flags) {
++      unsigned int a = f->get_index();
++      for (int d = 0; d < 6; d++) {
++        if (!f->is_water_path(static_cast<Direction>(d))) {
++          Flag *o = f->get_other_end_flag(static_cast<Direction>(d));
++          if (o == nullptr) continue;
++          unsigned int ra = find(a), rb = find(o->get_index());
++          if (ra != rb) land_part[std::max(ra, rb)] = std::min(ra, rb);
++        }
++      }
++    }
++    for (unsigned int i = 0; i < n; i++) land_part[i] = find(i);
++  }
++  unsigned int idx = flag->get_index();
++  return idx < land_part.size() ? land_part[idx] : idx;
++}
++
++/* Whether some inventory of the player could give a serf as
++   send_serf_to_flag_search_cb would (its tests, without the road between):
++   when none can, the search over the roads would fail anyway. A large game
++   with buildings waiting for knights or workers that nobody has searched
++   the whole road network for each of them on every step (Amiga port). */
++bool
++Game::inventory_could_send_serf(Flag *dest, int type,
++                                Resource::Type res1, Resource::Type res2) {
++  unsigned int owner = dest->get_owner();
++  unsigned int part = flag_land_component(dest);
++  for (Inventory *inv : inventories) {
++    if (inv->get_owner() != owner) continue;
++    /* Not in the part of the network of the flag: not reached. */
++    Flag *inv_flag = flags[inv->get_flag_index()];
++    if (inv_flag == nullptr || flag_land_component(inv_flag) != part) continue;
++    if (type < 0) {
++      for (int i = 4; i >= -type-1; i--) {
++        if (inv->have_serf((Serf::Type)(Serf::TypeKnight0+i))) return true;
++      }
++      if (type == -1 && inv->have_serf(Serf::TypeGeneric) &&
++          inv->get_count_of(Resource::TypeSword) > 0 &&
++          inv->get_count_of(Resource::TypeShield) > 0) {
++        return true;
++      }
++    } else if (inv->have_serf((Serf::Type)type)) {
++      if (type != Serf::TypeGeneric || inv->free_serf_count() > 4) {
++        return true;
++      }
++    } else if (inv->have_serf(Serf::TypeGeneric) &&
++               (res1 == -1 || inv->get_count_of(res1) > 0) &&
++               (res2 == -1 || inv->get_count_of(res2) > 0)) {
++      return true;
++    }
++  }
++  return false;
++}
++
++/* The same for a transporter (sailor) of a road (call_transporter). */
++bool
++Game::inventory_could_send_transporter(Flag *src, Flag *src_2, bool water) {
++  unsigned int owner = src->get_owner();
++  unsigned int part = flag_land_component(src);
++  unsigned int part_2 = flag_land_component(src_2);
++  for (Inventory *inv : inventories) {
++    if (inv->get_owner() != owner) continue;
++    Flag *inv_flag = flags[inv->get_flag_index()];
++    if (inv_flag == nullptr) continue;
++    unsigned int p = flag_land_component(inv_flag);
++    if (p != part && p != part_2) continue;
++    if (inv->have_serf(water ? Serf::TypeSailor : Serf::TypeTransporter)) {
++      return true;
++    }
++    if (inv->have_serf(Serf::TypeGeneric) &&
++        (!water || inv->get_count_of(Resource::TypeBoat) > 0)) {
++      return true;
++    }
++  }
++  return false;
++}
++
+ /* Dispatch serf from (nearest?) inventory to flag. */
+ bool
+ Game::send_serf_to_flag(Flag *dest, Serf::Type type, Resource::Type res1,
+@@ -455,6 +557,12 @@ Game::send_serf_to_flag(Flag *dest, Serf::Type type, Resource::Type res1,
+     type = player->get_cycling_serf_type(type);
+   }
+ 
++  extern unsigned long flag_search_count[8];
++  flag_search_count[4]++;
++  if (!inventory_could_send_serf(dest, type, res1, res2)) {
++    return false;  /* no inventory of the player can: the search fails */
++  }
++
+   SendSerfToFlagData data;
+   data.inventory = NULL;
+   data.building = building;
+@@ -524,6 +632,7 @@ Game::update_buildings() {
+   while (i != blds.end()) {
+     Building *building = *i;
+     ++i;
++    building->clear_serf_request_failure();
+     building->update(tick);
+   }
+ }
+@@ -534,15 +643,24 @@ Game::update_serfs() {
+   /* Updating a serf can delete other serfs (e.g. a lost fight) or create
+      new ones, which invalidates iterators of the collection. Go through
+      the indexes taken before and skip serfs deleted in the meantime. */
+-  std::vector<unsigned int> indexes;
+-  for (Serf *serf : serfs) {
+-    indexes.push_back(serf->get_index());
+-  }
++  /* Kept between the steps (no allocation of thousands of elements on
++     every step; only the update below uses it, not recursively). */
++  std::vector<unsigned int> &indexes = serf_update_indexes;
++  serfs.get_indexes(&indexes);
+ 
+   for (unsigned int index : indexes) {
+     Serf *serf = serfs[index];
+-    if (serf != nullptr && serf->get_index() != 0) {
+-      serf->update();
++    /* index 0 is the dummy serf; an object is at its own index */
++    if (serf != nullptr && index != 0) {
++      if (game_prof_detail_ms) {
++        int st = serf->get_state() & 63;
++        unsigned long p0 = game_prof_detail_ms();
++        serf->update();
++        game_prof_serf[st] += game_prof_detail_ms() - p0;
++        game_prof_serf_n[st]++;
++      } else {
++        serf->update();
++      }
+     }
+   }
+ }
+@@ -814,8 +932,24 @@ Game::update_game_stats() {
+ }
+ 
+ /* Update game state after tick increment. */
++/* Profiling (the Amiga port's simtest -p): when game_prof_ms is set, the
++   milliseconds of the parts of update() add up in game_prof. */
++unsigned long (*game_prof_detail_ms)() = nullptr;  /* per object (-P) */
++unsigned long (*game_prof_ms)() = nullptr;
++unsigned long game_prof[64];
++/* Serfs by state (simtest -p): time and count of updates. */
++unsigned long game_prof_serf[64], game_prof_serf_n[64];
++#define GP_T(i) do { \
++    if (game_prof_ms) { \
++      unsigned long n_ = game_prof_ms(); \
++      game_prof[i] += n_ - gp_last; \
++      gp_last = n_; \
++    } \
++  } while (0)
++
+ void
+ Game::update() {
++  unsigned long gp_last = game_prof_ms ? game_prof_ms() : 0;
+   /* Increment tick counters */
+   const_tick += 1;
+ 
+@@ -825,13 +959,18 @@ Game::update() {
+   tick_diff = tick - last_tick;
+   ai_game.ticks_288 = (ai_game.ticks_288 + tick_diff) & 0xffff;
+ 
+-  clear_serf_request_failure();
+-  map->update(tick, &init_map_rnd);
++  /* The failures of serf requests are cleared right before the update of
++     each building and flag (update_flags, update_buildings) - only these
++     updates read and set them - not in a pass over all of them first:
++     one pass over the objects less (Amiga port, same result). */
++  GP_T(0);
++  map->update(tick, &init_map_rnd); GP_T(1);
+ 
+   /* Update players */
+   for (Player *player : players) {
+     player->update();
+   }
++  GP_T(2);
+ 
+   /* Scheduler of the original (Amiga update_scheduled @0xa864): next_index
+      cycles through the slots once per update. Slots 0..31 run the AI site
+@@ -847,6 +986,7 @@ Game::update() {
+         AI::scan_sites(this, player);
+       }
+     }
++    GP_T(3);
+   } else if (next_index == 32) {
+     if (game_speed != 0) {
+       AI::update_build_damping_all(this);
+@@ -854,6 +994,7 @@ Game::update() {
+         player->update_emergency_program();
+       }
+     }
++    GP_T(4);
+   } else {
+     /* A slot of a player that is not an AI player, or that loses the
+        intelligence roll, passes on to the next slot. */
+@@ -862,6 +1003,7 @@ Game::update() {
+       if (player != nullptr && player->is_in_game() && player->is_ai() &&
+           random_int() < static_cast<uint16_t>(player->get_ai_intelligence())) {
+         AI::update(this, player);
++        GP_T(5);
+         break;
+       }
+ 
+@@ -873,12 +1015,14 @@ Game::update() {
+     }
+   }
+ 
++  GP_T(5);
+   /* Update knight morale */
+   knight_morale_counter -= tick_diff;
+   if (knight_morale_counter < 0) {
+     update_knight_morale();
+     knight_morale_counter += 256;
+   }
++  GP_T(6);
+ 
+   /* Schedule resources to go out of inventories */
+   inventory_schedule_counter -= tick_diff;
+@@ -886,11 +1030,12 @@ Game::update() {
+     update_inventories();
+     inventory_schedule_counter += 64;
+   }
++  GP_T(7);
+ 
+-  update_flags();
+-  update_buildings();
+-  update_serfs();
+-  update_game_stats();
++  update_flags(); GP_T(8);
++  update_buildings(); GP_T(9);
++  update_serfs(); GP_T(10);
++  update_game_stats(); GP_T(11);
+ }
+ 
+ /* Pause or unpause the game. */
+@@ -2140,13 +2285,13 @@ Game::update_land_ownership(MapPos init_pos) {
+   std::unique_ptr<int[]> temp_arr =
+     std::unique_ptr<int[]>(new int[temp_arr_size]());
+ 
+-  const int military_influence[] = {
++  static const int military_influence[] = {
+     0, 1, 2, 4, 7, 12, 18, 29, -1, -1,  /* hut */
+     0, 3, 5, 8, 11, 15, 22, 30, -1, -1,  /* tower */
+     0, 6, 10, 14, 19, 23, 27, 31, -1, -1  /* fortress */
+   };
+ 
+-  const int map_closeness[] = {
++  static const int map_closeness[] = {
+     1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+     1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0,
+     1, 2, 3, 3, 3, 3, 3, 3, 3, 2, 1, 0, 0, 0, 0, 0, 0,
+@@ -2487,13 +2632,23 @@ Game::init(unsigned int map_size, const Random &random, unsigned int sand,
+   init_map_rnd = random;
+ 
+   map.reset(new Map(MapGeometry(map_size)));
+-  ClassicMissionMapGenerator generator(*map, init_map_rnd);
+-  generator.init();
+-  generator.set_desert_percent(sand);
+-  generator.set_rock_percent(rocks);
+-  generator.set_dead_tree_percent(dead_trees);
+-  generator.generate();
+-  map->init_tiles(generator);
++  if (landscape_cache.map && landscape_cache.size == map_size &&
++      landscape_cache.random == std::string(random) &&
++      landscape_cache.sand == sand && landscape_cache.rocks == rocks &&
++      landscape_cache.dead_trees == dead_trees) {
++    /* The same map as the preview of the start box: taken, not made
++       again (the generator gives the same for the same values). */
++    map->init_tiles(*landscape_cache.map);
++  } else {
++    ClassicMissionMapGenerator generator(*map, init_map_rnd);
++    generator.init();
++    generator.set_desert_percent(sand);
++    generator.set_rock_percent(rocks);
++    generator.set_dead_tree_percent(dead_trees);
++    generator.generate();
++    map->init_tiles(generator);
++  }
++  landscape_cache = LandscapeCache();  /* used once; its memory free */
+   gold_total = map->get_gold_deposit();
+ 
+   /* Slots of the scheduler (Amiga game_init); 49 once an AI player is
+diff --git a/src/game.h b/src/game.h
+index 727b671..c093605 100644
+--- a/src/game.h
++++ b/src/game.h
+@@ -82,6 +82,10 @@ class Game {
+   Players players;
+   Flags flags;
+   Inventories inventories;
++  /* The serfs to update in a step (update_serfs). */
++  std::vector<unsigned int> serf_update_indexes;
++  std::vector<unsigned int> land_part;
++  unsigned int land_parts_version = 0;
+   Buildings buildings;
+   Serfs serfs;
+ 
+@@ -135,7 +139,9 @@ class Game {
+   Game();
+   virtual ~Game();
+ 
+-  PMap get_map() { return map; }
++  /* A reference: game->get_map()->... no longer copies the shared pointer
++     (its count up and down) on every use - hundreds of times a step. */
++  const PMap &get_map() const { return map; }
+ 
+   unsigned int get_tick() const { return tick; }
+   bool is_paused() const { return game_speed == 0; }
+@@ -246,6 +252,14 @@ class Game {
+   void set_random(const Random &random) { rnd = random; }
+   std::string get_random_text() const { return std::string(rnd); }
+ 
++  /* Some inventory of the player could give the serf (transporter): when
++     none can, the search over the roads is not made (it would fail). */
++  bool inventory_could_send_serf(Flag *dest, int type,
++                                 Resource::Type res1, Resource::Type res2);
++  bool inventory_could_send_transporter(Flag *src, Flag *src_2, bool water);
++  /* The part of the land road network of a flag (made again when the
++     network changed). */
++  unsigned int flag_land_component(Flag *flag);
+   bool send_serf_to_flag(Flag *dest, Serf::Type type, Resource::Type res1,
+                          Resource::Type res2);
+ 
+diff --git a/src/interface.cc b/src/interface.cc
+index 332e4c2..5d7890b 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -260,6 +260,8 @@ Interface::apply_settings() {
+   tree_variety = settings.get("advanced", "tree_variety", true);
+   wild_boars = settings.get("advanced", "wild_boars", true);
+   terraforming = settings.get("advanced", "terraforming", false);
++  EventLoop::catch_up_mode = std::max(0, std::min(2, settings.get(
++    "advanced", "large_games", 1)));
+   fast_building = settings.get("options", "fast_building", true);
+   fast_mapclick = settings.get("options", "fast_mapclick", true);
+   pathway_scrolling = true;  /* always (no longer in the Video box) */
+@@ -348,6 +350,7 @@ Interface::store_settings() {
+   settings.set("advanced", "tree_variety", tree_variety);
+   settings.set("advanced", "wild_boars", wild_boars);
+   settings.set("advanced", "terraforming", terraforming);
++  settings.set("advanced", "large_games", EventLoop::catch_up_mode);
+   settings.set("options", "fast_building", fast_building);
+   settings.set("options", "fast_mapclick", fast_mapclick);
+   settings.set("map_window", "ownership", minimap_options.ownership);
+@@ -1609,6 +1612,19 @@ Interface::next_audio_output() {
+   }
+ }
+ 
++int
++Interface::get_large_game_mode() const {
++  return EventLoop::catch_up_mode;
++}
++
++void
++Interface::next_large_game_mode() {
++  EventLoop::catch_up_mode = (EventLoop::catch_up_mode + 1) % 3;
++  Settings &settings = Settings::get_instance();
++  settings.set("advanced", "large_games", EventLoop::catch_up_mode);
++  settings.save();
++}
++
+ void
+ Interface::switch_terraforming() {
+   terraforming = !terraforming;
+diff --git a/src/interface.h b/src/interface.h
+index 9f3ba92..ae6174c 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -247,6 +247,9 @@ class Interface : public GuiObject, public GameManager::Handler {
+   void switch_wild_boars() { wild_boars = !wild_boars; }
+   bool get_terraforming() const { return terraforming; }
+   void switch_terraforming();
++  /* Options -> Video -> Large games (EventLoop::catch_up_mode). */
++  int get_large_game_mode() const;
++  void next_large_game_mode();
+   /* Advanced -> Audio: the way out of the sound (Amiga: Paula, AHI), at
+      once and kept in the settings. */
+   void next_audio_output();
+diff --git a/src/inventory.h b/src/inventory.h
+index ffdc8e0..9e576f1 100644
+--- a/src/inventory.h
++++ b/src/inventory.h
+@@ -64,8 +64,14 @@ class Inventory : public GameObject {
+      the saves: bits 0..1 and 2..3). */
+   Mode resource_mode;
+   Mode serf_mode;
+-  /* Indices to serfs of each type */
+-  Serf::SerfMap serfs;
++  /* Indices to serfs of each type: an array by type (a std::map was
++     looked up about two thousand times a step in a large game - each
++     idle serf in a stock every step). Same values, same saves. */
++  struct SerfIndexes {
++    unsigned int v[32];
++    SerfIndexes() { for (unsigned int &i : v) i = 0; }
++    unsigned int &operator[](Serf::Type type) { return v[type & 31]; }
++  } serfs;
+ 
+  public:
+   Inventory(Game *game, unsigned int index);
+diff --git a/src/map-generator.cc b/src/map-generator.cc
+index 8b9e0ad..3b08cd5 100644
+--- a/src/map-generator.cc
++++ b/src/map-generator.cc
+@@ -41,8 +41,31 @@ ClassicMapGenerator::ClassicMapGenerator(const Map& map, const Random& random)
+   , desert_percent(100)
+   , rock_percent(100)
+   , dead_tree_percent(100) {
+-  tiles.resize(map.geom().tile_count());
+-  tags.resize(map.geom().tile_count());
++  unsigned int n = map.geom().tile_count();
++  t_height.assign(n, 0);
++  t_up.assign(n, Map::TerrainWater0);
++  t_down.assign(n, Map::TerrainWater0);
++  t_mineral.assign(n, Map::MineralsNone);
++  t_res.assign(n, 0);
++  t_obj.assign(n, Map::ObjectNone);
++  tags.resize(n);
++}
++
++/* The tiles put together from the arrays of their fields. */
++const std::vector<Map::LandscapeTile> &
++ClassicMapGenerator::get_landscape() const {
++  size_t n = t_height.size();
++  tiles.resize(n);
++  for (size_t i = 0; i < n; i++) {
++    Map::LandscapeTile &t = tiles[i];
++    t.height = t_height[i];
++    t.type_up = t_up[i];
++    t.type_down = t_down[i];
++    t.mineral = t_mineral[i];
++    t.resource_amount = t_res[i];
++    t.obj = t_obj[i];
++  }
++  return tiles;
+ }
+ 
+ void ClassicMapGenerator::init(
+@@ -57,28 +80,38 @@ void ClassicMapGenerator::init(
+ 
+ /* Whether any of the two up/down tiles at this pos are water. */
+ bool ClassicMapGenerator::is_water_tile(MapPos pos) const {
+-  return tiles[pos].type_down <= Map::TerrainWater3 &&
+-    tiles[pos].type_up <= Map::TerrainWater3;
++  return t_down[pos] <= Map::TerrainWater3 &&
++    t_up[pos] <= Map::TerrainWater3;
+ }
+ 
+ /* Whether the position is completely surrounded by water. */
+ bool ClassicMapGenerator::is_in_water(MapPos pos) const {
+   return (is_water_tile(pos) &&
+           is_water_tile(map.move_up_left(pos)) &&
+-          tiles[map.move_left(pos)].type_down <= Map::TerrainWater3 &&
+-          tiles[map.move_up(pos)].type_up <= Map::TerrainWater3);
++          t_down[map.move_left(pos)] <= Map::TerrainWater3 &&
++          t_up[map.move_up(pos)] <= Map::TerrainWater3);
+ }
+ 
+ /* Profiling (the Amiga port's mapgentest): when mapgen_ms is set, the
+    milliseconds of each phase of generate() add up in mapgen_phase. */
+ unsigned long (*mapgen_ms)() = nullptr;
+ unsigned long mapgen_phase[16];
++/* The progress of generate() for the start box (map-generator.h): the
++   percent done after each phase, weighed by their times on a large map
++   (mapgentest, MAPSIZE 8: heights 1.2 s, water 1.5 s, islands 1.05 s,
++   deserts 1.3 s, the others 0.05-0.35 s). */
++void (*mapgen_progress)(int percent) = nullptr;
++LandscapeCache landscape_cache;
++static const unsigned char kPhaseDone[13] = {
++  1, 19, 42, 44, 47, 63, 65, 67, 69, 89, 94, 98, 100
++};
+ #define MG_T(i) do { \
+     if (mapgen_ms) { \
+       unsigned long n_ = mapgen_ms(); \
+       mapgen_phase[i] += n_ - mg_last; \
+       mg_last = n_; \
+     } \
++    if (mapgen_progress) mapgen_progress(kPhaseDone[i]); \
+   } while (0)
+ 
+ void ClassicMapGenerator::generate() {
+@@ -134,7 +167,7 @@ ClassicMapGenerator::init_heights_squares() {
+   for (unsigned int y = 0; y < map.get_rows(); y += 16) {
+     for (unsigned int x = 0; x < map.get_cols(); x += 16) {
+       int rndl = random_int() & 0xff;
+-      tiles[map.pos(x, y)].height = std::min(rndl, 250);
++      t_height[map.pos(x, y)] = std::min(rndl, 250);
+     }
+   }
+ }
+@@ -172,11 +205,11 @@ ClassicMapGenerator::init_heights_midpoints() {
+     for (unsigned int y = 0; y < map.get_rows(); y += 2*i) {
+       for (unsigned int x = 0; x < map.get_cols(); x += 2*i) {
+         MapPos pos_ = map.pos(x, y);
+-        int h = tiles[pos_].height;
++        int h = t_height[pos_];
+ 
+         MapPos pos_r = map.move_right_n(pos_, 2*i);
+         MapPos pos_mid_r = map.move_right_n(pos_, i);
+-        int h_r = tiles[pos_r].height;
++        int h_r = t_height[pos_r];
+ 
+         if (preserve_bugs) {
+           /* The intention was probably just to set h_r to the map height value,
+@@ -185,17 +218,17 @@ ClassicMapGenerator::init_heights_midpoints() {
+           if (x == 0 && y == 0 && i == 8) h_r |= rndl & 0xff00;
+         }
+ 
+-        tiles[pos_mid_r].height = calc_height_displacement((h + h_r)/2, r1, r2);
++        t_height[pos_mid_r] = calc_height_displacement((h + h_r)/2, r1, r2);
+ 
+         MapPos pos_d = map.move_down_n(pos_, 2*i);
+         MapPos pos_mid_d = map.move_down_n(pos_, i);
+-        int h_d = tiles[pos_d].height;
+-        tiles[pos_mid_d].height = calc_height_displacement((h+h_d)/2, r1, r2);
++        int h_d = t_height[pos_d];
++        t_height[pos_mid_d] = calc_height_displacement((h+h_d)/2, r1, r2);
+ 
+         MapPos pos_dr = map.move_right_n(map.move_down_n(pos_, 2*i), 2*i);
+         MapPos pos_mid_dr = map.move_right_n(map.move_down_n(pos_, i), i);
+-        int h_dr = tiles[pos_dr].height;
+-        tiles[pos_mid_dr].height = calc_height_displacement((h+h_dr)/2, r1, r2);
++        int h_dr = t_height[pos_dr];
++        t_height[pos_mid_dr] = calc_height_displacement((h+h_dr)/2, r1, r2);
+       }
+     }
+ 
+@@ -230,20 +263,20 @@ ClassicMapGenerator::init_heights_diamond_square() {
+     for (unsigned int y = 0; y < map.get_rows(); y += 2*i) {
+       for (unsigned int x = 0; x < map.get_cols(); x += 2*i) {
+         MapPos pos_ = map.pos(x, y);
+-        int h = tiles[pos_].height;
++        int h = t_height[pos_];
+ 
+         MapPos pos_r = map.move_right_n(pos_, 2*i);
+-        int h_r = tiles[pos_r].height;
++        int h_r = t_height[pos_r];
+ 
+         MapPos pos_d = map.move_down_n(pos_, 2*i);
+-        int h_d = tiles[pos_d].height;
++        int h_d = t_height[pos_d];
+ 
+         MapPos pos_dr = map.move_right_n(map.move_down_n(pos_, 2*i), 2*i);
+-        int h_dr = tiles[pos_dr].height;
++        int h_dr = t_height[pos_dr];
+ 
+         MapPos pos_mid_dr = map.move_right_n(map.move_down_n(pos_, i), i);
+         int avg = (h + h_r + h_d + h_dr) / 4;
+-        tiles[pos_mid_dr].height = calc_height_displacement(avg, r1, r2);
++        t_height[pos_mid_dr] = calc_height_displacement(avg, r1, r2);
+       }
+     }
+ 
+@@ -251,30 +284,30 @@ ClassicMapGenerator::init_heights_diamond_square() {
+     for (unsigned int y = 0; y < map.get_rows(); y += 2*i) {
+       for (unsigned int x = 0; x < map.get_cols(); x += 2*i) {
+         MapPos pos_ = map.pos(x, y);
+-        int h = tiles[pos_].height;
++        int h = t_height[pos_];
+ 
+         MapPos pos_r = map.move_right_n(pos_, 2*i);
+-        int h_r = tiles[pos_r].height;
++        int h_r = t_height[pos_r];
+ 
+         MapPos pos_d = map.move_down_n(pos_, 2*i);
+-        int h_d = tiles[pos_d].height;
++        int h_d = t_height[pos_d];
+ 
+         MapPos pos_ur = map.move_right_n(map.move_down_n(pos_, -i), i);
+-        int h_ur = tiles[pos_ur].height;
++        int h_ur = t_height[pos_ur];
+ 
+         MapPos pos_dr = map.move_right_n(map.move_down_n(pos_, i), i);
+-        int h_dr = tiles[pos_dr].height;
++        int h_dr = t_height[pos_dr];
+ 
+         MapPos pos_dl = map.move_right_n(map.move_down_n(pos_, i), -i);
+-        int h_dl = tiles[pos_dl].height;
++        int h_dl = t_height[pos_dl];
+ 
+         MapPos pos_mid_r = map.move_right_n(pos_, i);
+         int avg_r = (h + h_r + h_ur + h_dr) / 4;
+-        tiles[pos_mid_r].height = calc_height_displacement(avg_r, r1, r2);
++        t_height[pos_mid_r] = calc_height_displacement(avg_r, r1, r2);
+ 
+         MapPos pos_mid_d = map.move_down_n(pos_, i);
+         int avg_d = (h + h_d + h_dl + h_dr) / 4;
+-        tiles[pos_mid_d].height = calc_height_displacement(avg_d, r1, r2);
++        t_height[pos_mid_d] = calc_height_displacement(avg_d, r1, r2);
+       }
+     }
+ 
+@@ -286,7 +319,7 @@ ClassicMapGenerator::init_heights_diamond_square() {
+ bool
+ ClassicMapGenerator::adjust_map_height(int h1, int h2, MapPos pos) {
+   if (abs(h1 - h2) > 32) {
+-    tiles[pos].height = h1 + ((h1 < h2) ? 32 : -32);
++    t_height[pos] = h1 + ((h1 < h2) ? 32 : -32);
+     return true;
+   }
+ 
+@@ -300,18 +333,18 @@ ClassicMapGenerator::clamp_heights() {
+   while (changed) {
+     changed = false;
+     for (MapPos pos_ : map.geom()) {
+-      int h = tiles[pos_].height;
++      int h = t_height[pos_];
+ 
+       MapPos pos_d = map.move_down(pos_);
+-      int h_d = tiles[pos_d].height;
++      int h_d = t_height[pos_d];
+       changed |= adjust_map_height(h, h_d, pos_d);
+ 
+       MapPos pos_dr = map.move_down_right(pos_);
+-      int h_dr = tiles[pos_dr].height;
++      int h_dr = t_height[pos_dr];
+       changed |= adjust_map_height(h, h_dr, pos_dr);
+ 
+       MapPos pos_r = map.move_right(pos_);
+-      int h_r = tiles[pos_r].height;
++      int h_r = t_height[pos_r];
+       changed |= adjust_map_height(h, h_r, pos_r);
+     }
+   }
+@@ -331,7 +364,7 @@ ClassicMapGenerator::expand_water_position(MapPos pos_) {
+ 
+   for (Direction d : cycle_directions_cw()) {
+     MapPos new_pos = map.move(pos_, d);
+-    unsigned int height = tiles[new_pos].height;
++    unsigned int height = t_height[new_pos];
+     if (water_level < height && height < 254) {
+       return false;
+     } else if (height == 255) {
+@@ -340,11 +373,11 @@ ClassicMapGenerator::expand_water_position(MapPos pos_) {
+   }
+ 
+   if (expanding) {
+-    tiles[pos_].height = 255;
++    t_height[pos_] = 255;
+ 
+     for (Direction d : cycle_directions_cw()) {
+       MapPos new_pos = map.move(pos_, d);
+-      if (tiles[new_pos].height != 255) tiles[new_pos].height = 254;
++      if (t_height[new_pos] != 255) t_height[new_pos] = 254;
+     }
+   }
+ 
+@@ -360,19 +393,19 @@ ClassicMapGenerator::expand_water_body(MapPos pos) {
+   // Check whether it is possible to expand from this position.
+   for (Direction d : cycle_directions_cw()) {
+     MapPos new_pos = map.move(pos, d);
+-    if (tiles[new_pos].height > water_level) {
++    if (t_height[new_pos] > water_level) {
+       // Expanding water from this position was not possible. Just raise the
+       // height to one above sea level.
+-      tiles[pos].height = 0;
++      t_height[pos] = 0;
+       return;
+     }
+   }
+ 
+   // Initialize expansion
+-  tiles[pos].height = 255;
++  t_height[pos] = 255;
+   for (Direction d : cycle_directions_cw()) {
+     MapPos new_pos = map.move(pos, d);
+-    tiles[new_pos].height = 254;
++    t_height[new_pos] = 254;
+   }
+ 
+   // Expand water until we are unable to expand any more or until the max
+@@ -395,13 +428,13 @@ ClassicMapGenerator::expand_water_body(MapPos pos) {
+   // when expanding another lake, this area will look like an elevated plateau
+   // at heights 252/253 and the other lake will not be able to expand into this
+   // area. This keeps water bodies from growing larger than the max lake area.
+-  tiles[pos].height -= 2;
++  t_height[pos] -= 2;
+ 
+   for (unsigned int i = 0; i < max_lake_area + 1; i++) {
+     MapPos new_pos = map.move_right_n(pos, i+1);
+     for (Direction d : cycle_directions_cw(DirectionDown)) {
+       for (unsigned int j = 0; j <= i; j++) {
+-        if (tiles[new_pos].height > 253) tiles[new_pos].height -= 2;
++        if (t_height[new_pos] > 253) t_height[new_pos] -= 2;
+         new_pos = map.move(new_pos, d);
+       }
+     }
+@@ -419,7 +452,7 @@ void
+ ClassicMapGenerator::create_water_bodies() {
+   for (unsigned int h = 0; h <= water_level; h++) {
+     for (MapPos pos_ : map.geom()) {
+-      if (tiles[pos_].height == h) {
++      if (t_height[pos_] == h) {
+         expand_water_body(pos_);
+       }
+     }
+@@ -430,18 +463,18 @@ ClassicMapGenerator::create_water_bodies() {
+   // 252: Land at water level.
+   // 253: Water.
+   for (MapPos pos_ : map.geom()) {
+-    int h = tiles[pos_].height;
++    int h = t_height[pos_];
+     switch (h) {
+       case 0:
+-        tiles[pos_].height = water_level + 1;
++        t_height[pos_] = water_level + 1;
+         break;
+       case 252:
+-        tiles[pos_].height = water_level;
++        t_height[pos_] = water_level;
+         break;
+       case 253:
+-        tiles[pos_].height = water_level - 1;
+-        tiles[pos_].mineral = Map::MineralsNone;
+-        tiles[pos_].resource_amount = random_int() & 7; /* Fish */
++        t_height[pos_] = water_level - 1;
++        t_mineral[pos_] = Map::MineralsNone;
++        t_res[pos_] = random_int() & 7; /* Fish */
+         break;
+     }
+   }
+@@ -453,7 +486,7 @@ ClassicMapGenerator::heights_rebase() {
+   int h = water_level - 1;
+ 
+   for (MapPos pos : map.geom()) {
+-    tiles[pos].height -= h;
++    t_height[pos] -= h;
+   }
+ }
+ 
+@@ -473,12 +506,12 @@ calc_map_type(int h_sum) {
+ void
+ ClassicMapGenerator::init_types() {
+   for (MapPos pos_ : map.geom()) {
+-    int h1 = tiles[pos_].height;
+-    int h2 = tiles[map.move_right(pos_)].height;
+-    int h3 = tiles[map.move_down_right(pos_)].height;
+-    int h4 = tiles[map.move_down(pos_)].height;
+-    tiles[pos_].type_up = calc_map_type(h1 + h3 + h4);
+-    tiles[pos_].type_down = calc_map_type(h1 + h2 + h3);
++    int h1 = t_height[pos_];
++    int h2 = t_height[map.move_right(pos_)];
++    int h3 = t_height[map.move_down_right(pos_)];
++    int h4 = t_height[map.move_down(pos_)];
++    t_up[pos_] = calc_map_type(h1 + h3 + h4);
++    t_down[pos_] = calc_map_type(h1 + h2 + h3);
+   }
+ }
+ 
+@@ -510,7 +543,7 @@ ClassicMapGenerator::remove_islands() {
+   clear_all_tags();
+ 
+   for (MapPos pos_ : map.geom()) {
+-    if (tiles[pos_].height > 0 && tags[pos_] == 0) {
++    if (t_height[pos_] > 0 && tags[pos_] == 0) {
+       tags[pos_] = 1;
+ 
+       unsigned int num = 0;
+@@ -528,25 +561,25 @@ ClassicMapGenerator::remove_islands() {
+         // The i'th flag will indicate whether a path on land from
+         // pos_in direction i is possible.
+         int flags = 0;
+-        if (tiles[pos_].type_down >= Map::TerrainGrass0) {
++        if (t_down[pos_] >= Map::TerrainGrass0) {
+           flags |= 3;
+         }
+-        if (tiles[pos_].type_up >= Map::TerrainGrass0) {
++        if (t_up[pos_] >= Map::TerrainGrass0) {
+           flags |= 6;
+         }
+-        if (tiles[map.move_left(pos_)].type_down >=
++        if (t_down[map.move_left(pos_)] >=
+             Map::TerrainGrass0) {
+           flags |= 0xc;
+         }
+-        if (tiles[map.move_up_left(pos_)].type_up >=
++        if (t_up[map.move_up_left(pos_)] >=
+             Map::TerrainGrass0) {
+           flags |= 0x18;
+         }
+-        if (tiles[map.move_up_left(pos_)].type_down >=
++        if (t_down[map.move_up_left(pos_)] >=
+             Map::TerrainGrass0) {
+           flags |= 0x30;
+         }
+-        if (tiles[map.move_up(pos_)].type_up >= Map::TerrainGrass0) {
++        if (t_up[map.move_up(pos_)] >= Map::TerrainGrass0) {
+           flags |= 0x21;
+         }
+ 
+@@ -569,15 +602,15 @@ ClassicMapGenerator::remove_islands() {
+ 
+   // Change every position that was not tagged (i.e. tag is 0) to water.
+   for (MapPos pos_ : map.geom()) {
+-    if (tiles[pos_].height > 0 && tags[pos_] == 0) {
+-      tiles[pos_].height = 0;
+-      tiles[pos_].type_up = Map::TerrainWater0;
+-      tiles[pos_].type_up = Map::TerrainWater0;
+-
+-      tiles[map.move_left(pos_)].type_down = Map::TerrainWater0;
+-      tiles[map.move_up_left(pos_)].type_up = Map::TerrainWater0;
+-      tiles[map.move_up_left(pos_)].type_down = Map::TerrainWater0;
+-      tiles[map.move_up(pos_)].type_up = Map::TerrainWater0;
++    if (t_height[pos_] > 0 && tags[pos_] == 0) {
++      t_height[pos_] = 0;
++      t_up[pos_] = Map::TerrainWater0;
++      t_up[pos_] = Map::TerrainWater0;
++
++      t_down[map.move_left(pos_)] = Map::TerrainWater0;
++      t_up[map.move_up_left(pos_)] = Map::TerrainWater0;
++      t_down[map.move_up_left(pos_)] = Map::TerrainWater0;
++      t_up[map.move_up(pos_)] = Map::TerrainWater0;
+     }
+   }
+ }
+@@ -586,7 +619,7 @@ ClassicMapGenerator::remove_islands() {
+ void
+ ClassicMapGenerator::heights_rescale() {
+   for (MapPos pos_ : map.geom()) {
+-    tiles[pos_].height = (tiles[pos_].height + 6) >> 3;
++    t_height[pos_] = (t_height[pos_] + 6) >> 3;
+   }
+ }
+ 
+@@ -608,20 +641,20 @@ ClassicMapGenerator::seed_terrain_type(Map::Terrain old, Map::Terrain seed,
+        \  /\  /\  /
+         \/__\/__\/
+     */
+-    if (tiles[pos_].type_up == old &&
+-        (seed == tiles[map.move_up_left(pos_)].type_down ||
+-         seed == tiles[map.move_up_left(pos_)].type_up ||
+-         seed == tiles[map.move_up(pos_)].type_up ||
+-         seed == tiles[map.move_left(pos_)].type_down ||
+-         seed == tiles[map.move_left(pos_)].type_up ||
+-         seed == tiles[pos_].type_down ||
+-         seed == tiles[map.move_right(pos_)].type_up ||
+-         seed == tiles[map.move_left(map.move_down(pos_))].type_down ||
+-         seed == tiles[map.move_down(pos_)].type_down ||
+-         seed == tiles[map.move_down(pos_)].type_up ||
+-         seed == tiles[map.move_down_right(pos_)].type_down ||
+-         seed == tiles[map.move_down_right(pos_)].type_up)) {
+-      tiles[pos_].type_up = new_;
++    if (t_up[pos_] == old &&
++        (seed == t_down[map.move_up_left(pos_)] ||
++         seed == t_up[map.move_up_left(pos_)] ||
++         seed == t_up[map.move_up(pos_)] ||
++         seed == t_down[map.move_left(pos_)] ||
++         seed == t_up[map.move_left(pos_)] ||
++         seed == t_down[pos_] ||
++         seed == t_up[map.move_right(pos_)] ||
++         seed == t_down[map.move_left(map.move_down(pos_))] ||
++         seed == t_down[map.move_down(pos_)] ||
++         seed == t_up[map.move_down(pos_)] ||
++         seed == t_down[map.move_down_right(pos_)] ||
++         seed == t_up[map.move_down_right(pos_)])) {
++      t_up[pos_] = new_;
+     }
+ 
+     /* Check that the central triangle is of type old (o), and that any
+@@ -634,20 +667,20 @@ ClassicMapGenerator::seed_terrain_type(Map::Terrain old, Map::Terrain seed,
+          \  /\  /
+           \/__\/
+     */
+-    if (tiles[pos_].type_down == old &&
+-        (seed == tiles[map.move_up_left(pos_)].type_down ||
+-         seed == tiles[map.move_up_left(pos_)].type_up ||
+-         seed == tiles[map.move_up(pos_)].type_down ||
+-         seed == tiles[map.move_up(pos_)].type_up ||
+-         seed == tiles[map.move_right(map.move_up(pos_))].type_up ||
+-         seed == tiles[map.move_left(pos_)].type_down ||
+-         seed == tiles[pos_].type_up ||
+-         seed == tiles[map.move_right(pos_)].type_down ||
+-         seed == tiles[map.move_right(pos_)].type_up ||
+-         seed == tiles[map.move_down(pos_)].type_down ||
+-         seed == tiles[map.move_down_right(pos_)].type_down ||
+-         seed == tiles[map.move_down_right(pos_)].type_up)) {
+-      tiles[pos_].type_down = new_;
++    if (t_down[pos_] == old &&
++        (seed == t_down[map.move_up_left(pos_)] ||
++         seed == t_up[map.move_up_left(pos_)] ||
++         seed == t_down[map.move_up(pos_)] ||
++         seed == t_up[map.move_up(pos_)] ||
++         seed == t_up[map.move_right(map.move_up(pos_))] ||
++         seed == t_down[map.move_left(pos_)] ||
++         seed == t_up[pos_] ||
++         seed == t_down[map.move_right(pos_)] ||
++         seed == t_up[map.move_right(pos_)] ||
++         seed == t_down[map.move_down(pos_)] ||
++         seed == t_down[map.move_down_right(pos_)] ||
++         seed == t_up[map.move_down_right(pos_)])) {
++      t_down[pos_] = new_;
+     }
+   }
+ }
+@@ -692,8 +725,8 @@ ClassicMapGenerator::change_shore_grass_type() {
+ //
+ bool
+ ClassicMapGenerator::check_desert_down_triangle(MapPos pos_) {
+-  Map::Terrain type_d = tiles[pos_].type_down;
+-  Map::Terrain type_u = tiles[pos_].type_up;
++  Map::Terrain type_d = t_down[pos_];
++  Map::Terrain type_u = t_up[pos_];
+ 
+   if (type_d != Map::TerrainGrass1 && type_d != Map::TerrainDesert2) {
+     return false;
+@@ -702,12 +735,12 @@ ClassicMapGenerator::check_desert_down_triangle(MapPos pos_) {
+     return false;
+   }
+ 
+-  type_d = tiles[map.move_left(pos_)].type_down;
++  type_d = t_down[map.move_left(pos_)];
+   if (type_d != Map::TerrainGrass1 && type_d != Map::TerrainDesert2) {
+     return false;
+   }
+ 
+-  type_d = tiles[map.move_down(pos_)].type_down;
++  type_d = t_down[map.move_down(pos_)];
+   if (type_d != Map::TerrainGrass1 && type_d != Map::TerrainDesert2) {
+     return false;
+   }
+@@ -728,8 +761,8 @@ ClassicMapGenerator::check_desert_down_triangle(MapPos pos_) {
+ */
+ bool
+ ClassicMapGenerator::check_desert_up_triangle(MapPos pos_) {
+-  Map::Terrain type_d = tiles[pos_].type_down;
+-  Map::Terrain type_u = tiles[pos_].type_up;
++  Map::Terrain type_d = t_down[pos_];
++  Map::Terrain type_u = t_up[pos_];
+ 
+   if (type_d != Map::TerrainGrass1 && type_d != Map::TerrainDesert2) {
+     return false;
+@@ -738,12 +771,12 @@ ClassicMapGenerator::check_desert_up_triangle(MapPos pos_) {
+     return false;
+   }
+ 
+-  type_u = tiles[map.move_right(pos_)].type_up;
++  type_u = t_up[map.move_right(pos_)];
+   if (type_u != Map::TerrainGrass1 && type_u != Map::TerrainDesert2) {
+     return false;
+   }
+ 
+-  type_u = tiles[map.move_up(pos_)].type_up;
++  type_u = t_up[map.move_up(pos_)];
+   if (type_u != Map::TerrainGrass1 && type_u != Map::TerrainDesert2) {
+     return false;
+   }
+@@ -763,17 +796,17 @@ ClassicMapGenerator::create_deserts() {
+     for (int try_ = 0; try_ < 200; try_++) {
+       MapPos rnd_pos = map.get_rnd_coord(NULL, NULL, &rnd);
+ 
+-      if (tiles[rnd_pos].type_up == Map::TerrainGrass1 &&
+-          tiles[rnd_pos].type_down == Map::TerrainGrass1) {
++      if (t_up[rnd_pos] == Map::TerrainGrass1 &&
++          t_down[rnd_pos] == Map::TerrainGrass1) {
+         for (int index = spiral - 1; index >= 0; index--) {
+           MapPos pos = map.pos_add_spirally(rnd_pos, index);
+ 
+           if (check_desert_down_triangle(pos)) {
+-            tiles[pos].type_up = Map::TerrainDesert2;
++            t_up[pos] = Map::TerrainDesert2;
+           }
+ 
+           if (check_desert_up_triangle(pos)) {
+-            tiles[pos].type_down = Map::TerrainDesert2;
++            t_down[pos] = Map::TerrainDesert2;
+           }
+         }
+         break;
+@@ -794,14 +827,14 @@ ClassicMapGenerator::create_deserts() {
+   // TerrainGrass1. This reduces the size of the desert areas to the core
+   // that was made up of TerrainDesert2.
+   for (MapPos pos_ : map.geom()) {
+-    int type_d = tiles[pos_].type_down;
+-    int type_u = tiles[pos_].type_up;
++    int type_d = t_down[pos_];
++    int type_u = t_up[pos_];
+ 
+     if (type_d >= Map::TerrainGrass3 && type_d <= Map::TerrainDesert1) {
+-      tiles[pos_].type_down = Map::TerrainGrass1;
++      t_down[pos_] = Map::TerrainGrass1;
+     }
+     if (type_u >= Map::TerrainGrass3 && type_u <= Map::TerrainDesert1) {
+-      tiles[pos_].type_up = Map::TerrainGrass1;
++      t_up[pos_] = Map::TerrainGrass1;
+     }
+   }
+ 
+@@ -819,15 +852,15 @@ ClassicMapGenerator::create_deserts() {
+ void
+ ClassicMapGenerator::create_crosses() {
+   for (MapPos pos_ : map.geom()) {
+-    unsigned int h = tiles[pos_].height;
++    unsigned int h = t_height[pos_];
+     if (h >= 26 &&
+-        h >= tiles[map.move_right(pos_)].height &&
+-        h >= tiles[map.move_down_right(pos_)].height &&
+-        h >= tiles[map.move_down(pos_)].height &&
+-        h > tiles[map.move_left(pos_)].height &&
+-        h > tiles[map.move_up_left(pos_)].height &&
+-        h > tiles[map.move_up(pos_)].height) {
+-      tiles[pos_].obj = Map::ObjectCross;
++        h >= t_height[map.move_right(pos_)] &&
++        h >= t_height[map.move_down_right(pos_)] &&
++        h >= t_height[map.move_down(pos_)] &&
++        h > t_height[map.move_left(pos_)] &&
++        h > t_height[map.move_up_left(pos_)] &&
++        h > t_height[map.move_up(pos_)]) {
++      t_obj[pos_] = Map::ObjectCross;
+     }
+   }
+ }
+@@ -845,26 +878,26 @@ ClassicMapGenerator::create_crosses() {
+ bool
+ ClassicMapGenerator::hexagon_types_in_range(MapPos pos_, Map::Terrain min,
+                                             Map::Terrain max) {
+-  Map::Terrain type_d = tiles[pos_].type_down;
+-  Map::Terrain type_u = tiles[pos_].type_up;
++  Map::Terrain type_d = t_down[pos_];
++  Map::Terrain type_u = t_up[pos_];
+ 
+   if (type_d < min || type_d > max) return false;
+   if (type_u < min || type_u > max) return false;
+ 
+-  type_d = tiles[map.move_left(pos_)].type_down;
++  type_d = t_down[map.move_left(pos_)];
+   if (type_d < min || type_d > max) return false;
+ 
+-  type_d = tiles[map.move_up_left(pos_)].type_down;
+-  type_u = tiles[map.move_up_left(pos_)].type_up;
++  type_d = t_down[map.move_up_left(pos_)];
++  type_u = t_up[map.move_up_left(pos_)];
+   if (type_d < min || type_d > max) return false;
+   if (type_u < min || type_u > max) return false;
+ 
+   /* Should be checkeing the up tri type. */
+   if (preserve_bugs) {
+-    type_d = tiles[map.move_up(pos_)].type_down;
++    type_d = t_down[map.move_up(pos_)];
+     if (type_d < min || type_d > max) return false;
+   } else {
+-    type_u = tiles[map.move_up(pos_)].type_up;
++    type_u = t_up[map.move_up(pos_)];
+     if (type_u < min || type_u > max) return false;
+   }
+ 
+@@ -902,13 +935,13 @@ ClassicMapGenerator::create_random_object_clusters(
+         for (int j = 0; j < objs_in_cluster; j++) {
+           MapPos pos_ = pos_add_spirally_random(rnd_pos, pos_mask);
+           if (hexagon_types_in_range(pos_, type_min, type_max) &&
+-              tiles[pos_].obj == Map::ObjectNone) {
++              t_obj[pos_] == Map::ObjectNone) {
+             Map::Object obj = static_cast<Map::Object>(
+               (random_int() & obj_mask) + obj_base);
+             kept += percent;
+             if (kept >= 100) {
+               kept -= 100;
+-              tiles[pos_].obj = obj;
++              t_obj[pos_] = obj;
+             }
+           }
+         }
+@@ -1009,10 +1042,10 @@ ClassicMapGenerator::expand_mineral_cluster(
+     MapPos pos = map.pos_add_spirally(init_pos, *index);
+     *index += 1;
+ 
+-    if (tiles[pos].mineral == Map::MineralsNone ||
+-        tiles[pos].resource_amount < amount) {
+-      tiles[pos].mineral = type;
+-      tiles[pos].resource_amount = amount;
++    if (t_mineral[pos] == Map::MineralsNone ||
++        t_res[pos] < amount) {
++      t_mineral[pos] = type;
++      t_res[pos] = amount;
+     }
+   }
+ }
+@@ -1076,7 +1109,7 @@ ClassicMapGenerator::clean_up() {
+      any impassable objects. This also clears water obstacles
+      except in certain positions near the shore. */
+   for (MapPos pos_ : map.geom()) {
+-    if (Map::map_space_from_obj[tiles[pos_].obj] >= Map::SpaceImpassable) {
++    if (Map::map_space_from_obj[t_obj[pos_]] >= Map::SpaceImpassable) {
+       // Due to a quirk in the original game the three adjacent positions
+       // were not checked directly whether they were impassable but instead
+       // another flag was used to mark the position impassable. This flag
+@@ -1088,7 +1121,7 @@ ClassicMapGenerator::clean_up() {
+       // 2) y == 0 && (d == DirectionUp || d == DirectionUpLeft)
+       for (Direction d : cycle_directions_cw(DirectionLeft, 3)) {
+         MapPos other_pos = map.move(pos_, d);
+-        Map::Space s = Map::map_space_from_obj[tiles[other_pos].obj];
++        Map::Space s = Map::map_space_from_obj[t_obj[other_pos]];
+ 
+         bool check_impassable = false;
+         if (!(map.pos_col(pos_) == 0 && d == DirectionLeft) &&
+@@ -1098,7 +1131,7 @@ ClassicMapGenerator::clean_up() {
+         }
+ 
+         if (is_in_water(other_pos) || check_impassable) {
+-          tiles[pos_].obj = Map::ObjectNone;
++          t_obj[pos_] = Map::ObjectNone;
+           break;
+         }
+       }
+diff --git a/src/map-generator.h b/src/map-generator.h
+index ac94139..23da1bb 100644
+--- a/src/map-generator.h
++++ b/src/map-generator.h
+@@ -22,6 +22,7 @@
+ #ifndef SRC_MAP_GENERATOR_H_
+ #define SRC_MAP_GENERATOR_H_
+ 
++#include <string>
+ #include <memory>
+ #include <vector>
+ 
+@@ -71,25 +72,35 @@ class ClassicMapGenerator : public MapGenerator {
+   void set_dead_tree_percent(unsigned int percent) {
+     dead_tree_percent = percent; }
+ 
+-  int get_height(MapPos pos) const { return tiles[pos].height; }
++  int get_height(MapPos pos) const { return t_height[pos]; }
+   Map::Terrain get_type_up(MapPos pos) const {
+-    return tiles[pos].type_up; }
++    return t_up[pos]; }
+   Map::Terrain get_type_down(MapPos pos) const {
+-    return tiles[pos].type_down; }
+-  Map::Object get_obj(MapPos pos) const { return tiles[pos].obj; }
++    return t_down[pos]; }
++  Map::Object get_obj(MapPos pos) const { return t_obj[pos]; }
+   Map::Minerals get_resource_type(MapPos pos) const {
+-    return tiles[pos].mineral; }
++    return t_mineral[pos]; }
+   int get_resource_amount(MapPos pos) const {
+-    return tiles[pos].resource_amount; }
+-  virtual const std::vector<Map::LandscapeTile> &get_landscape() const {
+-    return tiles; }
++    return t_res[pos]; }
++  virtual const std::vector<Map::LandscapeTile> &get_landscape() const;
+ 
+  protected:
+   const Map &map;
+   Random rnd;
+ 
+-  std::vector<Map::LandscapeTile> tiles;
+-  std::vector<int> tags;
++  /* The fields of the tiles each in an array of its own (Amiga port):
++     the passes over the map read one or two of them over three rows,
++     which then fit the 8 KB data cache of a 68060 (a whole tile per
++     place filled it with what the pass does not read). get_landscape()
++     puts the tiles together. */
++  std::vector<uint8_t> t_height;
++  std::vector<Map::Terrain> t_up;
++  std::vector<Map::Terrain> t_down;
++  std::vector<Map::Minerals> t_mineral;
++  std::vector<int16_t> t_res;
++  std::vector<Map::Object> t_obj;
++  mutable std::vector<Map::LandscapeTile> tiles;
++  std::vector<uint8_t> tags;
+   HeightGenerator height_generator;
+   bool preserve_bugs;
+ 
+@@ -157,4 +168,20 @@ class ClassicMissionMapGenerator : public ClassicMapGenerator {
+   void init();
+ };
+ 
++/* Called after each phase of ClassicMapGenerator::generate() with the
++   percent done (0-100), when set: the start box shows it while a large
++   map is made. */
++extern void (*mapgen_progress)(int percent);
++
++/* The map of the start box preview (game-init.cc) and what it was made
++   from: a new game with the same values takes it (Game::init) instead of
++   making the same map a second time - half the wait for a large map. */
++struct LandscapeCache {
++  std::shared_ptr<Map> map;
++  unsigned int size = 0;
++  std::string random;
++  unsigned int sand = 0, rocks = 0, dead_trees = 0;
++};
++extern LandscapeCache landscape_cache;
++
+ #endif  // SRC_MAP_GENERATOR_H_
+diff --git a/src/map-geometry.h b/src/map-geometry.h
+index 0d75aa6..1bdce9b 100644
+--- a/src/map-geometry.h
++++ b/src/map-geometry.h
+@@ -146,15 +146,22 @@ class DirectionCycle {
+ };
+ 
+ // Specialize for clockwise cycle
++/* Without a division (two for counter-clockwise; a 68060 takes about 40
++   cycles each, in every loop over the directions of the game): the same
++   directions in the same order. */
+ template<> inline
+ Direction DirectionCycle<Cycle::CW>::Iterator::operator*() const {
+-  return static_cast<Direction>((cycle.start + offset) % 6);
++  int d = static_cast<int>(cycle.start) + offset;
++  while (d >= 6) d -= 6;
++  return static_cast<Direction>(d);
+ }
+ 
+ // Specialize for counter-clockwise cycle
+ template<> inline
+ Direction DirectionCycle<Cycle::CCW>::Iterator::operator*() const {
+-  return static_cast<Direction>(((cycle.start - offset) % 6 + 6) % 6);
++  int d = static_cast<int>(cycle.start) - offset;
++  while (d < 0) d += 6;
++  return static_cast<Direction>(d);
+ }
+ 
+ // Convenience function to create clockwise direction cycle.
+diff --git a/src/map.h b/src/map.h
+index 526d17e..aad67eb 100644
+--- a/src/map.h
++++ b/src/map.h
+@@ -22,6 +22,7 @@
+ #ifndef SRC_MAP_H_
+ #define SRC_MAP_H_
+ 
++#include <cstdint>
+ #include <list>
+ #include <memory>
+ #include <utility>
+@@ -79,7 +80,9 @@ class MapGenerator;
+ //    the new tile data into the Map.
+ class Map {
+  public:
+-  typedef enum Object {
++  /* One byte (fixed type, C++11): the landscape tiles are small, so the
++     map generator and the game read less memory (Amiga port). */
++  typedef enum Object : uint8_t {
+     ObjectNone = 0,
+     ObjectFlag,
+     ObjectSmallBuilding,
+@@ -186,7 +189,7 @@ class Map {
+     Object127
+   } Object;
+ 
+-  typedef enum Minerals {
++  typedef enum Minerals : uint8_t {
+     MineralsNone = 0,
+     MineralsGold,
+     MineralsIron,
+@@ -208,7 +211,7 @@ class Map {
+     SpaceImpassable,
+   } Space;
+ 
+-  typedef enum {
++  typedef enum : uint8_t {
+     TerrainWater0 = 0,
+     TerrainWater1,
+     TerrainWater2,
+@@ -237,12 +240,13 @@ class Map {
+   };
+ 
+   typedef struct LandscapeTile {
+-    // Landscape filds
+-    unsigned int height;
++    // Landscape filds (8 bytes a tile on the Amiga instead of 24: the
++    // generator of a large map reads and writes them many times)
++    uint8_t height;     /* 0-31 in the game, up to 255 in the generator */
+     Terrain type_up;
+     Terrain type_down;
+     Minerals mineral;
+-    int resource_amount;
++    int16_t resource_amount;
+     // Mingled fields
+     Object obj;
+ 
+@@ -445,6 +449,8 @@ class Map {
+   unsigned int get_gold_deposit() const;
+ 
+   void init_tiles(const MapGenerator &generator);
++  /* The landscape of another map of the same size (a map already made). */
++  void init_tiles(const Map &other) { landscape_tiles = other.landscape_tiles; }
+ 
+   void update(unsigned int tick, Random *rnd);
+   const UpdateState& get_update_state() const { return update_state; }
+diff --git a/src/objects.h b/src/objects.h
+index 0bb3677..c0c6c16 100644
+--- a/src/objects.h
++++ b/src/objects.h
+@@ -155,6 +155,15 @@ class Collection {
+     return object;
+   }
+ 
++  /* The indexes of the objects, in order, from the table of pointers
++     alone: an object is at the position of its index, so its memory is not
++     read (a 68060 waited for each of thousands of serfs here). */
++  void get_indexes(std::vector<unsigned int> *out) const {
++    out->clear();
++    for (size_t i = 0; i < objects.size(); i++) {
++      if (objects[i] != nullptr) out->push_back(static_cast<unsigned int>(i));
++    }
++  }
+   T* operator[] (unsigned int index) {
+     if (index >= objects.size()) {
+       return nullptr;
+diff --git a/src/player.cc b/src/player.cc
+index 47a110a..0be1f6f 100644
+--- a/src/player.cc
++++ b/src/player.cc
+@@ -228,15 +228,15 @@ Player::init_passive(Color _color) {
+ /* Initialize AI parameters. */
+ void
+ Player::init_ai_values(size_t face_) {
+-  const int ai_values_0[] = { 13, 10, 16, 9, 10, 8, 6, 10, 12, 5, 8 };
+-  const int ai_values_1[] = { 10000, 13000, 16000, 16000, 18000, 20000,
++  static const int ai_values_0[] = { 13, 10, 16, 9, 10, 8, 6, 10, 12, 5, 8 };
++  static const int ai_values_1[] = { 10000, 13000, 16000, 16000, 18000, 20000,
+                               19000, 18000, 30000, 23000, 26000 };
+-  const int ai_values_2[] = { 10000, 35000, 20000, 27000, 37000, 25000,
++  static const int ai_values_2[] = { 10000, 35000, 20000, 27000, 37000, 25000,
+                               40000, 30000, 50000, 35000, 40000 };
+-  const int ai_values_3[] = { 0, 36, 0, 31, 8, 480, 3, 16, 0, 193, 39 };
+-  const int ai_values_4[] = { 0, 30000, 5000, 40000, 50000, 20000, 45000,
++  static const int ai_values_3[] = { 0, 36, 0, 31, 8, 480, 3, 16, 0, 193, 39 };
++  static const int ai_values_4[] = { 0, 30000, 5000, 40000, 50000, 20000, 45000,
+                               35000, 65000, 25000, 30000 };
+-  const int ai_values_5[] = { 60000, 61000, 60000, 65400, 63000, 62000,
++  static const int ai_values_5[] = { 60000, 61000, 60000, 65400, 63000, 62000,
+                               65000, 63000, 64000, 64000, 64000 };
+ 
+   ai_value_0 = ai_values_0[face_ - 1];
+@@ -442,9 +442,9 @@ Player::promote_serfs_to_knights(int number) {
+ 
+ int
+ Player::available_knights_at_pos(MapPos pos, int index_, int dist) {
+-  const int min_level_hut[] = { 1, 1, 2, 2, 3 };
+-  const int min_level_tower[] = { 1, 2, 3, 4, 6 };
+-  const int min_level_fortress[] = { 1, 3, 6, 9, 12 };
++  static const int min_level_hut[] = { 1, 1, 2, 2, 3 };
++  static const int min_level_tower[] = { 1, 2, 3, 4, 6 };
++  static const int min_level_fortress[] = { 1, 3, 6, 9, 12 };
+ 
+   PMap map = game->get_map();
+   if (map->get_owner(pos) != index ||
+@@ -539,9 +539,9 @@ Player::knights_available_for_attack(MapPos pos) {
+ 
+ void
+ Player::start_attack() {
+-  const int min_level_hut[] = { 1, 1, 2, 2, 3 };
+-  const int min_level_tower[] = { 1, 2, 3, 4, 6 };
+-  const int min_level_fortress[] = { 1, 3, 6, 9, 12 };
++  static const int min_level_hut[] = { 1, 1, 2, 2, 3 };
++  static const int min_level_tower[] = { 1, 2, 3, 4, 6 };
++  static const int min_level_fortress[] = { 1, 3, 6, 9, 12 };
+ 
+   Building *target = game->get_building(building_attacked);
+   if (!target->is_done() || !target->is_military() ||
+@@ -1322,7 +1322,7 @@ Player::get_food_for_building(unsigned int bld_type) const {
+ 
+ SaveReaderBinary&
+ operator >> (SaveReaderBinary &reader, Player &player)  {
+-  const Player::Color default_player_colors[] = {
++  static const Player::Color default_player_colors[] = {
+     {0x00, 0xe3, 0xe3},
+     {0xcf, 0x63, 0x63},
+     {0xdf, 0x7f, 0xef},
+diff --git a/src/serf.cc b/src/serf.cc
+index acf7f83..910f585 100644
+--- a/src/serf.cc
++++ b/src/serf.cc
+@@ -884,7 +884,7 @@ Serf::set_lost_state() {
+    or DirectionNone if the desired direction cannot be determined. */
+ bool
+ Serf::is_waiting(Direction *dir) {
+-  const Direction dir_from_offset[] = {
++  static const Direction dir_from_offset[] = {
+     DirectionUpLeft, DirectionUp,   DirectionNone,
+     DirectionLeft,   DirectionNone, DirectionRight,
+     DirectionNone,   DirectionDown, DirectionDownRight
+@@ -1962,7 +1962,7 @@ Serf::handle_serf_ready_to_leave_state() {
+ 
+ void
+ Serf::handle_serf_digging_state() {
+-  const int h_diff[] = {
++  static const int h_diff[] = {
+     -1, 1, -2, 2, -3, 3, -4, 4,
+     -5, 5, -6, 6, -7, 7, -8, 8
+   };
+@@ -2114,7 +2114,7 @@ Serf::handle_serf_digging_state() {
+ 
+ void
+ Serf::handle_serf_building_state() {
+-  const int material_order[] = {
++  static const int material_order[] = {
+     0, 0, 0, 0, 0, 4, 0, 0,
+     0, 0, 0x38, 2, 8, 2, 8, 4,
+     4, 0xc, 0x14, 0x2c, 2, 0x1c, 0x1f0, 4,
+@@ -2729,14 +2729,14 @@ Serf::can_pass_map_pos(MapPos test_pos) {
+ 
+ int
+ Serf::handle_free_walking_follow_edge() {
+-  const Direction dir_from_offset[] = {
++  static const Direction dir_from_offset[] = {
+     DirectionUpLeft, DirectionUp,   DirectionNone,
+     DirectionLeft,   DirectionNone, DirectionRight,
+     DirectionNone,   DirectionDown, DirectionDownRight
+   };
+ 
+   /* Follow right-hand edge */
+-  const Direction dir_right_edge[] = {
++  static const Direction dir_right_edge[] = {
+     DirectionDown, DirectionDownRight, DirectionRight, DirectionUp,
+     DirectionUpLeft, DirectionLeft, DirectionLeft, DirectionDown,
+     DirectionDownRight, DirectionRight, DirectionUp, DirectionUpLeft,
+@@ -2749,7 +2749,7 @@ Serf::handle_free_walking_follow_edge() {
+   };
+ 
+   /* Follow left-hand edge */
+-  const Direction dir_left_edge[] = {
++  static const Direction dir_left_edge[] = {
+     DirectionUpLeft, DirectionUp, DirectionRight, DirectionDownRight,
+     DirectionDown, DirectionLeft, DirectionUp, DirectionRight,
+     DirectionDownRight, DirectionDown, DirectionLeft, DirectionUpLeft,
+@@ -2854,7 +2854,7 @@ Serf::handle_free_walking_follow_edge() {
+ 
+ void
+ Serf::handle_free_walking_common() {
+-  const Direction dir_from_offset[] = {
++  static const Direction dir_from_offset[] = {
+     DirectionUpLeft, DirectionUp,   DirectionNone,
+     DirectionLeft,   DirectionNone, DirectionRight,
+     DirectionNone,   DirectionDown, DirectionDownRight
+@@ -2878,7 +2878,7 @@ Serf::handle_free_walking_common() {
+      *    5             8
+      *         6    7
+      */
+-  const Direction dir_forward[] = {
++  static const Direction dir_forward[] = {
+     DirectionUp, DirectionUpLeft, DirectionRight, DirectionLeft,
+     DirectionDownRight, DirectionDown, DirectionUpLeft, DirectionUp,
+     DirectionLeft, DirectionRight, DirectionDown, DirectionDownRight,
+@@ -3648,7 +3648,7 @@ Serf::handle_serf_mining_state() {
+           map->remove_ground_deposit(dest, 1);
+ 
+           /* Hand resource to miner. */
+-          const Resource::Type res_from_mine_type[] = {
++          static const Resource::Type res_from_mine_type[] = {
+             Resource::TypeGoldOre, Resource::TypeIronOre,
+             Resource::TypeCoal, Resource::TypeStone
+           };
+@@ -4025,7 +4025,7 @@ void
+ Serf::handle_serf_pigfarming_state() {
+   /* When the serf is present there is also at least one
+      pig present and at most eight. */
+-  const int breeding_prob[] = {
++  static const int breeding_prob[] = {
+     6000, 8000, 10000, 11000, 12000, 13000, 14000, 0
+   };
+ 
+@@ -4538,7 +4538,7 @@ Serf::handle_serf_knight_prepare_defending_state() {
+ 
+ void
+ Serf::handle_knight_attacking() {
+-  const int moves[] =  {
++  static const int moves[] = {
+     1, 2, 4, 2, 0, 2, 4, 2, 1, 0, 2, 2, 3, 0, 0, -1,
+     3, 2, 2, 3, 0, 4, 1, 3, 2, 4, 2, 2, 3, 0, 0, -1,
+     2, 1, 4, 3, 2, 2, 2, 3, 0, 3, 1, 2, 0, 2, 0, -1,
+@@ -4549,7 +4549,7 @@ Serf::handle_knight_attacking() {
+     0, 0, 1, 4, 3, 2, 2, 1, 2, 0, 0, 4, 3, 0, -1
+   };
+ 
+-  const int fight_anim[] = {
++  static const int fight_anim[] = {
+     24, 35, 41, 56, 67, 72, 83, 89, 100, 121, 0, 0, 0, 0, 0, 0,
+     26, 40, 42, 57, 73, 74, 88, 104, 106, 120, 122, 0, 0, 0, 0, 0,
+     17, 18, 23, 33, 34, 38, 39, 98, 102, 103, 113, 114, 118, 119, 0, 0,
+@@ -4557,7 +4557,7 @@ Serf::handle_knight_attacking() {
+     50, 52, 53, 70, 129, 131, 132, 146, 149, 151, 0, 0, 0, 0, 0, 0
+   };
+ 
+-  const int fight_anim_max[] = { 10, 11, 14, 11, 10 };
++  static const int fight_anim_max[] = { 10, 11, 14, 11, 10 };
+ 
+   Serf *def_serf = game->get_serf(s.attacking.def_index);
+ 
+@@ -5178,25 +5178,25 @@ Serf::handle_serf_defending_state(const int training_params[]) {
+ 
+ void
+ Serf::handle_serf_defending_hut_state() {
+-  const int training_params[] = { 250, 125, 62, 31 };
++  static const int training_params[] = { 250, 125, 62, 31 };
+   handle_serf_defending_state(training_params);
+ }
+ 
+ void
+ Serf::handle_serf_defending_tower_state() {
+-  const int training_params[] = { 1000, 500, 250, 125 };
++  static const int training_params[] = { 1000, 500, 250, 125 };
+   handle_serf_defending_state(training_params);
+ }
+ 
+ void
+ Serf::handle_serf_defending_fortress_state() {
+-  const int training_params[] = { 2000, 1000, 500, 250 };
++  static const int training_params[] = { 2000, 1000, 500, 250 };
+   handle_serf_defending_state(training_params);
+ }
+ 
+ void
+ Serf::handle_serf_defending_castle_state() {
+-  const int training_params[] = { 4000, 2000, 1000, 500 };
++  static const int training_params[] = { 4000, 2000, 1000, 500 };
+   handle_serf_defending_state(training_params);
+ }
+ 
+diff --git a/src/serf.h b/src/serf.h
+index 2aa8513..a6d9514 100644
+--- a/src/serf.h
++++ b/src/serf.h
+@@ -276,7 +276,9 @@ class Serf : public GameObject {
+     struct {
+       unsigned int substate; /* B */
+       int res; /* D */
+-      Map::Minerals deposit; /* E */
++      /* Map::Minerals as an int: the state is saved as raw ints
++         (state.raw), a one-byte enum left three bytes of rubbish. */
++      int deposit; /* E */
+     } mining;
+ 
+     /* type: Type of smelter (0 is steel, else gold). */
+-- 
+2.45.2.windows.1
+

@@ -6,6 +6,25 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.126 (7.11.2026, beta release)
+-------------------------------
+
+- Large games much faster: the game logic (buildings, flags, serfs) runs
+  several times faster - about 30 frames a second on a 68060 in a game
+  with about 2500 serfs.
+- Options -> Video -> Large games: when a large game is too much for the
+  CPU - Smooth (the smoothest picture), Balanced (default), Full speed
+  (the fastest game).
+- Start menu: a percentage and a progress bar while a map is made; maps
+  already made (new game, mission, tutorial) show at once when switching;
+  START does not make the map a second time; maps are made about twice
+  as fast.
+- Options -> Amiga: the CPU clock in steps of 1 MHz (MC68060 rev. 6,
+  50-100 MHz); without the WarpTool program the box shows the Warp card
+  from the list of boards.
+- LAN game: both sides need version 0.126.
+
+
 0.125 (7.11.2026, beta release)
 -------------------------------
 

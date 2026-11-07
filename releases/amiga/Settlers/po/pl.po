@@ -52,6 +52,15 @@ msgstr "Muzyka"
 msgid "Language"
 msgstr "Język"
 
+msgid "Smooth"
+msgstr "Płynnie"
+
+msgid "Full speed"
+msgstr "Pełne tempo"
+
+msgid "Balanced"
+msgstr "Pośrodku"
+
 msgid "Fast mapclick"
 msgstr "Szybka mapa"
 
@@ -99,6 +108,12 @@ msgstr "Ożywianie pustkowi"
 
 msgid "Foresters plant on sand first, the sand around a new tree turns to grass for good. Lumberjacks fell dead trees first (no lumber), stonecutters break the brown boulders (no stone). New games and the game now; in a LAN game the server's setting counts."
 msgstr "Leśnicy sadzą najpierw na piasku, piasek wokół nowego drzewa na stałe zmienia się w trawę. Drwale najpierw ścinają suche drzewa (bez drewna), kamieniarze rozbijają brązowe skały (bez kamienia). Nowe gry i bieżąca gra; w grze LAN liczy się ustawienie serwera."
+
+msgid "Large games"
+msgstr "Duże gry"
+
+msgid "When a large game is too much for the CPU: Smooth - one game step a frame, the smoothest picture, the game slower; Balanced - steps for about a frame of time; Full speed - up to five steps a frame, the game fastest, fewer frames. Small games run at full speed anyway."
+msgstr "Gdy duża gra przerasta procesor: Płynnie - jeden krok gry na klatkę, najpłynniejszy obraz, gra wolniejsza; Pośrodku - kroki przez mniej więcej czas klatki; Pełne tempo - do pięciu kroków na klatkę, gra najszybsza, mniej klatek. Małe gry i tak idą w pełnym tempie."
 
 msgid "Sound output"
 msgstr "Wyjście dźwięku"
@@ -159,6 +174,9 @@ msgstr "%u% normy"
 
 msgid "Making the map"
 msgstr "Tworzę mapę"
+
+msgid "Starting the game"
+msgstr "Uruchamiam grę"
 
 msgid "The map is chosen"
 msgstr "Mapę wybiera się"
@@ -847,11 +865,14 @@ msgctxt "ground analysis"
 msgid "Perfect"
 msgstr "Doskonale"
 
-msgid "not found."
-msgstr "nie znaleziono."
-
 msgid "Accelerator"
 msgstr "Akcelerator"
+
+msgid "WarpTool not found:"
+msgstr "Brak programu WarpTool:"
+
+msgid "no CPU clock, no firmware."
+msgstr "bez zegara CPU i firmware."
 
 msgid "Firmware"
 msgstr "Firmware"
@@ -865,8 +886,8 @@ msgstr "Wyższy zegar to podkręcanie"
 msgid "the CPU - the system may hang."
 msgstr "CPU - system może się zawiesić."
 
-msgid "MC68040: 20 to 50 MHz."
-msgstr "MC68040: od 20 do 50 MHz."
+msgid "MC68060 rev. 6: 50-100 MHz."
+msgstr "MC68060 rev. 6: 50-100 MHz."
 
 msgid "Only for a MC68060 rev. 6."
 msgstr "Tylko dla MC68060 rev. 6."
@@ -886,6 +907,6 @@ msgstr "nie"
 msgid "Card memory"
 msgstr "Pamięć karty"
 
-msgid "No Warp: SYS:C/WarpTool"
-msgstr "Brak Warpa: SYS:C/WarpTool"
+msgid "No Warp found."
+msgstr "Nie znaleziono Warpa."
 

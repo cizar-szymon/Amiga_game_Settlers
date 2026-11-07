@@ -33,6 +33,7 @@ OPCJE (Shell i Tool Types)
   VIEW=kol,wiersz  (z LOAD=) widok mapy w tym miejscu po wczytaniu -
                    wiersz "view" raportu F10 (RAM:Settlers-state.txt)
   NOSOUND          bez dzwieku
+  (test)           SetEnv SETTLERS_NOWARPTOOL 1 - okno Amiga jak bez WarpTool
   SFXAREA=WxH|ALL  dzwieki mapy z obszaru WxH wokol srodka widoku (domyslnie
                    320x200) albo z calego (Viewport::hear_width/height)
   FPS              licznik klatek Freeserf (tez Options -> Advanced)

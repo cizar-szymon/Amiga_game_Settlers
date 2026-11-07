@@ -52,6 +52,15 @@ msgstr "Musik"
 msgid "Language"
 msgstr "Sprache"
 
+msgid "Smooth"
+msgstr "Flüssig"
+
+msgid "Full speed"
+msgstr "Volles Tempo"
+
+msgid "Balanced"
+msgstr "Ausgewogen"
+
 msgid "Fast mapclick"
 msgstr "Schnelle Karte"
 
@@ -99,6 +108,12 @@ msgstr "Ödland urbar machen"
 
 msgid "Foresters plant on sand first, the sand around a new tree turns to grass for good. Lumberjacks fell dead trees first (no lumber), stonecutters break the brown boulders (no stone). New games and the game now; in a LAN game the server's setting counts."
 msgstr "Förster pflanzen zuerst auf Sand, der Sand um einen neuen Baum wird für immer zu Gras. Holzfäller fällen zuerst tote Bäume (ohne Holz), Steinmetze zerschlagen die braunen Felsen (ohne Stein). Neue Spiele und das laufende Spiel; im LAN-Spiel zählt die Einstellung des Servers."
+
+msgid "Large games"
+msgstr "GroSSe Spiele"
+
+msgid "When a large game is too much for the CPU: Smooth - one game step a frame, the smoothest picture, the game slower; Balanced - steps for about a frame of time; Full speed - up to five steps a frame, the game fastest, fewer frames. Small games run at full speed anyway."
+msgstr "Wenn ein groSSes Spiel die CPU überfordert: Flüssig - ein Spielschritt pro Bild, das flüssigste Bild, das Spiel langsamer; Ausgewogen - Schritte für etwa die Zeit eines Bildes; Volles Tempo - bis zu fünf Schritte pro Bild, das Spiel am schnellsten, weniger Bilder. Kleine Spiele laufen ohnehin mit vollem Tempo."
 
 msgid "Sound output"
 msgstr "Tonausgabe"
@@ -159,6 +174,9 @@ msgstr "%u% von normal"
 
 msgid "Making the map"
 msgstr "Erstelle Karte"
+
+msgid "Starting the game"
+msgstr "Starte das Spiel"
 
 msgid "The map is chosen"
 msgstr "Die Karte wird"
@@ -847,11 +865,14 @@ msgctxt "ground analysis"
 msgid "Perfect"
 msgstr "Perfekt"
 
-msgid "not found."
-msgstr "nicht gefunden."
-
 msgid "Accelerator"
 msgstr "Turbokarte"
+
+msgid "WarpTool not found:"
+msgstr "WarpTool nicht gefunden:"
+
+msgid "no CPU clock, no firmware."
+msgstr "kein CPU-Takt, keine Firmware."
 
 msgid "Firmware"
 msgstr "Firmware"
@@ -865,8 +886,8 @@ msgstr "Höherer Takt übertaktet"
 msgid "the CPU - the system may hang."
 msgstr "die CPU - System kann hängen."
 
-msgid "MC68040: 20 to 50 MHz."
-msgstr "MC68040: 20 bis 50 MHz."
+msgid "MC68060 rev. 6: 50-100 MHz."
+msgstr "MC68060 Rev. 6: 50-100 MHz."
 
 msgid "Only for a MC68060 rev. 6."
 msgstr "Nur für MC68060 Rev. 6."
@@ -886,6 +907,6 @@ msgstr "nein"
 msgid "Card memory"
 msgstr "Kartenram"
 
-msgid "No Warp: SYS:C/WarpTool"
-msgstr "Kein Warp: SYS:C/WarpTool"
+msgid "No Warp found."
+msgstr "Kein Warp gefunden."
 

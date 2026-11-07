@@ -37,13 +37,11 @@ AmigaBox::AmigaBox(Interface *_interface)
 void
 AmigaBox::clock_range(int *low, int *high, int *step) const {
   *low = *high = *step = 0;
-  if (info.is_68060) {
+  /* Only a MC68060 rev. 6: 50 to 100 MHz in steps of 1 MHz. Other
+     processors (an older 68060, a 68040): no change of the clock. */
+  if (info.is_68060 && info.cpu_rev >= 6) {
     *low = 50;
-    *high = (info.cpu_rev >= 6) ? 100 : start_mhz;
-    *step = 10;
-  } else if (is_68040) {
-    *low = 20;
-    *high = 50;
+    *high = 100;
     *step = 1;
   }
 }
@@ -95,10 +93,22 @@ AmigaBox::internal_draw() {
 
   y += kRowHeight / 2;
   if (!info.warp) {
-    frame->draw_string(kLabelX, y, _("No Warp: SYS:C/WarpTool"), Color::green,
+    frame->draw_string(kLabelX, y, _("No Warp found."), Color::green,
                        Color::black);
-    frame->draw_string(kLabelX, y + kRowHeight, _("not found."), Color::green,
+  } else if (info.warp == 2) {
+    /* A Warp among the expansion boards, no WarpTool: no clock. */
+    frame->draw_string(kLabelX, y, _("Accelerator"), Color::green, Color::black);
+    frame->draw_string(kValueX, y, info.warp_model, Color::green,
                        Color::black);
+    y += kRowHeight + kRowHeight / 2;
+    const std::string lines[] = {  /* at most 31 characters */
+      _("WarpTool not found:"),
+      _("no CPU clock, no firmware.")
+    };
+    for (const std::string &line : lines) {
+      frame->draw_string(kLabelX, y, line, Color::green, Color::black);
+      y += kRowHeight;
+    }
   } else {
     frame->draw_string(kLabelX, y, _("Accelerator"), Color::green, Color::black);
     frame->draw_string(kValueX, y, info.warp_model, Color::green,
@@ -127,7 +137,8 @@ AmigaBox::internal_draw() {
     const std::string warning[] = {  /* at most 31 characters */
       _("Raising the clock overclocks"),
       _("the CPU - the system may hang."),
-      is_68040 ? _("MC68040: 20 to 50 MHz.") : _("Only for a MC68060 rev. 6."),
+      step != 0 ? _("MC68060 rev. 6: 50-100 MHz.")
+                : _("Only for a MC68060 rev. 6."),
       _("The clock changes at once.")
     };
     for (const std::string &line : warning) {

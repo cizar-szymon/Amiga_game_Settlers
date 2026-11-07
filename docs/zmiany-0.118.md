@@ -153,3 +153,18 @@ Wydane na prośbę użytkownika (łatka Freeserf `0050`); potwierdzone przez uż
 | 11 | Volume działa (było puste `apply()`), kroki 10, 0–100 | ✅ |
 | 12 | Music, Sound effects, Volume w Audio + osobna głośność muzyki i efektów | ✅ |
 | 13 | Tryb 640×512 (320×256 nie – okna gry się nie mieszczą) | ⏳ do potwierdzenia |
+
+## 0.126 (7.11.2026)
+
+Łatka Freeserf `0057`. Logika sprawdzana porównaniem zapisów stara/nowa wersja (zapis 20-last 1000 kroków, gra AI 30 000 kroków, mapy).
+
+| Nr | Zmiana | Stan |
+|---|---|---|
+| 1 | Okno Amiga: WarpTool w kilku miejscach, bez niego Warp z listy kart (`expansion.library`) | ⏳ |
+| 2 | Zegar CPU co 1 MHz tylko dla MC68060 rev. 6 | ⏳ |
+| 3 | Postęp tworzenia mapy w menu (procent, pasek), mapa liczona przy widocznym menu | ✅ (start programu) |
+| 4 | Mapy: start bierze mapę podglądu; pole mapy 8 B; generator w osobnych tablicach | ✅ zgodne |
+| 5–8 | Logika dużej gry: test magazynów przed szukaniem, części sieci dróg, kolejka szukania, nadrabianie kroków przez czas klatki | ✅ zgodne |
+| 9 | Options → Video → Large games (Smooth / Balanced / Full speed) | ⏳ |
+| 10–11 | Logika: kierunki bez dzielenia, postacie czytane raz, mniejsza flaga, stałe tablice `static const` | ✅ zgodne; 20-last 35 → 10,9 ms/krok, 4,5 → 30 kl./s |
+| 12 | Podglądy map zapamiętane przy przełączaniu typu gry | ⏳ |

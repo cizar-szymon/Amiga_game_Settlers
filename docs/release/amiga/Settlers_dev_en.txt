@@ -32,6 +32,8 @@ OPTIONS (Shell and Tool Types)
   LOAD=file        load a Freeserf save
   VIEW=col,row     (with LOAD=) the map view at that place after loading -
                    the "view" line of the F10 report (RAM:Settlers-state.txt)
+  (test)           SetEnv SETTLERS_NOWARPTOOL 1 - the Amiga box as without
+                   WarpTool
   NOSOUND          no sound
   SFXAREA=WxH|ALL  map sounds from a WxH area around the centre of the view
                    (default 320x200) or from all of it

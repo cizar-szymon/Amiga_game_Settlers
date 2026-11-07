@@ -20,7 +20,8 @@ typedef struct AmigaInfo {
   unsigned long chip_kb, fast_kb;
   char board[40];          /* the Picasso96 board, "" if none */
   unsigned long vram_kb;
-  int warp;                /* SYS:C/WarpTool answered */
+  int warp;                /* 1: WarpTool answered; 2: a Warp among the
+                              expansion boards, no WarpTool */
   char warp_model[24];
   char warp_firmware[16];
   int warp_mhz;            /* the CPU clock it reports, 0 if unknown */

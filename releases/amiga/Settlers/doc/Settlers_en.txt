@@ -117,9 +117,12 @@ Options:
              640x512, 800x600; 16:9: 640x360, 960x540; it is kept for the next
              start
 Options -> Amiga:
-  about the Amiga; with a Warp accelerator the CPU clock: MC68060 50-100
-  MHz in steps of 10 (raising only on a rev. 6 - overclocking, may hang
-  the system), MC68040 20-50 MHz in steps of 1
+  about the Amiga; with a Warp accelerator the CPU clock: only a MC68060
+  rev. 6, 50-100 MHz in steps of 1 MHz (raising it overclocks, may hang
+  the system); other processors without a change of the clock. The model, firmware and
+  clock come from WarpTool (SYS:C, C: or SYS:Tools ...); without it the
+  box only shows that a Warp card is there (from the list of boards, as
+  ShowConfig), without the clock.
 Options -> Advanced:
   Invert scrolling, Large numbers, Autosave, Stock box until occupied,
   Show FPS (frame counter in the corner),
@@ -138,6 +141,11 @@ Options -> Video:
     lumberjacks fell dead trees too (first, no lumber from them),
     stonecutters break the brown boulders (no stone); new games and the
     game now, in a LAN game the server's)
+  Large games: when a large game is too much for the CPU - Smooth (one
+    game step a frame: the smoothest picture, the game slower), Balanced
+    (default: steps for about a frame of time), Full speed (up to five
+    steps a frame: the game fastest, fewer frames). Small games run at
+    full speed anyway.
 Options -> Audio:
   Sound output: Paula (the sound chip of the Amiga, audio.device, 8 bits)
     or AHI (ahi.device, 16 bits: a sound card, the sound of a Warp card -

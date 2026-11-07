@@ -30,7 +30,11 @@ class EventLoopAmiga : public EventLoop {
   /* More lines of the F10 report (main: where the map view is). */
   std::function<std::string()> state_info;
 
+  virtual void draw_now();
+
  protected:
+  /* The screen of run(), for draw_now(). */
+  Frame *screen_frame = nullptr;
   std::list<DeferredCall> deferred_calls;
   bool running;
   unsigned int start_ms;
