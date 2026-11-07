@@ -1,0 +1,7 @@
+# Sampling profiler (PCSAMPLE, every 4 ms), share of all CPU time, game 20-last Full speed, Amiga 1
+version,mode,fps,logic_pct,draw_pct,update_serfs,flag_update,serf_update,draw_runs_pixels,draw_image,image_lookup
+0.128 mirror,640x360,21,52,41,16.1,6.5,4.7,16.8,5.6,6.6
+0.128,640x360,24.9,,,,,,21.7,7.6,8.6
+0.128,960x540,12.8,,,7.6,6.6,5.3,26.3,6.1,7.2
+0.129,960x540,14.1,,,,,,27.0,6.7,4.5
+0.129 asm,960x540,15.3,,,7.7,6.8,4.7,24.1,7.9,4.8

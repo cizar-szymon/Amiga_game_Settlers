@@ -177,3 +177,16 @@ Wydane na prośbę użytkownika (łatka Freeserf `0050`); potwierdzone przez uż
 |---|---|---|
 | 1 | Pauza: polecenia rozgrywki odrzucane (budowa, drogi, burzenie, geolog, atak, magazyny, rycerze, ustawienia) – `LanCommand::is_play`, także w LAN | ✅ |
 | 2 | Pauza: cała logika stoi (`Game::update` kończy się po liczniku klatek) – przeciwnik nic nie robi | ✅ |
+
+## 0.129 (7.11.2026)
+
+Gałąź `experimental-speed` (0.128 SPEED, 0.129 SPEED) scalona i wydana jako 0.129; łatki Freeserf `0059`, `0060`. Szczegóły: `PORTING.md`, „Gałąź experimental-speed”. Dane pomiarów: `docs/speed/`, raport PDF: `tools/speed_report.py`.
+
+| Nr | Zmiana | Stan |
+|---|---|---|
+| 1 | Pętla postaci po tablicy stanów, bez listy indeksów co krok | ✅ zgodne (zapisy, gra AI 30 000 kroków, `-V`) |
+| 2 | Tablica obrazków przed tablicą haszującą, skrót z całego id | ✅ obraz identyczny |
+| 3 | Sprite'y do VRAM: kopia bez pętli bajtowych, dekodowanie, asembler 68k, krótka ścieżka `draw_image` | ✅ obraz identyczny |
+| 4 | Profiler próbkujący `PCSAMPLE` / `simtest -S`, `tools/pcprof.py` | ✅ |
+| 5 | Rysowanie blokami 16×16 (`VIEWDRAW=BLOCKS`) – próba bez zysku, wyłączone | – |
+| | Wynik (20-last, Full speed): 640×360 23 → 37,9, 800×600 10,1 → 20,1, 960×540 9,6 → 18,2 kl./s; obraz 0.125 ↔ 0.129 identyczny (20 par zrzutów) | ✅ |

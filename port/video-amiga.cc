@@ -42,6 +42,11 @@ bool VideoAmiga::render_vram = true;
 bool VideoAmiga::lock_per_call = false;
 bool VideoAmiga::view_incremental = false;
 bool VideoAmiga::view_none = false;
+bool VideoAmiga::asm_runs = true;
+
+/* port/draw_runs_68k.c: draw_runs<true> in 68k assembly. */
+extern "C" void draw_runs_vram68k(uint8_t *d, int stride, const uint8_t *r,
+                                  int h, const uint8_t *shade);
 int VideoAmiga::view_kinds = 0xf;
 static uint32_t image_serial = 0;
 
@@ -109,6 +114,7 @@ VideoAmiga::VideoAmiga()
   , verify_errors(0)
   , frame_no(0)
   , scaled_frame(0)
+  , fast_images(false)
   , sig_on(false)
   , replaying(false)
   , sig_other_all(true)
@@ -144,6 +150,7 @@ VideoAmiga::VideoAmiga()
   }
   screen = create_frame(config_width, config_height);
   vram = render_vram && amiga_vram_open() == 0;
+  set_fast_images();
   if (vram) {
     /* Start from a cleared back bitmap, like the fast RAM frame. */
     for (unsigned int y = 0; y < screen->h; y++) {
@@ -395,6 +402,7 @@ VideoAmiga::apply_mode() {
   config_height = h;
 
   vram = render_vram && amiga_vram_open() == 0;
+  set_fast_images();
   if (vram) {
     for (unsigned int y = 0; y < screen->h; y++) {
       std::memset(row_ptr(screen, 0, y), kTransparent, screen->w);
@@ -578,6 +586,39 @@ blend_runs_row(uint8_t *d, const uint8_t *r, const uint8_t *shade) {
    switch per run cost more than the pixels (2026-10-25: ~11800 runs of
    ~7 pixels per frame). VRAM: writes with aligned longwords, a shade run
    read whole before it is written (see blend_runs_row_vram). */
+typedef uint16_t __attribute__((__may_alias__)) Word;
+
+/* A copy run of n pixels: a byte and a word up to a longword boundary,
+   longwords, a word and a byte - no loop by bytes (the runs average ~7
+   pixels; 0.129). Into VRAM the longwords are aligned (Warp RTG notes). */
+static inline void
+copy_span(uint8_t *p, const uint8_t *s, unsigned int n) {
+  if (n >= 4) {
+    if ((reinterpret_cast<uintptr_t>(p) & 1) != 0) {
+      *p++ = *s++;
+      n--;
+    }
+    if ((reinterpret_cast<uintptr_t>(p) & 2) != 0) {
+      *reinterpret_cast<Word *>(p) = *reinterpret_cast<const Word *>(s);
+      p += 2;
+      s += 2;
+      n -= 2;
+    }
+    while (n >= 4) {
+      put_long(p, get_long(s));
+      s += 4;
+      p += 4;
+      n -= 4;
+    }
+  }
+  if ((n & 2) != 0) {
+    *reinterpret_cast<Word *>(p) = *reinterpret_cast<const Word *>(s);
+    p += 2;
+    s += 2;
+  }
+  if ((n & 1) != 0) *p = *s;
+}
+
 template <bool kVram>
 static void
 draw_runs(uint8_t *d, int stride, const uint8_t *r, int h,
@@ -586,27 +627,20 @@ draw_runs(uint8_t *d, int stride, const uint8_t *r, int h,
     uint8_t *p = d;
     for (;;) {
       unsigned int code = *r++;
-      unsigned int n = (code & 0x3f) + 1;
       if (code < RunCopy) {           /* skip */
+        p += code + 1;
+        continue;
+      }
+      if (code < RunShade) {          /* copy */
+        unsigned int n = code - (RunCopy - 1);
+        copy_span(p, r, n);
         p += n;
-      } else if (code < RunShade) {   /* copy */
-        if (kVram) {
-          while (n > 0 && (reinterpret_cast<uintptr_t>(p) & 3) != 0) {
-            *p++ = *r++;
-            n--;
-          }
-        }
-        while (n >= 4) {
-          put_long(p, get_long(r));
-          r += 4;
-          p += 4;
-          n -= 4;
-        }
-        while (n > 0) {
-          *p++ = *r++;
-          n--;
-        }
-      } else if (code < RunEnd) {     /* shade */
+        r += n;
+        continue;
+      }
+      if (code >= RunEnd) break;      /* end of the row */
+      unsigned int n = code - (RunShade - 1);
+      {                               /* shade */
         if (kVram) {
           uint8_t *a = reinterpret_cast<uint8_t *>(
             reinterpret_cast<uintptr_t>(p) & ~uintptr_t(3));
@@ -625,8 +659,6 @@ draw_runs(uint8_t *d, int stride, const uint8_t *r, int h,
             n--;
           }
         }
-      } else {
-        break;                        /* end of the row */
       }
     }
   }
@@ -650,23 +682,7 @@ draw_runs_clip(uint8_t *d, const uint8_t *r, int x0, int w,
       if (lo < hi) {
         uint8_t *p = d + (lo - x0);
         const uint8_t *s = r + (lo - px);
-        int m = hi - lo;
-        if (kVram) {
-          while (m > 0 && (reinterpret_cast<uintptr_t>(p) & 3) != 0) {
-            *p++ = *s++;
-            m--;
-          }
-        }
-        while (m >= 4) {
-          put_long(p, get_long(s));
-          s += 4;
-          p += 4;
-          m -= 4;
-        }
-        while (m > 0) {
-          *p++ = *s++;
-          m--;
-        }
+        copy_span(p, s, static_cast<unsigned int>(hi - lo));
       }
       r += n;
     } else if (lo < hi) {             /* shade */
@@ -907,6 +923,28 @@ clip(int *x, int *y, int *w, int *h, int *sx, int *sy,
 void
 VideoAmiga::draw_image(const Video::Image *image, int x, int y, int y_offset,
                        Video::Frame *dest) {
+  if (fast_images && dest == screen && x >= 0 &&
+      x + static_cast<int>(image->w) <= static_cast<int>(dest->w) &&
+      touched.empty()) {
+    /* The usual case, the short way: the same as below without the test
+       modes - cut only at the top and bottom, drawn from the runs. */
+    int h = static_cast<int>(image->h) - y_offset;
+    int sy = y_offset;
+    int yy = y + y_offset;
+    if (yy < 0) {
+      sy -= yy;
+      h += yy;
+      yy = 0;
+    }
+    if (yy + h > static_cast<int>(dest->h)) h = dest->h - yy;
+    if (h <= 0) return;
+    touch(dest);
+    uint8_t *d = row_ptr(dest, x, yy);
+    if (vram_base != nullptr) {
+      draw_runs_vram68k(d, vram_bpr, image->runs + image->rows[sy], h, shade);
+      return;
+    }
+  }
   if (vram && verify && dest == screen && !to_fast && !replaying) {
     to_fast = true;
     draw_image(image, x, y, y_offset, dest);
@@ -969,7 +1007,9 @@ VideoAmiga::draw_image(const Video::Image *image, int x, int y, int y_offset,
   if (sx == 0 && w == static_cast<int>(image->w)) {
     /* Not cut at the sides: from the runs. */
     if (!verify) {
-      if (in_vram(dest)) {
+      if (in_vram(dest) && asm_runs) {
+        draw_runs_vram68k(d, stride, image->runs + image->rows[sy], h, shade);
+      } else if (in_vram(dest)) {
         draw_runs<true>(d, stride, image->runs + image->rows[sy], h, shade);
       } else {
         draw_runs<false>(d, stride, image->runs + image->rows[sy], h, shade);

@@ -6,6 +6,17 @@ and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
 the F10 key when the bug happens.
 
 
+0.129 (7.11.2026, beta release)
+-------------------------------
+
+- Large games faster still: the game logic and the drawing of the map
+  (partly in 68k assembly). A game with about 2500 serfs at the full
+  speed (Full speed, 50 steps a second): about 38 frames a second at
+  640x360, 20 at 800x600, 18 at 960x540 on a 68060.
+- The game and the picture are the same as in the earlier versions.
+- LAN game: both sides need version 0.129.
+
+
 0.127 (7.11.2026, beta release)
 -------------------------------
 

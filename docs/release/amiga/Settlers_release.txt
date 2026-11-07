@@ -6,6 +6,17 @@ i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
 zapisane klawiszem F10 w chwili bledu.
 
 
+0.129 (7.11.2026, wydanie beta)
+-------------------------------
+
+- Duze gry jeszcze szybsze: logika gry i rysowanie mapy (w czesci w
+  asemblerze 68k). Gra z ok. 2500 postaciami w pelnym tempie (Full
+  speed, 50 krokow na sekunde): ok. 38 klatek na sekunde w 640x360,
+  20 w 800x600, 18 w 960x540 na 68060.
+- Rozgrywka i obraz takie same jak w poprzednich wersjach.
+- Gra LAN: obie strony musza miec wersje 0.129.
+
+
 0.127 (7.11.2026, wydanie beta)
 -------------------------------
 

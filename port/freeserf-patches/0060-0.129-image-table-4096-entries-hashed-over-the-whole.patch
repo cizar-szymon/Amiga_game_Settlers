@@ -1,0 +1,96 @@
+From a3c1dd33e4141fff70125cd9cb0a19678def9c51 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sat, 7 Nov 2026 22:24:04 +0100
+Subject: [PATCH] 0.129: image table 4096 entries hashed over the whole id (a
+ tree and its shadow no longer push each other out), lookup inline; wild boar
+ test without a division
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7U35RuKvTQMs84jNJEFhT
+---
+ src/gfx.cc      |  3 +--
+ src/gfx.h       | 18 ++++++++++++++----
+ src/viewport.cc |  5 ++++-
+ 3 files changed, 19 insertions(+), 7 deletions(-)
+
+diff --git a/src/gfx.cc b/src/gfx.cc
+index aad6242..9a0f1cb 100644
+--- a/src/gfx.cc
++++ b/src/gfx.cc
+@@ -116,11 +116,10 @@ Image::cache_image(uint64_t id, Image *image) {
+ 
+ /* Return a pointer to the sprite pointer associated with id. */
+ Image *
+-Image::get_cached_image(uint64_t id) {
++Image::get_cached_image_slow(uint64_t id) {
+   uint32_t hi = static_cast<uint32_t>(id >> 32);
+   uint32_t lo = static_cast<uint32_t>(id);
+   Front &f = front[front_slot(hi, lo)];
+-  if (f.image != nullptr && f.hi == hi && f.lo == lo) return f.image;
+   ImageCache::iterator result = image_cache.find(id);
+   if (result == image_cache.end()) {
+     return nullptr;
+diff --git a/src/gfx.h b/src/gfx.h
+index e7fd26a..1729bac 100644
+--- a/src/gfx.h
++++ b/src/gfx.h
+@@ -110,10 +110,13 @@ class Image {
+     uint32_t hi, lo;
+     Image *image;
+   };
+-  static const unsigned int kFront = 1024;
++  static const unsigned int kFront = 4096;
+   static Front front[kFront];
++  /* All of the id mixed (the resource too: a tree and its shadow have
++     the same index), the top 12 bits. */
+   static unsigned int front_slot(uint32_t hi, uint32_t lo) {
+-    return (hi ^ (hi >> 11) ^ lo ^ (lo >> 7) ^ (lo >> 15)) & (kFront - 1);
++    uint32_t x = (hi >> 12) * 0x9e3779b1u ^ lo * 0x85ebca6bu;
++    return (x ^ (x >> 15)) >> 20;
+   }
+ 
+  public:
+@@ -131,7 +134,14 @@ class Image {
+   void set_delta(int x, int y) { delta_x = x; delta_y = y; }
+ 
+   static void cache_image(uint64_t id, Image *image);
+-  static Image *get_cached_image(uint64_t id);
++  static Image *get_cached_image(uint64_t id) {
++    uint32_t hi = static_cast<uint32_t>(id >> 32);
++    uint32_t lo = static_cast<uint32_t>(id);
++    const Front &f = front[front_slot(hi, lo)];
++    if (f.image != nullptr && f.hi == hi && f.lo == lo) return f.image;
++    return get_cached_image_slow(id);
++  }
++  static Image *get_cached_image_slow(uint64_t id);
+   static void clear_cache();
+ 
+   Video::Image *get_video_image() const { return video_image; }
+@@ -213,7 +223,7 @@ class Frame {
+                         const Color &shadow);
+   /* A mark of a Polish or German letter (gfx.cc). */
+   void draw_mark(int x, int y, int mark, const Color &color,
+-                 const Color &shadow);
++                 const Color &shadow);
+   void draw_char_sprite(int x, int y, unsigned char c, const Color &color,
+                         const Color &shadow);
+   /* Draw a glyph of the font, returns its advance. */
+diff --git a/src/viewport.cc b/src/viewport.cc
+index 91d6bb0..48a6388 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -1382,7 +1382,10 @@ Viewport::draw_flag_and_res(MapPos pos, int lx, int ly) {
+ bool
+ Viewport::boar_at(MapPos pos) const {
+   uint32_t h = static_cast<uint32_t>(pos) * 2246822519u;
+-  if (((h >> 16) % 24) != 0) return false;
++  /* (h >> 16) % 24 == 0 without a division (one a place a frame): a
++     multiple of 8 and of 3 (v * 3^-1 mod 2^32 <= (2^32 - 1) / 3). */
++  uint32_t v = h >> 16;
++  if ((v & 7) != 0 || v * 0xaaaaaaabu > 0x55555555u) return false;
+   /* Not where people are at work: no road through it, and no building
+      (also one being built), flag or road next to it. */
+   if (map->paths(pos) != 0) return false;
+-- 
+2.45.2.windows.1
+

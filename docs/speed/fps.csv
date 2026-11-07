@@ -1,0 +1,39 @@
+# Settlers (Freeserf, Amiga port) - in-game measurements, save 20-last (2524 serfs, 371 flags, 193 buildings)
+# machine: Amiga 1 = A1200 + Warp 1260, 68060; STATS line averaged over 3 readings; Full speed unless noted
+# logic_ms_s / draw_ms_s: milliseconds of each second spent; steps_s: game logic steps per second (50 = full game speed)
+date,version,mode,large_games,fps,logic_ms_s,draw_ms_s,steps_s,note
+2026-11-07,0.125 TEST,user mode,(catch-up 5 steps),4.5,895,99,22,first run of the save (user report: 5 fps)
+2026-11-07,0.125 TEST+fix5,user mode,(catch-up 5 steps),5.4,866,128,27,inventory test before search
+2026-11-07,0.125 TEST+fix6,user mode,budget 20 ms,19,,,19,catch-up limited to one frame of time
+2026-11-07,0.125 TEST+fix7,user mode,budget 20 ms,20.5,,,20,inventory serf table / search queue pool
+2026-11-07,0.125 TEST+fix8,user mode,budget 20 ms,18,,,34,road network parts
+2026-11-07,0.125 TEST+fix10,user mode,budget 20 ms,19,,,38,direction cycles without division
+2026-11-07,0.125 TEST+fix11,user mode,Balanced,30,,,30,serfs read once, compact flags, static tables
+2026-11-07,0.127,640x360,Full speed,23.1,495,481,50,before experimental-speed (layer test none)
+2026-11-07,0.127 exp,640x360,Full speed (no objects),50.1,489,353,50,test: view without objects
+2026-11-07,0.127 exp,640x360,Full speed (no serfs),31.1,503,463,50,test: view without serfs
+2026-11-07,0.128 mirror,640x360,Full speed,21.4,498,480,50,serf_mirror (with signature counting)
+2026-11-07,0.128 loop,640x360,Full speed,25.0,438,535,50,serf loop over the table
+2026-11-07,0.128,640x360,Full speed,30.3,388,579,50,no sync after update + image lookup table
+2026-11-07,0.126,800x600,Full speed,10.1,587,400,49,
+2026-11-07,0.128,800x600,Full speed,15.9,387,589,50,
+2026-11-07,0.126,960x540,Full speed,9.6,558,426,48,
+2026-11-07,0.128,960x540,Full speed,14.1,397,580,50,
+2026-11-07,0.129 copy_span,640x360,Full speed,32.2,397,570,50,sprite copy runs without byte loops (picture identical)
+2026-11-07,0.129 copy_span,960x540,Full speed,14.5,401,577,50,
+2026-11-07,0.129 lookup,640x360,Full speed,32.4,399,570,50,image table 4096 + hash over the whole id
+2026-11-07,0.129 lookup,960x540,Full speed,15.4,399,577,50,
+2026-11-07,0.129 decode+boar,640x360,Full speed,33.7,400,570,50,run decode shorter; boar test without division
+2026-11-07,0.129 decode+boar,800x600,Full speed,17.7,398,578,49,
+2026-11-07,0.129 decode+boar,960x540,Full speed,16.1,400,576,50,
+2026-11-07,0.129 asm runs,640x360,Full speed,35.7,402,562,49,draw_runs in 68k assembly (picture identical)
+2026-11-07,0.129 (RUNS=C),640x360,Full speed,34.0,400,566,50,same build with the C draw_runs
+2026-11-07,0.129 asm runs,960x540,Full speed,17.1,402,573,50,
+2026-11-07,0.129 (RUNS=C),960x540,Full speed,16.0,405,570,50,
+2026-11-07,0.129 short path,640x360,Full speed,37.9,394,569,50,draw_image short path for whole-width sprites (picture identical)
+2026-11-07,0.129 short path,800x600,Full speed,20.1,397,575,50,
+2026-11-07,0.129 short path,960x540,Full speed,18.2,395,574,50,
+2026-11-07,0.125,640x360,(catch-up 5 steps),4.5,893,101,22,release 0.125 measured again
+2026-11-07,0.125,800x600,(catch-up 5 steps),4.1,822,170,20,
+2026-11-07,0.125,960x540,(catch-up 5 steps),4.0,809,182,20,
+2026-11-07,0.126,640x360,Full speed,18.8,580,401,50,

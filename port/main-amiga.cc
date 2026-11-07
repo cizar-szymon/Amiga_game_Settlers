@@ -132,6 +132,8 @@ parse_option(const char *a) {
     const char *u = c != nullptr ? strchr(c + 1, ',') : nullptr;
     unsigned long us = u != nullptr ? strtoul(u + 1, nullptr, 10) : 1000;
     if (amiga_sampler_start(delay, count, us) == 0) atexit(amiga_sampler_stop);
+  } else if ((v = option_value(a, "RUNS")) != nullptr) {
+    VideoAmiga::asm_runs = strcasecmp(v, "C") != 0;
   } else if ((v = option_value(a, "VIEWDRAW")) != nullptr) {
     /* BLOCKS (a test): the view by changed blocks, NONE / LAND / SPR
        nothing / the landscape / the sprites drawn again. */

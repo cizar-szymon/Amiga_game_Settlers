@@ -149,6 +149,16 @@ class VideoAmiga : public Video {
   static bool view_incremental;
   static bool view_none;  /* VIEWDRAW=NONE (a test): nothing drawn again */
   static int view_kinds;  /* VIEWDRAW=LAND / SPR (a test): kinds drawn again */
+  /* RUNS=C (a test): sprites into VRAM by the C draw_runs, not the
+     assembly one (port/draw_runs_68k.c). */
+  static bool asm_runs;
+  /* The short way of draw_image (a sprite whole in width onto the screen
+     in VRAM, no test mode): set with the screen. */
+  bool fast_images;
+  void set_fast_images() {
+    fast_images = vram && asm_runs && !verify && !profile &&
+                  !view_incremental && !lock_per_call;
+  }
   bool sig_on;
   bool replaying;
   std::vector<uint32_t> sig_cur, sig_prev;
