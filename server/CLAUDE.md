@@ -19,7 +19,10 @@ Wyjątek: pilna poprawka na Pi – potem przenieść ją do repo.
   `tools/lan_diff.py` w repo). Pole `status` (`new` → np. `fixed in 0.132`) zmieniać ręcznie
   po poprawce; e-mail służy do powiadomienia gracza.
 - **Strona** `http://<pi>:8080` (tylko sieć domowa, port **nie** przekierowany): gry teraz,
-  czekające, ostatnie gry (gracze, IP, ping), zgłoszenia. `/stats.json`, `/reports.json`;
+  czekające, ostatnie gry (gracze, IP, ping), zgłoszenia. Podstrona **`/load`** (przycisk Load u góry):
+  bloki „Raspberry Pi” (CPU, sieć) i „Settlers game server” (CPU procesu, dane gier od / do Amig) –
+  teraz, najwyżej w ostatniej godzinie, wykres godziny; `/load.json`. Inny serwer na tym Pi dopisuje
+  swój blok (`Web.load_blocks`, `PAGES` w `web.py`). `/stats.json`, `/reports.json`;
   zgłoszenie: `/reports/<katalog>/` (szczegóły i pliki), `/reports/<katalog>.zip`, wszystkie
   `/reports/all.zip`; przycisk **Delete** (żarty, puste zgłoszenia) przenosi zgłoszenie do
   `data/deleted/` – znika ze strony, na dysku zostaje do ręcznego wyczyszczenia.
@@ -33,6 +36,7 @@ Wyjątek: pilna poprawka na Pi – potem przenieść ją do repo.
 | `relay.py` | sesje, parowanie, przekazywanie, limity, pomiar |
 | `reports.py` | przyjmowanie i zapis zgłoszeń |
 | `web.py` | strona i JSON |
+| `load.py` | obciążenie co 5 s (CPU Pi i serwera, dane gier, sieć Pi; teraz i maks. z godziny) |
 | `config.json` | porty, limity (50 gier, 100 połączeń, 4 na adres, czasy), dozwolone sieci strony |
 | `tests/test_server.py` | testy z fałszywymi Amigami |
 | `settlers-server.service` | usługa systemd użytkownika |

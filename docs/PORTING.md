@@ -1492,6 +1492,7 @@ Plan: `~/.claude/plans/jiggly-jingling-eich.md`. Serwer u użytkownika: Pi400 (`
 | 7 | **Czytelna czcionka** (prośba użytkownika) zawsze dla tego, co trzeba przeczytać dokładnie, bez względu na wybraną czcionkę: wszystkie pola do wpisywania (`TextInput`), wartości w wierszach okna LAN (adresy, nazwy, kod, hasło, port), listy serwerów i gier, nazwy w lobby; całe okno zgłoszenia błędu. `ReadableText` (zakres) + `Graphics::text_font()` (czytelna czcionka ładowana przy pierwszej potrzebie). Reszta tekstów według ustawienia. | `gfx.cc/.h`, `text-input.cc`, `lan-box.cc`, `report-box.cc` | Amiga 1, czcionka oryginalna w ustawieniach: okno zgłoszenia w całości czytelną czcionką (zrzut F9) ✅; okno LAN – poprawne (użytkownik, 8.11.2026) ✅ |
 | 8 | **Okno zgłoszenia większe** (400×300 – mieści się w najmniejszym trybie 400×300): opis **do 1000 znaków** (prośba użytkownika; najpierw 2000), 23 wiersze po 46 znaków – mieści się cały, łamane między słowami, kursor, licznik „N / 1000”; e-mail w polu dwuwierszowym obok podpisu (60 znaków); stan wysyłki w miejscu dwóch wierszy u góry. **Tab** przełącza pola (e-mail ↔ opis); Return w opisie nic nie robi (WYŚLIJ myszą albo Return w polu e-mail); na start fokus w e-mailu, gdy pusty, inaczej w opisie. Klawisz obsłużony przez inny obiekt nie zabiera już fokusu polu tekstowemu (`GuiObject::handle_event` – tylko kliknięcie; wcześniej Tab gubił fokus). Okno tylko z działającym stosem TCP/IP (`report_network`: `bsdsocket.library` w pamięci, bez otwierania); bez sieci F10 tylko zapisuje stan. **Wysyłka szybsza:** proces „Settlers report” priorytet 1 zamiast 0 (przy zajętym procesorze gra zostawiała mu tak mało czasu, że zapis 786 KB szedł **4 min, teraz 3 s**), plik paczkami po 32 ramki, `TCP_NODELAY`. Serwer: opis do 1100 znaków (`server/reports.py`, wdrożone na Pi 8.11.2026 10:39). | `report-box.cc/.h`, `interface.cc`, `gui.cc`, `port/amiga_report.c`, `port/amiga_net.h`, `port/main-amiga.cc`, `server/reports.py` | Amiga 1, 20-last, 640×360: zawijanie słów, licznik, Tab, Backspace w e-mailu, ramka fokusu (zrzuty F9); zgłoszenie z zapisem 786 KB: **3 s**, „Zgłoszenie nr 6 wysłane. Dziękuję!”; ten sam raport z PC – serwer 0,3 s ✅ |
 | 9 | **Opisy dla graczy i programistów** (PL/EN): gra przez serwer gry (INTERNET GAME: NEW GAME, lista „Games waiting”, kod, hasło, co zapisuje serwer), gra przez internet bez serwera (przekierowanie portu) osobno; okno zgłoszenia F10 (pola, co jest wysyłane, bez sieci tylko pliki), zgłoszenie rozjazdu LAN; klawisz F10; `api.ipify.org` już nie „jedyne połączenie z internetem”; dev: serwer gry, proces „Settlers report”, `LANTEST=n`, `RELAYAUTO`, `lantest relay`; historia wersji 0.131; README (lista funkcji, F10). Limit 1000 liter sprawdzony przez użytkownika. | `docs/release/amiga/Settlers*.txt`, `README.md` | ✅ |
+| 10 | **Strona serwera – obciążenie** (prośba użytkownika, po wydaniu 0.131): osobna podstrona **`/load`** (przyciski „Games and reports” / „Load” u góry; prośba użytkownika – będą tam też inne serwery Pi, każdy swoim blokiem: `Web.load_blocks`) – CPU całego Pi (`/proc/stat`) i procesu serwera, dane gier od i do Amig (liczniki w `relay.py`), cały ruch sieci Pi (`/proc/net/dev` bez `lo`); teraz, najwyżej w ostatniej godzinie i wykres godziny; próbka co 5 s; w `/stats.json` pole `load`, osobno `/load.json`. Wdrożone na Pi400 8.11.2026 15:08. | `server/load.py`, `server/relay.py`, `server/web.py`, `server/settlers_server.py` | unittest 13; lokalny serwer + `server_load.py -n 10`: 5,1 KB/s teraz, 14 KB/s maks., CPU serwera 1,6 % (zrzut strony) |
 
 ## Zmiany 0.130 (seria poprawek, wydanie 7.11.2026; łatki Freeserf 0061, 0062)
 
@@ -1675,3 +1676,30 @@ Kolejność: najpierw punkt 1 i `lan_diff.py` (działa od razu w LAN), potem 2�
 
 **Stan (5.11.2026):** punkt 1 i `tools/lan_diff.py` zrobione (zmiana 29 serii 0.118); bez krótkiej sumy co turę. Do zrobienia: resync (MASTER wysyła stan po rozjeździe, SLAVE wczytuje), punkty 2–3.
 Na rozjazd 5251 brak danych – czekamy na następny przypadek z nowymi zrzutami.
+
+## Pomiar: ile kosztuje rysowanie sprite'ów – pod blitter z kolorem przezroczystym w FPGA (8.11.2026)
+
+Pytanie użytkownika: ile dałoby kopiowanie z kolorem przezroczystym (i cieniem) robione przez FPGA karty.
+Amiga 1 (A1200 + Warp 1260, 68060 100 MHz), 0.131, zapis 20-last, Full speed (50 kroków/s), bez zmian w kodzie:
+`build/prof/sample.sh` (PCSAMPLE, 20 000 próbek co 1 ms) + `pcprof.py -f draw_runs_vram68k` podzielone na części
+procedury; liczniki `STATS=FULL` (tylko liczby – czasy tej opcji są zawyżone); FPS z samym `STATS`.
+
+| | 640×360 | 960×540 |
+|---|---|---|
+| FPS (STATS) | 38,2 | 17,7 |
+| logika / rysowanie, ms na sekundę | 401 / 562 | 394 / 581 |
+| rysowanie na klatkę | 14,7 ms | 32,8 ms |
+| `draw_runs_vram68k` (piksele sprite'ów) – udział w całym czasie / w rysowaniu | 19,5% / ~40% | 21,7% / ~45% |
+| → na klatkę | ~5,9 ms | ~14,7 ms |
+| w tym: kopia pikseli / dekodowanie przebiegów / cienie | 38% / 26% / 32% | 36% / 25% / 34% |
+| w cieniach sam odczyt VRAM | 13% | 15% |
+| `VideoAmiga::draw_image` + `Frame::draw_sprite` (wybór obrazka, przycięcie) | 6,4% + 4,6% | 5,6% + 4,5% |
+| sprite'ów na klatkę (całe + przycięte) | ~385 + 26 | ~836 + 38 |
+| pikseli kopiowanych / cieni na klatkę | ~32 tys. / ~6,4 tys. | ~73 tys. / ~16 tys. |
+| przebiegów (skip/copy/shade) na klatkę | ~9,8 tys. | ~22 tys. |
+
+Wniosek: logika ma stały koszt na sekundę (50 kroków), klatki dostają resztę czasu, więc rysowanie sprite'ów
+całe w FPGA (kopia z kolorem przezroczystym 0 + cień 1 przez tablicę + lista poleceń) daje górną granicę
+640×360: 38 → ~60 kl./s (teoretycznie; ekran i tak 50–60 Hz), 960×540: 17,7 → ~30 kl./s. Bez trybu cienia zostaje ~1/3 tego czasu
+(z najwolniejszym odczytem VRAM). Koszt polecenia musi być mały (400–800 sprite'ów na klatkę); widok
+powiększony (×2/×3) wymagałby skalowania w blitterze.

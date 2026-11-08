@@ -43,7 +43,49 @@ def quality(ms):
     return 'poor'
 
 
+def rate(bps):
+    """Bytes a second in words, with the bits (a connection's speed)."""
+    if bps is None:
+        return '-'
+    kb = bps / 1024.0
+    text = '%.1f KB/s' % kb if kb < 100 else '%d KB/s' % kb
+    bits = bps * 8 / 1000.0
+    btext = '%.0f kbit/s' % bits if bits < 1000 else '%.1f Mbit/s' % (bits / 1000)
+    return '%s <span class="dim">(%s)</span>' % (text, btext)
+
+
+def pct(v):
+    return '-' if v is None else '%.1f %%' % v
+
+
+def spark(values, top):
+    """A small line of the hour (SVG), 0 at the bottom, top at the top."""
+    pts = [v for v in values]
+    if len(pts) < 2 or not top:
+        return ''
+    w, h = 240, 28
+    step = w / (len(pts) - 1)
+    line = ' '.join('%.1f,%.1f' % (i * step, h - 1 - (h - 2) * (v or 0) / top)
+                    for i, v in enumerate(pts))
+    return ('<svg width="%d" height="%d" viewBox="0 0 %d %d"><polyline points="%s" '
+            'fill="none" stroke="#3b6ea5" stroke-width="1.5"/></svg>' % (w, h, w, h, line))
+
+
+# The subpages of the page: (path, name). Another server on this Pi adds its
+# own load as a block of the Load page (Web.load_blocks).
+PAGES = (('/', 'Games and reports'), ('/load', 'Load'))
+
+
+def nav(active):
+    return '<nav>%s</nav>' % ''.join(
+        '<a class="nav%s" href="%s">%s</a>' % (' on' if p == active else '', p, n)
+        for p, n in PAGES)
+
+
 STYLE = """
+nav{display:flex;gap:6px;margin:10px 0 4px}
+a.nav{padding:4px 12px;border:1px solid #9aa5b1;border-radius:4px;background:#fff;color:#1f2933;text-decoration:none;font-size:14px}
+a.nav:hover{background:#e1e6eb} a.nav.on{background:#1f2933;color:#fff;border-color:#1f2933}
 body{font-family:system-ui,Arial,sans-serif;margin:20px;background:#f6f7f9;color:#1f2933}
 h1{font-size:22px;margin:0 0 4px} h2{font-size:16px;margin:24px 0 6px}
 .sub{color:#52606d;font-size:13px}
@@ -112,6 +154,13 @@ class Web:
                                 json.dumps(self.reports.listing(), indent=1).encode())
             elif path.startswith('/reports/'):
                 await self.report_path(writer, path[len('/reports/'):])
+            elif path == '/load':
+                await self.send(writer, 200, 'text/html; charset=utf-8',
+                                self.load_page().encode('utf-8'))
+            elif path == '/load.json':
+                await self.send(writer, 200, 'application/json',
+                                json.dumps(self.relay.load.status() if self.relay.load
+                                           else None, indent=1).encode())
             elif path == '/':
                 await self.send(writer, 200, 'text/html; charset=utf-8',
                                 self.page().encode('utf-8'))
@@ -248,6 +297,53 @@ class Web:
         writer.write(head.encode() + body)
         await writer.drain()
 
+    def load_blocks(self, load):
+        """(title, rows) of the Load page: rows (key, label, format). The Pi
+        first, then each server; a new server on this Pi adds a block."""
+        return (('Raspberry Pi', (
+                    ('cpu_pi_pct', 'CPU (all cores)', pct),
+                    ('net_in_bps', 'Network, received', rate),
+                    ('net_out_bps', 'Network, sent', rate))),
+                ('Settlers game server (port %d)' % self.cfg['game_port'], (
+                    ('cpu_server_pct', 'CPU of the server (one core = 100 %)', pct),
+                    ('game_in_bps', 'Game data from the Amigas', rate),
+                    ('game_out_bps', 'Game data to the Amigas', rate))))
+
+    def load_page(self):
+        e = html.escape
+        load = self.relay.load.status() if self.relay.load else None
+        out = ['<!doctype html><html><head><meta charset="utf-8">'
+               '<meta http-equiv="refresh" content="15">'
+               '<meta name="viewport" content="width=device-width">'
+               '<title>Server load</title><style>%s</style></head><body>' % STYLE,
+               '<h1>Settlers – game server</h1>', nav('/load'),
+               '<div class="sub">%s · sampled every %d s, kept for an hour · '
+               'refreshed every 15 s · <a href="/load.json">load.json</a></div>'
+               % (time.strftime('%Y-%m-%d %H:%M:%S'),
+                  load['step_s'] if load else 5)]
+        if not load or not load['now']:
+            out.append('<p class="dim">The first numbers come 5 s after the start.</p>')
+            out.append('</body></html>')
+            return ''.join(out)
+        now, top, hour = load['now'], load['max_hour'], load['hour']
+        for title, rows in self.load_blocks(load):
+            out.append('<h2>%s</h2><div class="wrap"><table><tr><th></th>'
+                       '<th>Now</th><th>Highest in the last hour</th>'
+                       '<th>Last hour</th></tr>' % e(title))
+            for key, label, fmt in rows:
+                vals = [x[key] for x in hour]
+                scale = top[key] or 0
+                if key.endswith('pct'):
+                    scale = max(scale, 10)
+                out.append('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>'
+                           % (e(label), fmt(now[key]), fmt(top[key]),
+                              spark(vals, scale) if now[key] is not None else ''))
+            out.append('</table></div>')
+        out.append('<div class="sub" style="margin-top:8px">The network of the Pi '
+                   'counts everything: games, this page, ssh, updates.</div>')
+        out.append('</body></html>')
+        return ''.join(out)
+
     def page(self):
         st = self.relay.status()
         t = st['totals']
@@ -259,7 +355,7 @@ class Web:
                '<meta http-equiv="refresh" content="15">'
                '<meta name="viewport" content="width=device-width">'
                '<title>Settlers server</title><style>%s</style></head><body>' % STYLE,
-               '<h1>Settlers – game server</h1>',
+               '<h1>Settlers – game server</h1>', nav('/'),
                '<div class="sub">running %s · %s · port %d · refreshed every 15 s</div>'
                % (hms(st['uptime_s']), time.strftime('%Y-%m-%d %H:%M:%S'),
                   self.cfg['game_port']),

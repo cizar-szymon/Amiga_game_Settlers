@@ -88,6 +88,9 @@ class Relay:
         self.totals = {'games': 0, 'seconds': 0, 'longest_s': 0,
                        'dropped': 0, 'refused': 0}
         self.recent = []             # the last ended sessions (the page)
+        self.bytes_in = 0            # game data from the Amigas (all sessions)
+        self.bytes_out = 0           # game data passed on to them
+        self.load = None             # load.Load, set by the server
         self.load_history()
 
     # --- history -------------------------------------------------------
@@ -327,6 +330,7 @@ class Relay:
             src.last_frame = now
             src.frames_in += 1
             src.bytes_in += len(data) + 2
+            self.bytes_in += len(data) + 2
             if ftype == P.F_PING:
                 dst.pings[bytes(data)] = now
                 if len(dst.pings) > 20:
@@ -342,6 +346,7 @@ class Relay:
             elif ftype == P.GAME_BASE + 3:        # MessageQuit
                 s.end_reason = s.end_reason or 'game ended'
             await self.say(dst.writer, P.frame(ftype, data))
+            self.bytes_out += len(data) + 2
 
     def status(self):
         now = time.time()
@@ -349,5 +354,6 @@ class Relay:
                 'connections': self.connections,
                 'sessions': [s.info(now) for s in self.sessions.values()],
                 'totals': dict(self.totals),
-                'recent': list(reversed(self.recent))}
+                'recent': list(reversed(self.recent)),
+                'load': self.load.status() if self.load else None}
 

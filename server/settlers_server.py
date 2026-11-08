@@ -21,6 +21,7 @@ sys.path.insert(0, HERE)
 from relay import Relay        # noqa: E402
 from reports import Reports    # noqa: E402
 from web import Web            # noqa: E402
+from load import Load          # noqa: E402
 
 
 def load_config(path=None):
@@ -48,6 +49,8 @@ async def start(cfg):
     reports = Reports(cfg)
     relay = Relay(cfg, reports)
     web = Web(cfg, relay, reports)
+    relay.load = Load(relay)
+    relay.load_task = asyncio.ensure_future(relay.load.run())
     game = await asyncio.start_server(relay.handle, cfg['listen'],
                                       cfg['game_port'])
     page = await asyncio.start_server(web.handle, cfg['listen'],
@@ -67,6 +70,7 @@ async def main(cfg):
         except NotImplementedError:      # Windows
             pass
     await stop.wait()
+    relay.load_task.cancel()
     game.close()
     page.close()
     logging.info('stopped')
