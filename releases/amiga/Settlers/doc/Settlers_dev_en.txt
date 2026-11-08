@@ -1,7 +1,7 @@
 THE SETTLERS (Freeserf) for the Amiga - notes for developers
 ============================================================
 
-Version 0.111. The full description of the port, decisions and
+Version 0.131. The full description of the port, decisions and
 measurements: docs/PORTING.md in the Settlers repository (Polish).
 
 
@@ -126,15 +126,32 @@ docs/PORTING.md, chapter "Gra LAN".
                 delay, sand, rocks) or a whole saved game (240 byte pieces)
   turns         4 steps (80 ms); a command of turn t is done in turn
                 t + delay (2-8 turns by the response time)
+  game server   INTERNET GAME: both Amigas connect out to the game
+                server ([lan] relay, default 83.12.152.135:6810; a DNS
+                name or an address). Before HELLO text RELAY frames
+                (type 5): LIST / CREATE / JOIN; after PAIRED the server
+                passes the game frames unchanged. The one who sets up the
+                game is the MASTER, though it connects out. The server:
+                Python 3 asyncio (folder server/ of the repository)
+  bug reports   F10 -> the ReportBox; sent by the process "Settlers
+                report" (port/amiga_report.c, priority 1, its own
+                bsdsocket.library base): REPORT 1 <version> <F10|LAN>,
+                fields email / text (up to 1000 letters) / machine, the
+                state files in RELAY_DATA frames; answer REPORTED <no>
 
 The end of a game for a test: the option LANTEST, in a LAN game
 Ctrl+Shift+W - the player of this computer wins at once (on both).
 Games apart for a test: the option LANTEST, Ctrl+Shift+X - this game
 alone draws one more random number; OUT OF STEP within a few s, the
 SYNC_ saves and the resync. Ctrl+Shift+R (no LANTEST): a resync.
+LANTEST=n: as LANTEST, and this side goes apart by itself after n s (a
+test of the LAN report without keys).
+RELAYAUTO=HOST|JOIN[:password] (test): the LAN box goes to INTERNET GAME
+by itself; HOST sets up a game and clicks START GAME 5 s after a player
+joins, JOIN refreshes the list and joins the first game.
 
 Tests: lansim (the same game without a network; -l two games in
 lockstep, -s/-r sand/rocks, the time of the checksum), lantest (the
 network process from the Shell: serve, search, connect, send FILE,
-extip; PORT=n as the first argument), tools/lan_peer.py (the other side
-on the PC; --port N).
+extip, relay <host> list|create|join; PORT=n as the first argument),
+tools/lan_peer.py (the other side on the PC; --port N).

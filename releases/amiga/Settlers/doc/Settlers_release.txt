@@ -1,9 +1,29 @@
 THE SETTLERS (Freeserf) na Amige - historia wersji
 ==================================================
 
-Zglaszanie bledow: podaj numer wersji (ekran startowy, "Version Settlers")
-i dolacz pliki RAM:Settlers-state.save oraz RAM:Settlers-state.txt
-zapisane klawiszem F10 w chwili bledu.
+Zglaszanie bledow: F10 w chwili bledu zapisuje stan gry i otwiera okno
+zgloszenia - SEND wysyla je autorowi portu (opis, e-mail do odpowiedzi,
+pliki stanu, numer wersji). Bez sieci: podaj numer wersji (ekran
+startowy, "Version Settlers") i dolacz pliki RAM:Settlers-state.save
+oraz RAM:Settlers-state.txt.
+
+
+0.131 (8.11.2026, wydanie beta)
+-------------------------------
+
+- Gra przez internet przez serwer gry autora portu: okno LAN ->
+  INTERNET GAME. Zakladajacy klika NEW GAME (nazwa gry, haslo
+  nieobowiazkowe), dolaczajacy wybiera gre z listy czekajacych albo
+  wpisuje jej kod i klika JOIN GAME. Router nie wymaga ustawien.
+- Zgloszenie bledu z gry: F10 otwiera okno - e-mail, opis do 1000
+  znakow, SEND wysyla zgloszenie z plikami stanu gry; okno podaje numer
+  zgloszenia.
+- Gdy gry LAN sie rozejda (OUT OF STEP), zakladajacy moze jednym
+  przyciskiem wyslac zapisy obu stron.
+- Pola do wpisywania, adresy, nazwy i listy w oknie LAN oraz cale okno
+  zgloszenia zawsze czytelna czcionka, bez wzgledu na wybrana czcionke.
+- Znak @ w obu czcionkach.
+- Gra LAN: obie strony musza miec wersje 0.131.
 
 
 0.130 (7.11.2026, wydanie beta)

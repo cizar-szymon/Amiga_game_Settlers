@@ -82,6 +82,10 @@ class EventLoopAmiga : public EventLoop {
   void draw_stats(class Frame *screen);
   void draw_message(class Frame *screen);
   void save_state();
+
+ public:
+  /* After F10 saved the state (main: the bug report box). */
+  static std::function<void()> on_state_saved;
 };
 
 #endif  // PORT_EVENT_LOOP_AMIGA_H_

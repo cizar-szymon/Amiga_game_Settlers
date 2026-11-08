@@ -31,10 +31,12 @@ Paula or AHI sound, the game's own music module and the original Amiga graphics.
   the game speed; maps made with a progress bar
 - game speed x0.5 … x3, quick save, the keys box
 - a LAN game for two players on two Amigas (plus up to two computer players),
-  with a chat; also over the internet with a forwarded port – played between
-  Poland and Ireland (5.11.2026): the server's router forwards the TCP port
-  (6810, set in the game) to its Amiga, the other player types the server's
-  internet address, shown in the server box
+  with a chat; over the internet through the game server of the port
+  (INTERNET GAME: a list of the waiting games, a code, an optional password,
+  nothing to set up in the router), or directly with a forwarded port (TCP
+  6810, set in the game)
+- bug reports from the game: F10 saves the state and opens a box (e-mail,
+  what happened) that sends it with the state files to the game server
 - the options of the original: Fast building, Fast mapclick, Pathway scrolling;
   the mouse as in the original (the right button scrolls on and on, left with
   the right held opens a building or demolishes)
@@ -82,7 +84,7 @@ the changes of each version:
 | `M` / `S` | music / sound effects on and off |
 | `I` | the keys of the game (also the I button of the settings box) |
 | `Ctrl`+`Z` | quick save |
-| `F9` / `F10` | screenshot / game state for a bug report (in `RAM:`) |
+| `F9` / `F10` | screenshot (in `RAM:`) / bug report (state saved, box to send it) |
 | `Shift`+`Esc`, `Ctrl`+`Q` | quit |
 
 ## Speed (68060, Warp1260 / Warp7060)

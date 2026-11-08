@@ -1,0 +1,14 @@
+[Unit]
+Description=Settlers game server (Amiga games over the internet, bug reports, page)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/settlers-server
+ExecStart=/usr/bin/python3 %h/settlers-server/settlers_server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

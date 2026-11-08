@@ -387,7 +387,12 @@ EventLoopAmiga::save_state() {
   message_text = ok ? "STATE SAVED: RAM:SETTLERS-STATE.SAVE"
                     : "STATE NOT SAVED";
   message_until = get_ticks() + 2000;
+  if (ok && on_state_saved) {
+    on_state_saved();
+  }
 }
+
+std::function<void()> EventLoopAmiga::on_state_saved;
 
 /* A short line in the top middle of the screen (F10). */
 /* Loading a game takes some seconds (20-last.save ~7 s on a 68060): a box

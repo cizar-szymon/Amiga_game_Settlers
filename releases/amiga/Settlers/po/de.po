@@ -271,8 +271,110 @@ msgstr "Beenden"
 msgid "Keys"
 msgstr "Tasten"
 
+msgid "A game over the internet"
+msgstr "Spiel über das Internet"
+
+msgid "Game server"
+msgstr "Spielserver"
+
+msgid "Your name"
+msgstr "Dein Name"
+
+msgid "Game name"
+msgstr "Spielname"
+
+msgid "Code of the game"
+msgstr "Spielcode"
+
+msgid "Password"
+msgstr "Passwort"
+
 msgid "none"
 msgstr "keine"
+
+msgid "Making the game..."
+msgstr "Spiel wird angelegt..."
+
+msgid "The other player chooses it"
+msgstr "Der andere Spieler wählt es"
+
+msgid "in JOIN GAME or types the code."
+msgstr "bei BEITRETEN oder tippt den Code."
+
+msgid "Waiting for a player..."
+msgstr "Warte auf Spieler..."
+
+msgid "CANCEL GAME"
+msgstr "SPIEL BEENDEN"
+
+msgid "JOIN GAME"
+msgstr "BEITRETEN"
+
+msgid "Asking the game server..."
+msgstr "Frage den Spielserver..."
+
+msgid "Games waiting"
+msgstr "Wartende Spiele"
+
+msgid "REFRESH"
+msgstr "NEU LADEN"
+
+msgid "None - NEW GAME makes one."
+msgstr "Keine - NEUES SPIEL legt eins an."
+
+msgid "NEW GAME"
+msgstr "NEUES SPIEL"
+
+msgid "CONNECTING"
+msgstr "VERBINDE"
+
+msgid "BACK"
+msgstr "ZURÜCK"
+
+msgid "The game has a password: type it."
+msgstr "Das Spiel hat ein Passwort: tippe es."
+
+msgid "Choose a game or type its code."
+msgstr "Wähle ein Spiel oder tippe den Code."
+
+msgid "Connecting to the game server..."
+msgstr "Verbinde mit dem Spielserver..."
+
+msgid "Two players on two Amigas"
+msgstr "Zwei Spieler auf zwei Amigas"
+
+msgid "in one network."
+msgstr "in einem Netz."
+
+msgid "START SERVER"
+msgstr "SERVER"
+
+msgid "This Amiga sets up the game."
+msgstr "Diese Amiga richtet ein."
+
+msgid "JOIN SERVER"
+msgstr "BEITRETEN"
+
+msgid "Find the server or type"
+msgstr "Server finden oder seine"
+
+msgid "its address and connect."
+msgstr "Adresse eingeben."
+
+msgid "INTERNET GAME"
+msgstr "INTERNET"
+
+msgid "Both connect to the game server,"
+msgstr "Beide verbinden sich mit dem"
+
+msgid "no router to set up."
+msgstr "Spielserver, ohne Router."
+
+msgid "A player has joined."
+msgstr "Ein Spieler ist da."
+
+msgid "RUN SERVER to be found."
+msgstr "SERVER START: sichtbar."
 
 msgid "Server name"
 msgstr "Servername"
@@ -298,11 +400,20 @@ msgstr "SERVER STOP"
 msgid "RUN SERVER"
 msgstr "SERVER START"
 
+msgid "CHANGE"
+msgstr "ÄNDERN"
+
+msgid "AVERAGE"
+msgstr "MITTEL"
+
 msgid "Go on with a saved game"
 msgstr "Gespeichertes Spiel fortsetzen"
 
 msgid "USE GAME"
 msgstr "NEHMEN"
+
+msgid "GREAT"
+msgstr "TOLL"
 
 msgid "Searching the network..."
 msgstr "Suche im Netz..."
@@ -319,8 +430,8 @@ msgstr "Adresse unten eingeben."
 msgid "SEARCH"
 msgstr "SUCHEN"
 
-msgid "CONNECTING"
-msgstr "VERBINDE"
+msgid "No network in this version."
+msgstr "Kein Netz in dieser Version."
 
 msgid "CONNECT"
 msgstr "VERBINDEN"
@@ -334,23 +445,35 @@ msgstr "Server das Spiel startet."
 msgid "Your address"
 msgstr "Deine Adresse"
 
-msgid "The game server is not ready yet."
-msgstr "Der Spielserver ist noch nicht bereit."
+msgid "Password needed."
+msgstr "Passwort nötig."
 
-msgid "CHANGE"
-msgstr "ÄNDERN"
+msgid "Wrong password."
+msgstr "Falsches Passwort."
 
-msgid "AVERAGE"
-msgstr "MITTEL"
+msgid "No such game."
+msgstr "Kein solches Spiel."
 
-msgid "GREAT"
-msgstr "TOLL"
+msgid "Server full."
+msgstr "Server voll."
+
+msgid "Too many connections."
+msgstr "Zu viele Verbindungen."
+
+msgid "No answer from the game server."
+msgstr "Keine Antwort vom Spielserver."
+
+msgid "Game server not found."
+msgstr "Spielserver nicht gefunden."
+
+msgid "The other player left."
+msgstr "Der andere Spieler ist gegangen."
+
+msgid "Different version."
+msgstr "Andere Version."
 
 msgid "The game did not start."
 msgstr "Das Spiel startete nicht."
-
-msgid "No network in this version."
-msgstr "Kein Netz in dieser Version."
 
 msgid "Type the server address."
 msgstr "Serveradresse eingeben."
@@ -438,72 +561,6 @@ msgstr "SPIEL START"
 
 msgid "DISCONNECT"
 msgstr "TRENNEN"
-
-msgid "Two players on two Amigas"
-msgstr "Zwei Spieler auf zwei Amigas"
-
-msgid "in one network."
-msgstr "in einem Netz."
-
-msgid "START SERVER"
-msgstr "SERVER"
-
-msgid "This Amiga sets up the game."
-msgstr "Diese Amiga richtet ein."
-
-msgid "JOIN SERVER"
-msgstr "BEITRETEN"
-
-msgid "Find the server or type"
-msgstr "Server finden oder seine"
-
-msgid "its address and connect."
-msgstr "Adresse eingeben."
-
-msgid "INTERNET GAME"
-msgstr "INTERNET"
-
-msgid "Both connect to the game server,"
-msgstr "Beide verbinden sich mit dem"
-
-msgid "no router to set up."
-msgstr "Spielserver, ohne Router."
-
-msgid "A game over the game server"
-msgstr "Spiel über den Spielserver"
-
-msgid "Game server"
-msgstr "Spielserver"
-
-msgid "not set yet"
-msgstr "noch keiner"
-
-msgid "Your name"
-msgstr "Dein Name"
-
-msgid "Coming soon: the game server"
-msgstr "Bald: der Spielserver"
-
-msgid "is being made."
-msgstr "wird gebaut."
-
-msgid "NEW GAME"
-msgstr "NEUES SPIEL"
-
-msgid "JOIN GAME"
-msgstr "BEITRETEN"
-
-msgid "BACK"
-msgstr "ZURÜCK"
-
-msgid "A player has joined."
-msgstr "Ein Spieler ist da."
-
-msgid "Waiting for a player..."
-msgstr "Warte auf Spieler..."
-
-msgid "RUN SERVER to be found."
-msgstr "SERVER START: sichtbar."
 
 msgid "GAME SAVED: SYNC ERROR"
 msgstr "GESPEICHERT: SYNCFEHLER"
@@ -864,6 +921,45 @@ msgstr "Sehr viel"
 msgctxt "ground analysis"
 msgid "Perfect"
 msgstr "Perfekt"
+
+msgid "Bug report"
+msgstr "Fehlerbericht"
+
+msgid "The LAN game went out of step."
+msgstr "Die LAN-Spiele liefen auseinander."
+
+msgid "Send the saves of both sides?"
+msgstr "Spielstände beider Seiten senden?"
+
+msgid "The state of the game is saved."
+msgstr "Der Spielstand ist gespeichert."
+
+msgid "Send it to the author of the port?"
+msgstr "An den Autor senden?"
+
+msgid "Your e-mail"
+msgstr "Deine E-Mail"
+
+msgid "(for an answer)"
+msgstr "(für Antwort)"
+
+msgid "What happened"
+msgstr "Was geschah"
+
+msgid "CLOSE"
+msgstr "SCHLIESSEN"
+
+msgid "SEND"
+msgstr "SENDEN"
+
+msgid "Sending the report..."
+msgstr "Sende den Bericht..."
+
+msgid "The report was not sent."
+msgstr "Bericht nicht gesendet."
+
+msgid "Report no. %s sent. Thank you!"
+msgstr "Bericht Nr. %s gesendet. Danke!"
 
 msgid "Accelerator"
 msgstr "Turbokarte"

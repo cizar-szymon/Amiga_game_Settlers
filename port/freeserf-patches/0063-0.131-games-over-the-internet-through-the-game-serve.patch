@@ -1,0 +1,1503 @@
+From 87d56c9f555c4e4fda3717b0cb2175dd4aa225fd Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sun, 8 Nov 2026 10:50:30 +0100
+Subject: [PATCH] 0.131: games over the internet through the game server
+ (INTERNET GAME, list, code, password), bug report box on F10 sent to the game
+ server (text up to 1000 letters), LAN out-of-step reports of both sides,
+ readable font for fields and the LAN box, the @ sign
+
+---
+ src/game-init.cc  |  12 ++
+ src/gfx.cc        |  26 +++-
+ src/gfx.h         |  18 +++
+ src/gui.cc        |   5 +-
+ src/interface.cc  |  86 ++++++++++-
+ src/interface.h   |  30 ++++
+ src/lan-box.cc    | 372 +++++++++++++++++++++++++++++++++++++++++-----
+ src/lan-box.h     |  25 +++-
+ src/lan-game.cc   |  26 +++-
+ src/lan-link.h    |  26 ++++
+ src/report-box.cc | 307 ++++++++++++++++++++++++++++++++++++++
+ src/report-box.h  |  73 +++++++++
+ src/text-input.cc |   4 +
+ 13 files changed, 957 insertions(+), 53 deletions(-)
+ create mode 100644 src/report-box.cc
+ create mode 100644 src/report-box.h
+
+diff --git a/src/game-init.cc b/src/game-init.cc
+index 78b277d..02037e0 100644
+--- a/src/game-init.cc
++++ b/src/game-init.cc
+@@ -20,6 +20,7 @@
+  */
+ 
+ #include "src/game-init.h"
++#include "src/lan-box.h"
+ 
+ #include <cstdio>
+ 
+@@ -897,6 +898,17 @@ GameInitBox::handle_player_click(unsigned int player_index, int cx, int cy) {
+ 
+ void
+ GameInitBox::update_preview() {
++  if (!LanBox::relay_auto.empty() && !interface->is_lan_box_open()) {
++    /* RELAYAUTO: the LAN box at once (and again after a game). */
++    static unsigned int due = 0;
++    unsigned int now = EventLoop::get_instance().get_ticks();
++    if (due == 0) due = now + 3000;
++    if (static_cast<int>(now - due) >= 0) {
++      due = 0;
++      interface->open_lan_box(lan_mission);
++      return;
++    }
++  }
+   if (start_requested) {
+     start_requested = false;
+     if (game_type == GameLoad && !delete_asked) {
+diff --git a/src/gfx.cc b/src/gfx.cc
+index 6a41998..d2aba2e 100644
+--- a/src/gfx.cc
++++ b/src/gfx.cc
+@@ -143,7 +143,8 @@ Image::clear_cache() {
+ Graphics *Graphics::instance = nullptr;
+ 
+ Graphics::Graphics()
+-  : map_zoom(1.f) {
++  : map_zoom(1.f)
++  , readable_tried(false) {
+   if (instance != nullptr) {
+     throw ExceptionGFX("Unable to create second instance.");
+   }
+@@ -166,6 +167,22 @@ Graphics::Graphics()
+   Graphics::instance = this;
+ }
+ 
++int Graphics::readable_forced = 0;
++
++ReadableText::ReadableText() { Graphics::readable_forced++; }
++ReadableText::~ReadableText() { Graphics::readable_forced--; }
++
++Font *
++Graphics::text_font() {
++  if (readable_forced <= 0 || font) return font.get();
++  if (!readable_tried) {
++    readable_tried = true;
++    readable_font.reset(new Font());
++    if (!readable_font->load_resource("readable")) readable_font.reset();
++  }
++  return readable_font.get();
++}
++
+ bool
+ Graphics::set_font(const std::string &name) {
+   font.reset();
+@@ -608,7 +625,7 @@ get_glyph(Font *font, uint32_t ch) {
+ int
+ Frame::draw_glyph(int x, int y, uint32_t ch, const Color &color,
+                   const Color &shadow) {
+-  const Font::Glyph *glyph = get_glyph(Graphics::get_instance().get_font(),
++  const Font::Glyph *glyph = get_glyph(Graphics::get_instance().text_font(),
+                                        ch);
+   if (glyph == nullptr) return 0;
+   if (glyph->width == 0) return glyph->advance;  /* A space. */
+@@ -727,6 +744,7 @@ static const struct { char ch; const char *rows[9]; } kExtraGlyphs[] = {
+   { '&', { "..###...", ".##.##..", "..###...", ".###..#.", "##.####.", "##..##..", ".###.##.", "........", nullptr } },
+   { '[', { "..####..", "..##....", "..##....", "..##....", "..##....", "..##....", "..##....", "..####..", nullptr } },
+   { ']', { "..####..", "....##..", "....##..", "....##..", "....##..", "....##..", "....##..", "..####..", nullptr } },
++  { '@', { "..####..", ".##..##.", ".##.###.", ".##.#.#.", ".##.###.", ".##.....", "..####..", "........", nullptr } },
+ };
+ 
+ /* An extra character (kExtraGlyphs) at x, y; false: not one of them. */
+@@ -792,7 +810,7 @@ Frame::draw_mark(int x, int y, int mark, const Color &color,
+ void
+ Frame::draw_string(int x, int y, const std::string &str, const Color &color,
+                    const Color &shadow) {
+-  Font *font = Graphics::get_instance().get_font();
++  Font *font = Graphics::get_instance().text_font();
+   for (const std::vector<uint32_t> &line : split_lines(str)) {
+     if (font == nullptr) {
+       /* The font sprites of the game data, 8 pixels wide. */
+@@ -851,7 +869,7 @@ Frame::draw_string(int x, int y, const std::string &str, const Color &color,
+ 
+ int
+ Frame::get_string_width(const std::string &str) {
+-  Font *font = Graphics::get_instance().get_font();
++  Font *font = Graphics::get_instance().text_font();
+   int result = 0;
+   for (const std::vector<uint32_t> &line : split_lines(str)) {
+     int width = 0;
+diff --git a/src/gfx.h b/src/gfx.h
+index e28ef45..e2a7030 100644
+--- a/src/gfx.h
++++ b/src/gfx.h
+@@ -237,6 +237,14 @@ class Frame {
+                    bool use_off, const Color &color, float progress);
+ };
+ 
++/* While one lives, the texts are drawn with the readable font (Amiga
++   port): addresses, names, codes, passwords, text fields. */
++class ReadableText {
++ public:
++  ReadableText();
++  ~ReadableText();
++};
++
+ class Graphics {
+  protected:
+   static Graphics *instance;
+@@ -245,6 +253,12 @@ class Graphics {
+   float map_zoom;
+   /* The font of the texts; the font sprites of the game data without it. */
+   std::unique_ptr<Font> font;
++  /* The readable font for the texts that must be read exactly (addresses,
++     names, codes, passwords, what is typed), whatever font the player
++     chose; loaded when first needed. */
++  std::unique_ptr<Font> readable_font;
++  bool readable_tried;
++  static int readable_forced;
+ 
+   Graphics();
+   void set_cursor_from_data();
+@@ -272,6 +286,10 @@ class Graphics {
+      and take the cursor from it. */
+   void data_changed();
+   Font *get_font() const { return font.get(); }
++  /* The font texts are drawn with now: the readable one inside a
++     ReadableText, else get_font(). */
++  Font *text_font();
++  friend class ReadableText;
+   /* The font of the texts by its name (the Amiga port: "readable"); an
+      empty name or one that does not load: the font of the game data.
+      False: no font loaded. */
+diff --git a/src/gui.cc b/src/gui.cc
+index 2e22880..194ab69 100644
+--- a/src/gui.cc
++++ b/src/gui.cc
+@@ -230,7 +230,10 @@ GuiObject::handle_event(const Event *event) {
+     return true;
+   }
+ 
+-  if (result && (focused_object != this)) {
++  /* A click elsewhere takes the focus from a text field; a key does not
++     (Tab in the bug report box moves it, Amiga port). */
++  if (result && (focused_object != this) &&
++      event->type != Event::TypeKeyPressed) {
+     if (focused_object != nullptr) {
+       focused_object->focused = false;
+       focused_object->handle_focus_loose();
+diff --git a/src/interface.cc b/src/interface.cc
+index 76f775d..0b8f7c6 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -40,6 +40,7 @@
+ #include "src/advanced-box.h"
+ #include "src/keys-box.h"
+ #include "src/lan-box.h"
++#include "src/report-box.h"
+ #include "src/lan-game.h"
+ #include "src/lan-sync.h"
+ #include "src/settings.h"
+@@ -125,6 +126,7 @@ Interface::Interface()
+   keys_box = nullptr;
+   platform_box = nullptr;
+   lan_box = nullptr;
++  report_box = nullptr;
+   notification_box = nullptr;
+ 
+   GameManager::get_instance().add_handler(this);
+@@ -144,6 +146,7 @@ Interface::~Interface() {
+   delete keys_box;
+   delete platform_box;
+   delete lan_box;
++  delete report_box;
+   delete notification_box;
+ }
+ 
+@@ -422,11 +425,57 @@ Interface::open_keys_box() {
+ }
+ 
+ Interface::PlatformBoxFactory Interface::platform_box_factory;
++std::function<bool(const std::string &, const std::vector<std::string> &,
++                   const std::string &, const std::string &)>
++  Interface::report_send;
++std::function<bool(std::string *, bool *)> Interface::report_result;
++
++void
++Interface::open_report_box() {
++  if (report_box != nullptr) {
++    return;  /* one at a time: a second F10 only saved again */
++  }
++  report_box = new ReportBox(this, false);
++  add_float(report_box, (width - ReportBox::kWidth) / 2,
++            (height - ReportBox::kHeight) / 2);
++  report_box->set_displayed(true);
++  report_box->set_enabled(true);
++}
++
++void
++Interface::open_lan_report_box() {
++  if (!report_send) return;
++  close_report_box();
++  report_box = new ReportBox(this, true);
++  add_float(report_box, (width - ReportBox::kWidth) / 2,
++            (height - ReportBox::kHeight) / 2);
++  report_box->set_displayed(true);
++  report_box->set_enabled(true);
++}
++
++void
++Interface::add_report_file(const std::string &path) {
++  for (const std::string &p : report_files) {
++    if (p == path) return;
++  }
++  report_files.push_back(path);
++}
++
++void
++Interface::close_report_box() {
++  if (report_box != nullptr) {
++    report_box->set_displayed(false);
++    del_float(report_box);
++    delete report_box;
++    report_box = nullptr;
++  }
++}
+ int Interface::platform_box_width = 0;
+ int Interface::platform_box_height = 0;
+ std::function<void(int)> Interface::zoom_hook;
+ LanLink *Interface::lan_link = nullptr;
+ bool Interface::lan_test_keys = false;
++unsigned int Interface::lan_test_split_s = 0;
+ std::string Interface::build_label;
+ 
+ void
+@@ -1358,6 +1407,10 @@ Interface::layout() {
+   }
+ 
+   center_lan_box();
++  if (report_box != nullptr) {
++    report_box->move_to((width - ReportBox::kWidth) / 2,
++                        (height - ReportBox::kHeight) / 2);
++  }
+ 
+   if (advanced_box != nullptr) {
+     int bw = 0, bh = 0;
+@@ -1812,6 +1865,9 @@ Interface::update() {
+   if (lan_box != nullptr) {
+     lan_box->update();
+   }
++  if (report_box != nullptr) {
++    report_box->update();
++  }
+ 
+   if (exit_to_menu) {
+     exit_to_menu = false;
+@@ -1826,6 +1882,21 @@ Interface::update() {
+     return;
+   }
+ 
++  if (lan_test_split_s != 0 && lan_game) {
++    /* LANTEST=<seconds>: this side goes apart once, so far into the game. */
++    static LanGame *split_game = nullptr;
++    static unsigned int split_at = 0;
++    unsigned int now = EventLoop::get_instance().get_ticks();
++    if (split_game != lan_game.get()) {
++      split_game = lan_game.get();
++      split_at = now + lan_test_split_s * 1000;
++    } else if (split_at != 0 && static_cast<int>(now - split_at) >= 0) {
++      split_at = 0;
++      game->random_int();
++      lan_game->note("LANTEST: THIS GAME GOES APART");
++      Log::Warn["lan"] << "LANTEST: this game made to go apart (timed)";
++    }
++  }
+   /* A LAN game steps only with the other side's commands of the turn. */
+   if (lan_game && !lan_game->before_step()) {
+     return;
+@@ -1903,6 +1974,17 @@ Interface::update() {
+ 
+ bool
+ Interface::handle_key_pressed(char key, int modifier) {
++  /* Return in the bug report box: it is sent (or closed when sent). */
++  if ((key == '\r' || key == '\n') && (report_box != nullptr)) {
++    report_box->handle_return();
++    return true;
++  }
++  /* Tab in the bug report box: from the e-mail to what happened and
++     back. */
++  if (key == '\t' && report_box != nullptr) {
++    report_box->next_field();
++    return true;
++  }
+   /* Return in the LAN box: its chat line goes out. */
+   if ((key == '\r' || key == '\n') && (lan_box != nullptr) &&
+       lan_box->is_displayed()) {
+@@ -1920,7 +2002,9 @@ Interface::handle_key_pressed(char key, int modifier) {
+       break;
+     }
+     case 27: {
+-      if ((lan_box != nullptr) && lan_box->is_displayed()) {
++      if (report_box != nullptr) {
++        close_report_box();
++      } else if ((lan_box != nullptr) && lan_box->is_displayed()) {
+         close_lan_box();
+       } else if ((notification_box != nullptr) &&
+                  notification_box->is_displayed()) {
+diff --git a/src/interface.h b/src/interface.h
+index ae6174c..4e90500 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -108,6 +108,8 @@ class Interface : public GuiObject, public GameManager::Handler {
+   KeysBox *keys_box;
+   GuiObject *platform_box;
+   LanBox *lan_box;
++  class ReportBox *report_box;
++  std::vector<std::string> report_files;
+   NotificationBox *notification_box;
+ 
+   MapPos map_cursor_pos;
+@@ -360,6 +362,10 @@ class Interface : public GuiObject, public GameManager::Handler {
+   /* LANTEST (the port's option): Ctrl+Shift+W in a LAN game - this
+      player wins at once, on both computers (a test of the end). */
+   static bool lan_test_keys;
++  /* LANTEST=<seconds> (a test): so many seconds into a LAN game this side
++     goes apart by itself, as with Ctrl+Shift+X (the keys of AmiAgent have
++     no qualifiers). 0: never. */
++  static unsigned int lan_test_split_s;
+   /* Shown where the FPS are while they are off (the port: "TEST 0.108",
+      the build of a test version); "": nothing. */
+   static std::string build_label;
+@@ -378,6 +384,30 @@ class Interface : public GuiObject, public GameManager::Handler {
+   bool command(LanCommand::Type type, MapPos pos = 0, int a = 0, int b = 0,
+                int c = 0);
+   void close_lan_box();
++  bool is_lan_box_open() const { return lan_box != nullptr; }
++
++  /* The bug report box (after F10 of the Amiga port saved the state):
++     report_send starts sending the saved state with the e-mail address
++     and the words of the player (false: it could not start);
++     report_result: false while it goes on, true when done - *ok, and
++     *text the number of the report or why it was not sent. Set by the
++     platform; without report_send the box cannot send. */
++  void open_report_box();
++  void close_report_box();
++  /* A LAN game went out of step (the server side): the box asks to send
++     the saves of both sides; the files come with add_report_file (also
++     the other side's, as they arrive). */
++  void open_lan_report_box();
++  void add_report_file(const std::string &path);
++  const std::vector<std::string> &get_report_files() const {
++    return report_files; }
++  void clear_report_files() { report_files.clear(); }
++  /* kind "F10" (files empty: the state saved by F10) or "LAN". */
++  static std::function<bool(const std::string &kind,
++                            const std::vector<std::string> &files,
++                            const std::string &email,
++                            const std::string &text)> report_send;
++  static std::function<bool(std::string *text, bool *ok)> report_result;
+ 
+   /* A box of the platform, opened by a button next to Advanced in the
+      options box (the Amiga port: the Amiga and its accelerator). Without a
+diff --git a/src/lan-box.cc b/src/lan-box.cc
+index 1039a11..52f44c3 100644
+--- a/src/lan-box.cc
++++ b/src/lan-box.cc
+@@ -62,10 +62,21 @@ static const int kPortWidth = 48;
+ static const int kServerButtonY = 52;
+ static const int kJoinButtonY = 98;
+ static const int kInternetButtonY = 144;
+-/* Internet: the game server, the name, the buttons */
+-static const int kInternetRowsY = 52;
+-static const int kInternetButtonsY = 110;
+-static const int kInternetBackY = 150;
++/* Internet: the game server, the names (fields over rows of 11), the
++   games waiting there, the code, the buttons. */
++static const char kDefaultRelay[] = "83.12.152.135:6810";
++static const int kInternetRowsY = 40;
++/* Rows of 11: the server, your name, the game, its code, its password. */
++static const int kInternetCodeY = kInternetRowsY + 3 * 11;
++static const int kInternetPasswordY = kInternetRowsY + 4 * 11;
++static const int kInternetListLabelY = 100;
++static const int kRefreshX = LanBox::kWidth - 16 - 80, kRefreshY = 96;
++static const int kInternetListY = 114;
++static const int kCodeWidth = 40;
++static const int kPasswordWidth = 84;
++/* NEW GAME, BACK and JOIN GAME in one row. */
++static const int kInternetButtonsY = 172;
++static const int kInternetBackY = kInternetButtonsY;
+ /* Server: rows of 11 pixels from kServerRowsY (a field of 10 over a
+    row, a pixel to the next), then the buttons */
+ static const int kServerRowsY = 38;
+@@ -122,6 +133,21 @@ static const int kQuickX = 16, kQuickWidth = 64, kQuickStep = 68;
+ 
+ static const char kNoNetwork[] = N_("No network in this version.");
+ 
++std::string LanBox::relay_auto;
++std::string LanBox::relay_auto_password;
++/* RELAYAUTO: when the next click is due, when the player joined. */
++static unsigned int relay_auto_due = 0;
++static unsigned int relay_auto_joined = 0;
++
++/* What the game server and the link of an internet game may answer: for
++   the translations (the box translates the message it shows). */
++static const char *const kServerAnswers[] __attribute__((unused)) = {
++  N_("Password needed."), N_("Wrong password."), N_("No such game."),
++  N_("Server full."), N_("Too many connections."),
++  N_("No answer from the game server."), N_("Game server not found."),
++  N_("The other player left."), N_("Different version.")
++};
++
+ /* Letters, digits, spaces and - _ . of a name. */
+ static bool
+ name_filter(const char key, TextInput *text_input) {
+@@ -170,6 +196,22 @@ save_display_name(const std::string &file) {
+   return n;
+ }
+ 
++/* A game server: letters, digits and . : - of a name or an address with
++   its port. */
++static bool
++relay_filter(const char key, TextInput *text_input) {
++  return (key >= 'a' && key <= 'z') || (key >= 'A' && key <= 'Z') ||
++         (key >= '0' && key <= '9') || key == '.' || key == ':' ||
++         key == '-';
++}
++
++/* The code of a game on the game server: letters and digits. */
++static bool
++code_filter(const char key, TextInput *text_input) {
++  return (key >= 'a' && key <= 'z') || (key >= 'A' && key <= 'Z') ||
++         (key >= '0' && key <= '9');
++}
++
+ /* Digits and dots of an IPv4 address. */
+ static bool
+ address_filter(const char key, TextInput *text_input) {
+@@ -250,6 +292,14 @@ LanBox::LanBox(Interface *_interface, PGameInfo _mission)
+   , server_name_field(make_name_field("server_name", "PLAYER 1"))
+   , player_name_field(make_name_field("player_name", "PLAYER 2"))
+   , address_field(new TextInput())
++  , relay_field(new TextInput())
++  , internet_name_field(make_name_field(
++      "internet_name", Settings::get_instance().get(
++        "lan", "player_name", std::string("PLAYER")).c_str()))
++  , game_name_field(make_name_field("internet_game", "MY GAME"))
++  , code_field(new TextInput())
++  , password_field(new TextInput())
++  , internet(false)
+   , port(LanLink::kDefaultPort)
+   , port_in_use(LanLink::kDefaultPort)
+   , focus_address(false)
+@@ -315,6 +365,29 @@ LanBox::LanBox(Interface *_interface, PGameInfo _mission)
+   add_float(server_port_field.get(), kValueX - 4,
+             kServerRowsY + kServerPortRow * kServerRowStep - 1);
+   add_float(join_port_field.get(), kValueX - 4, kJoinPortY - 1);
++
++  std::string relay = Settings::get_instance().get("lan", "relay",
++                                                   std::string());
++  relay_field->set_text(relay.empty() ? std::string(kDefaultRelay) : relay);
++  relay_field->set_size(kFieldWidth + 60, 10);
++  relay_field->set_max_length(40);
++  relay_field->set_filter(relay_filter);
++  relay_field->set_displayed(false);
++  add_float(relay_field.get(), kValueX - 4, kInternetRowsY - 1);
++  add_float(internet_name_field.get(), kValueX - 4,
++            kInternetRowsY + kServerRowStep - 1);
++  add_float(game_name_field.get(), kValueX - 4,
++            kInternetRowsY + 2 * kServerRowStep - 1);
++  code_field->set_size(kCodeWidth, 10);
++  code_field->set_max_length(4);
++  code_field->set_filter(code_filter);
++  code_field->set_displayed(false);
++  add_float(code_field.get(), kValueX - 4, kInternetCodeY - 1);
++  password_field->set_size(kPasswordWidth, 10);
++  password_field->set_max_length(10);
++  password_field->set_filter(code_filter);
++  password_field->set_displayed(false);
++  add_float(password_field.get(), kValueX - 4, kInternetPasswordY - 1);
+ }
+ 
+ LanBox::~LanBox() {
+@@ -330,6 +403,13 @@ LanBox::~LanBox() {
+     settings.set("lan", "player_name", player_name_field->get_text());
+   }
+   settings.set("lan", "server_address", address_field->get_text());
++  settings.set("lan", "relay", relay_address());
++  if (!internet_name_field->get_text().empty()) {
++    settings.set("lan", "internet_name", internet_name_field->get_text());
++  }
++  if (!game_name_field->get_text().empty()) {
++    settings.set("lan", "internet_game", game_name_field->get_text());
++  }
+   settings.set("lan", "port", std::to_string(take_port()));
+   settings.save();
+ }
+@@ -349,10 +429,15 @@ LanBox::set_view(View _view) {
+   /* The server stays while its saved game is chosen; the connection while
+      joined. */
+   if (link() != nullptr &&
+-      (_view == ViewChoose || (_view == ViewJoin && view != ViewJoin))) {
++      (_view == ViewChoose || (_view == ViewJoin && view != ViewJoin) ||
++       (_view == ViewInternet && view != ViewInternet))) {
+     link()->close();
+   }
++  if (_view == ViewChoose || _view == ViewJoin) {
++    internet = false;
++  }
+   take_port();
++  bool opening_internet = _view == ViewInternet && view != ViewInternet;
+   view = _view;
+   message.clear();
+   delete_asked = false;
+@@ -370,9 +455,20 @@ LanBox::set_view(View _view) {
+      update - the click that opened the view takes the focus away from
+      the fields when it is handled (GuiObject::handle_event). */
+   focus_address = view == ViewJoin;
++  if (opening_internet && link() != nullptr) {
++    /* The games waiting on the game server, at once. */
++    servers.clear();
++    link()->relay_list(relay_address());
++  }
+   set_redraw();
+ }
+ 
++std::string
++LanBox::relay_address() {
++  std::string r = relay_field->get_text();
++  return r.empty() ? std::string(kDefaultRelay) : r;
++}
++
+ /* Shown or hidden, redrawn only when that changes: the box is updated
+    with every frame of the network (the ping, once a second), and the map
+    preview draws its whole map when redrawn. */
+@@ -403,6 +499,13 @@ LanBox::show_fields() {
+   fit_size();
+   show_if(player_name_field.get(), view == ViewJoin);
+   show_if(address_field.get(), view == ViewJoin);
++  bool inet = view == ViewInternet;
++  bool waiting = inet && state == LanLink::StateServing;
++  show_if(relay_field.get(), inet && !waiting);
++  show_if(internet_name_field.get(), inet && !waiting);
++  show_if(game_name_field.get(), inet && !waiting);
++  show_if(code_field.get(), inet && !waiting);
++  show_if(password_field.get(), inet && !waiting);
+   /* The port of a running server is shown as text: it is the one in use
+      until STOP SERVER. */
+   bool server_port = view == ViewServer && !running;
+@@ -446,6 +549,7 @@ LanBox::update() {
+                        preview_due) >= 0) {
+     generate_preview();
+   }
++  if (!relay_auto.empty()) relay_auto_step();
+   LanLink *l = link();
+   if (l == nullptr || view == ViewChoose) {
+     return;
+@@ -474,6 +578,8 @@ LanBox::update() {
+   }
+   std::string m = l->take_message();
+   if (!m.empty()) {
++    /* The texts of the link and of the game server, translated when known. */
++    m = _(m.c_str());
+     message = m;
+   }
+   show_fields();
+@@ -482,10 +588,24 @@ LanBox::update() {
+     if (l->get_state() == LanLink::StateConnected) {
+       set_view(ViewJoined);
+     }
++  } else if (view == ViewInternet) {
++    servers = l->get_servers();
++    if (l->get_state() == LanLink::StateConnected) {
++      /* The other player is there: the lobby, as in a LAN game. */
++      internet = true;
++      set_view(l->is_server() ? ViewServer : ViewJoined);
++      message.clear();
++    }
+   } else if (view == ViewJoined &&
+              l->get_state() != LanLink::StateConnected) {
+-    set_view(ViewJoin);
++    set_view(internet ? ViewInternet : ViewJoin);
+     message = m;
++  } else if (view == ViewServer && internet &&
++             l->get_state() != LanLink::StateConnected) {
++    /* The player of an internet game left: the game on the server ends
++       with them. */
++    set_view(ViewInternet);
++    message = m.empty() ? std::string(_("The other player left.")) : m;
+   }
+   int type = 0;
+   std::string data;
+@@ -759,6 +879,7 @@ LanBox::draw_lobby() {
+   int y = kInfoY;
+   for (const auto &row : rows) {
+     frame->draw_string(kInfoX, y, row[0], Color::green, Color::black);
++    ReadableText readable;
+     frame->draw_string(kInfoValueX, y, row[1], Color::green, Color::black);
+     y += kInfoStep;
+   }
+@@ -833,7 +954,7 @@ LanBox::lobby_click(int x, int y) {
+     if (inside(x, y, kRightButtonX, kLobbyButtonsY, kButtonWidth,
+                kButtonHeight)) {
+       play_sound(Audio::TypeSfxClick);
+-      set_view(ViewJoin);
++      set_view(internet ? ViewInternet : ViewJoin);
+       return true;
+     }
+     return false;
+@@ -892,7 +1013,7 @@ LanBox::lobby_click(int x, int y) {
+   if (inside(x, y, kLeftButtonX, kLobbyButtonsY, kButtonWidth,
+              kButtonHeight)) {
+     play_sound(Audio::TypeSfxClick);
+-    set_view(ViewChoose);
++    set_view(internet ? ViewInternet : ViewChoose);
+     return true;
+   }
+   return false;
+@@ -929,11 +1050,208 @@ LanBox::draw_rows(int y, const std::string rows[][2], size_t count,
+                   int step) {
+   for (size_t i = 0; i < count; i++) {
+     frame->draw_string(kLabelX, y, rows[i][0], Color::green, Color::black);
++    /* Addresses, names, codes, passwords: the readable font. */
++    ReadableText readable;
+     frame->draw_string(kValueX, y, rows[i][1], Color::green, Color::black);
+     y += step;
+   }
+ }
+ 
++/* The internet game: the game server, the names, the games waiting there
++   (a click takes the code), the code; NEW GAME makes one (its code for
++   the other player), JOIN GAME joins the one with the code. */
++void
++LanBox::draw_internet(LanLink::State state) {
++  bool waiting = state == LanLink::StateServing;
++  bool asking = state == LanLink::StateSearching;
++  bool connecting = state == LanLink::StateConnecting;
++  draw_centered(24, _("A game over the internet"));
++  if (waiting) {
++    std::string code = link() != nullptr ? link()->get_relay_code() : "";
++    std::string pass = password_field->get_text();
++    const std::string rows[][2] = {
++      { _("Game server"), relay_address() },
++      { _("Your name"), internet_name_field->get_text() },
++      { _("Game name"), game_name_field->get_text() },
++      { _("Code of the game"), code.empty() ? std::string("...") : code },
++      { _("Password"), pass.empty() ? std::string(_("none")) : pass },
++    };
++    draw_rows(kInternetRowsY, rows, sizeof(rows) / sizeof(rows[0]),
++              kServerRowStep);
++    if (code.empty()) {
++      draw_centered(kInternetListY + 8, _("Making the game..."));
++    } else {
++      draw_centered(kInternetListY, _("The other player chooses it"));
++      draw_centered(kInternetListY + 10, _("in JOIN GAME or types the code."));
++      draw_centered(kInternetListY + 30, _("Waiting for a player..."));
++    }
++    draw_text_button(kLeftButtonX, kInternetButtonsY, kButtonWidth,
++                     _("CANCEL GAME"));
++    draw_text_button(kRightButtonX, kInternetButtonsY, kButtonWidth,
++                     _("JOIN GAME"), false);
++  } else {
++    frame->draw_string(kLabelX, kInternetRowsY, _("Game server"),
++                       Color::green, Color::black);
++    frame->draw_string(kLabelX, kInternetRowsY + kServerRowStep,
++                       _("Your name"), Color::green, Color::black);
++    frame->draw_string(kLabelX, kInternetRowsY + 2 * kServerRowStep,
++                       _("Game name"), Color::green, Color::black);
++    frame->draw_string(kListX, kInternetListLabelY,
++                       asking ? _("Asking the game server...")
++                              : _("Games waiting"),
++                       Color::green, Color::black);
++    draw_text_button(kRefreshX, kRefreshY, 80, _("REFRESH"), !asking);
++    frame->fill_rect(kListX, kInternetListY, kListW, kListH, Color::black);
++    if (servers.empty() && !asking) {
++      frame->draw_string(kListX + 4, kInternetListY + 4,
++                         _("None - NEW GAME makes one."), Color::green);
++    }
++    for (size_t i = 0; i < servers.size() && i < kListRows; i++) {
++      const LanLink::Server &s = servers[i];
++      int y = kInternetListY + 2 + 8 * static_cast<int>(i);
++      ReadableText readable;
++      frame->draw_string(kListX + 4, y, s.address + (s.password ? "*" : ""),
++                         Color::green);
++      frame->draw_string(kListX + 44, y, s.name, Color::green);
++      frame->draw_string(kListX + 172, y, s.player, Color::green);
++      std::string w = std::to_string(s.waiting_s / 60) + " min";
++      frame->draw_string(kListX + kListW - 4 - frame->get_string_width(w), y,
++                         w, Color::green);
++    }
++    frame->draw_string(kLabelX, kInternetCodeY, _("Code of the game"),
++                       Color::green, Color::black);
++    frame->draw_string(kLabelX, kInternetPasswordY, _("Password"),
++                       Color::green, Color::black);
++    draw_text_button(kLeftButtonX, kInternetButtonsY, kButtonWidth,
++                     _("NEW GAME"), !connecting);
++    draw_text_button(kRightButtonX, kInternetButtonsY, kButtonWidth,
++                     connecting ? _("CONNECTING") : _("JOIN GAME"),
++                     !connecting);
++  }
++  draw_text_button(kButtonX, kInternetBackY, kButtonWidth, _("BACK"));
++}
++
++/* RELAYAUTO: the clicks of a player. */
++void
++LanBox::relay_auto_step() {
++  unsigned int now = EventLoop::get_instance().get_ticks();
++  if (relay_auto_due == 0) relay_auto_due = now + 2000;
++  if (static_cast<int>(now - relay_auto_due) < 0) return;
++  relay_auto_due = now + 3000;
++  bool host = relay_auto == "HOST";
++  LanLink::State state = link_state();
++  if (view == ViewChoose) {
++    handle_click_left(kButtonX + 4, kInternetButtonY + 4);
++  } else if (view == ViewInternet && state == LanLink::StateIdle) {
++    if (!relay_auto_password.empty()) {
++      password_field->set_text(relay_auto_password);
++    }
++    if (host) {
++      handle_click_left(kLeftButtonX + 4, kInternetButtonsY + 4);
++    } else if (!servers.empty()) {
++      handle_click_left(kListX + 8, kInternetListY + 3);
++      handle_click_left(kRightButtonX + 4, kInternetButtonsY + 4);
++      relay_auto_due = now + 6000;
++    } else {
++      handle_click_left(kRefreshX + 4, kRefreshY + 4);
++    }
++  } else if (host && lobby()) {
++    /* START GAME a few seconds after the player joined. */
++    relay_auto_due = now + 1000;
++    if (relay_auto_joined == 0) {
++      relay_auto_joined = now;
++    } else if (static_cast<int>(now - relay_auto_joined) >= 5000) {
++      relay_auto_joined = 0;
++      handle_click_left(kRightButtonX + 4, kLobbyButtonsY + 4);
++    }
++  }
++}
++
++void
++LanBox::internet_click(int x, int y, LanLink *l, LanLink::State state) {
++  bool waiting = state == LanLink::StateServing;
++  if (inside(x, y, kButtonX, kInternetBackY, kButtonWidth, kButtonHeight)) {
++    play_sound(Audio::TypeSfxClick);
++    set_view(ViewChoose);
++    return;
++  }
++  if (l == nullptr) {
++    play_sound(Audio::TypeSfxNotAccepted);
++    message = _(kNoNetwork);
++    set_redraw();
++    return;
++  }
++  if (waiting) {
++    if (inside(x, y, kLeftButtonX, kInternetButtonsY, kButtonWidth,
++               kButtonHeight)) {
++      /* CANCEL GAME: the game on the server is gone. */
++      play_sound(Audio::TypeSfxClick);
++      l->close();
++      message.clear();
++      show_fields();
++      set_redraw();
++    }
++    return;
++  }
++  if (inside(x, y, kListX, kInternetListY, kListW, kListH)) {
++    size_t row = static_cast<size_t>((y - kInternetListY - 2) / 8);
++    if (y >= kInternetListY + 2 && row < servers.size()) {
++      play_sound(Audio::TypeSfxClick);
++      code_field->set_text(servers[row].address);
++      message.clear();
++      if (servers[row].password) {
++        /* Only who knows the password joins it: typed here. */
++        message = _("The game has a password: type it.");
++        password_field->set_focused();
++      }
++      set_redraw();
++    }
++  } else if (inside(x, y, kRefreshX, kRefreshY, 80, kButtonHeight)) {
++    if (state == LanLink::StateSearching ||
++        state == LanLink::StateConnecting) {
++      play_sound(Audio::TypeSfxNotAccepted);
++    } else {
++      play_sound(Audio::TypeSfxClick);
++      message.clear();
++      servers.clear();
++      l->relay_list(relay_address());
++    }
++    set_redraw();
++  } else if (inside(x, y, kLeftButtonX, kInternetButtonsY, kButtonWidth,
++                    kButtonHeight)) {
++    if (state == LanLink::StateConnecting) {
++      play_sound(Audio::TypeSfxNotAccepted);
++      return;
++    }
++    play_sound(Audio::TypeSfxClick);
++    message.clear();
++    internet = true;
++    l->relay_create(relay_address(), internet_name_field->get_text(),
++                    game_name_field->get_text(), password_field->get_text());
++    show_fields();
++    set_redraw();
++  } else if (inside(x, y, kRightButtonX, kInternetButtonsY, kButtonWidth,
++                    kButtonHeight)) {
++    std::string code = code_field->get_text();
++    for (char &c : code) {
++      if (c >= 'a' && c <= 'z') c = static_cast<char>(c - 'a' + 'A');
++    }
++    if (code.size() != 4 || state == LanLink::StateConnecting) {
++      play_sound(Audio::TypeSfxNotAccepted);
++      if (code.size() != 4) {
++        message = _("Choose a game or type its code.");
++      }
++    } else {
++      play_sound(Audio::TypeSfxClick);
++      internet = true;
++      message = _("Connecting to the game server...");
++      l->relay_join(relay_address(), internet_name_field->get_text(), code,
++                    password_field->get_text());
++    }
++    set_redraw();
++  }
++}
++
+ void
+ LanBox::internal_draw() {
+   for (int y = 0; y < height; y += 16) {
+@@ -966,27 +1284,9 @@ LanBox::internal_draw() {
+       draw_centered(kInternetButtonY + 20, _("Both connect to the game server,"));
+       draw_centered(kInternetButtonY + 30, _("no router to set up."));
+       break;
+-    case ViewInternet: {
+-      /* The game server on the internet (to come): its address from the
+-         settings ([lan] relay = host:port). */
+-      std::string relay = Settings::get_instance().get("lan", "relay",
+-                                                       std::string());
+-      draw_centered(26, _("A game over the game server"));
+-      const std::string rows[][2] = {
+-        { _("Game server"), relay.empty() ? _("not set yet") : relay },
+-        { _("Your name"), player_name_field->get_text() },
+-      };
+-      draw_rows(kInternetRowsY, rows, sizeof(rows) / sizeof(rows[0]),
+-                kServerRowStep);
+-      draw_centered(kInternetRowsY + 30, _("Coming soon: the game server"));
+-      draw_centered(kInternetRowsY + 40, _("is being made."));
+-      draw_text_button(kLeftButtonX, kInternetButtonsY, kButtonWidth,
+-                       _("NEW GAME"), false);
+-      draw_text_button(kRightButtonX, kInternetButtonsY, kButtonWidth,
+-                       _("JOIN GAME"), false);
+-      draw_text_button(kButtonX, kInternetBackY, kButtonWidth, _("BACK"));
++    case ViewInternet:
++      draw_internet(state);
+       break;
+-    }
+     case ViewServer: {
+       bool running = state == LanLink::StateServing ||
+                      state == LanLink::StateConnected;
+@@ -1070,6 +1370,7 @@ LanBox::internal_draw() {
+       for (size_t i = 0; i < servers.size() && i < kListRows; i++) {
+         const LanLink::Server &s = servers[i];
+         int y = kListY + 2 + 8 * static_cast<int>(i);
++        ReadableText readable;
+         bool same = s.same_version;
+         Color c = same ? Color::green : Color(0x99, 0x99, 0x99);
+         frame->draw_string(kListX + 4, y, s.name, c);
+@@ -1159,18 +1460,7 @@ LanBox::handle_click_left(int x, int y) {
+       }
+       break;
+     case ViewInternet:
+-      if (inside(x, y, kLeftButtonX, kInternetButtonsY, kButtonWidth,
+-                 kButtonHeight) ||
+-          inside(x, y, kRightButtonX, kInternetButtonsY, kButtonWidth,
+-                 kButtonHeight)) {
+-        play_sound(Audio::TypeSfxNotAccepted);
+-        message = _("The game server is not ready yet.");
+-        set_redraw();
+-      } else if (inside(x, y, kButtonX, kInternetBackY, kButtonWidth,
+-                        kButtonHeight)) {
+-        play_sound(Audio::TypeSfxClick);
+-        set_view(ViewChoose);
+-      }
++      internet_click(x, y, l, state);
+       break;
+     case ViewServer:
+       if (inside(x, y, kLeftButtonX, kRunY, kButtonWidth, kButtonHeight)) {
+@@ -1275,7 +1565,7 @@ LanBox::handle_click_left(int x, int y) {
+     case ViewJoined:
+       if (inside(x, y, kButtonX, kCancelY, kButtonWidth, kButtonHeight)) {
+         play_sound(Audio::TypeSfxClick);
+-        set_view(ViewJoin);
++        set_view(internet ? ViewInternet : ViewJoin);
+       }
+       break;
+     case ViewLoad:
+diff --git a/src/lan-box.h b/src/lan-box.h
+index 6d9dc77..4eab995 100644
+--- a/src/lan-box.h
++++ b/src/lan-box.h
+@@ -58,7 +58,8 @@ class LanBox : public GuiObject {
+     ViewJoined,  /* connected to a server, waiting for it to start */
+     ViewLoad,    /* the server chooses a saved game to go on with */
+     /* Both players connect to the game server on the internet (no
+-       address of a router needed); to come, the server is being made. */
++       address of a router needed): one makes a game there, the other one
++       joins it by its code (server/ of the Amiga port, 0.131). */
+     ViewInternet
+   } View;
+ 
+@@ -72,6 +73,18 @@ class LanBox : public GuiObject {
+   std::unique_ptr<TextInput> server_name_field;
+   std::unique_ptr<TextInput> player_name_field;
+   std::unique_ptr<TextInput> address_field;
++  /* The internet game: the game server (host:port), the name of this
++     player and of the game made, the code of the game to join; all but
++     the code kept in the settings. internet: the connection of the lobby
++     goes through the game server (back to ViewInternet when it ends). */
++  std::unique_ptr<TextInput> relay_field;
++  std::unique_ptr<TextInput> internet_name_field;
++  std::unique_ptr<TextInput> game_name_field;
++  std::unique_ptr<TextInput> code_field;
++  /* A password of the game: who makes it may set one (then only who
++     knows it can join), who joins types it when the list shows one. */
++  std::unique_ptr<TextInput> password_field;
++  bool internet;
+   /* The port of the game (TCP, and UDP for the search), kept in the
+      settings: one value, a field in the server view and one in the join
+      view. 6810 at first. */
+@@ -120,6 +133,11 @@ class LanBox : public GuiObject {
+   bool focus_chat;
+ 
+  public:
++  /* RELAYAUTO (a test): "HOST" or "JOIN" - the box makes / joins a game
++     over the game server by itself (and the host starts it). */
++  static std::string relay_auto;
++  static std::string relay_auto_password;  /* RELAYAUTO=HOST:pass, JOIN:pass */
++
+   LanBox(Interface *interface, PGameInfo mission);
+   virtual ~LanBox();
+ 
+@@ -138,6 +156,11 @@ class LanBox : public GuiObject {
+   void show_fields();
+   /* The port typed in, checked (a wrong one goes back to port). */
+   int take_port();
++  /* The game server typed in, the default one if none. */
++  std::string relay_address();
++  void draw_internet(LanLink::State state);
++  void relay_auto_step();
++  void internet_click(int x, int y, LanLink *l, LanLink::State state);
+   void draw_text_button(int x, int y, int w, const std::string &text,
+                         bool enabled = true);
+   void draw_centered(int y, const std::string &text);
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index c9146d2..f9f239e 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -244,10 +244,10 @@ LanGame::receive() {
+ }
+ 
+ /* The report of a sync error as files: the .txt of the commands next to
+-   the save, and the files of the player who joined sent to the server.
+-   Off for now - reports will go to a server of their own, not to the
+-   players' Amigas (user, 5.11.2026); the SYNC_ save stays. */
+-static const bool kReportFiles = false;
++   the save, and the files of the player who joined sent to the server
++   side, which asks to send them all to the game server (0.131; deleted
++   there when sent, but for its SYNC_ save). */
++static const bool kReportFiles = true;
+ 
+ void
+ LanGame::dump(bool sync_error) {
+@@ -295,10 +295,23 @@ LanGame::dump(bool sync_error) {
+   log << "\ncommands (the last " << command_log.size() << "):\n";
+   for (const std::string &s : command_log) log << s << "\n";
+   std::string text = log.str();
+-  if (kReportFiles) {
++  if (kReportFiles && server) {
++    /* (The side that joined sends its text straight to the server side,
++       nothing more on its disk than the save.) */
+     std::ofstream f(folder + base + ".txt", std::ios::binary);
+     f << text;
+   }
++  if (kReportFiles && server && sync_error) {
++    /* The bug report: these files and those of the other side when they
++       come (receive_file). */
++    interface->clear_report_files();
++    if (saved) {
++      interface->add_report_file(folder + base + GameStore::lan_suffix() +
++                                 ".save");
++    }
++    interface->add_report_file(folder + base + ".txt");
++    interface->open_lan_report_box();
++  }
+   Log::Warn["lan"] << "LAN dump at step " << steps << ": " << base;
+   add_chat(-1, std::string(), saved ? _("GAME SAVED: SYNC ERROR")
+                                     : _("GAME NOT SAVED"));
+@@ -512,6 +525,9 @@ LanGame::receive_file(int type, const std::string &data) {
+       std::ofstream f(path, std::ios::binary);
+       f << file_in;
+       ok = static_cast<bool>(f);
++      if (ok && server) {
++        interface->add_report_file(path);
++      }
+     }
+     if (file_in_name.size() > 4 &&
+         file_in_name.compare(file_in_name.size() - 4, 4, ".txt") == 0) {
+diff --git a/src/lan-link.h b/src/lan-link.h
+index b966543..352f9d2 100644
+--- a/src/lan-link.h
++++ b/src/lan-link.h
+@@ -43,6 +43,11 @@ class LanLink {
+     std::string address;
+     std::string version;
+     bool same_version;   /* as this program: it can join */
++    /* A game on the game server (relay_list): its player and how long it
++       waits, s; address is then its code. */
++    std::string player;
++    unsigned int waiting_s;
++    bool password;       /* the game needs one to be joined */
+   } Server;
+ 
+   /* The frames of the game: their type and up to kMaxData bytes. */
+@@ -89,6 +94,27 @@ class LanLink {
+   /* The time there and back of the last ping, ms; -1 none yet. */
+   virtual int get_ping_ms() = 0;
+ 
++  /* A game over the internet through the game server, "host:port" (the
++     server/ folder of the Amiga port; the default port if none).
++     relay_list: like search() - get_servers() fills with the games waiting
++     there (name: the game, address: its code, player), StateSearching
++     until done. relay_create: makes a game there named game and waits for
++     a player (StateServing, is_server()); get_relay_code() is its code for
++     the other player; with a password only who knows it can join.
++     relay_join: joins the game with the code (and its password, "" if
++     none; StateConnecting, then StateConnected as with connect()). */
++  virtual void relay_list(const std::string &server) {}
++  virtual void relay_create(const std::string &server,
++                            const std::string &name,
++                            const std::string &game,
++                            const std::string &password) {}
++  virtual void relay_join(const std::string &server, const std::string &name,
++                          const std::string &code,
++                          const std::string &password) {}
++  virtual std::string get_relay_code() { return std::string(); }
++  /* The connection goes through the game server. */
++  virtual bool is_relay() { return false; }
++
+   virtual bool send(int type, const std::string &data) = 0;
+   /* The next frame of the game received, false if none. */
+   virtual bool receive(int *type, std::string *data) = 0;
+diff --git a/src/report-box.cc b/src/report-box.cc
+new file mode 100644
+index 0000000..7d7628d
+--- /dev/null
++++ b/src/report-box.cc
+@@ -0,0 +1,307 @@
++/*
++ * report-box.cc - The bug report box (see report-box.h).
++ *
++ * Copyright (C) 2026  The Amiga port of Freeserf
++ *
++ * This file is part of freeserf.
++ *
++ * freeserf is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ */
++
++#include "src/report-box.h"
++
++#include <cstdio>
++#include <string>
++#include <vector>
++
++#include "src/interface.h"
++#include "src/popup.h"
++#include "src/box-frame.h"
++#include "src/text-input.h"
++#include "src/audio.h"
++#include "src/data.h"
++#include "src/gfx.h"
++#include "src/settings.h"
++#include "src/translation.h"
++
++static const int kExitSize = 16;
++static const int kLabelX = 16;
++/* The e-mail: its label left of a field of two lines of 30 letters. What
++   happened: under its label, 23 lines of 46 letters (the font is 8x8).
++   The status of the sending is shown in place of the two lines on top. */
++static const int kFieldX = 16;
++static const int kFieldWidth = ReportBox::kWidth - 32;
++static const int kEmailLabelY = 46;
++static const int kEmailX = 144;
++static const int kEmailY = 45;
++static const int kEmailWidth = ReportBox::kWidth - 16 - kEmailX;
++static const int kTextLabelY = 70;
++static const int kTextY = 80;
++static const int kTextLines = 23;
++static const int kStatusY = 22;
++static const int kButtonsY = 272;
++static const int kButtonWidth = 112;
++static const int kButtonHeight = 16;
++static const int kLeftButtonX = 16;
++/* Clear of the exit sign in the corner. */
++static const int kRightButtonX = ReportBox::kWidth - 40 - kButtonWidth;
++
++/* What happened: a field of many lines, broken between words; when it is
++   full, the last lines are shown. */
++class ReportText : public TextInput {
++ public:
++  bool is_focused() const { return focused; }
++
++ protected:
++  virtual void internal_draw() {
++    ReadableText readable;
++    frame->fill_rect(0, 0, width, height, color_background);
++    if (focused) frame->draw_rect(0, 0, width, height, color_focus);
++    std::vector<std::string> lines;
++    std::string rest = text;
++    int room = width - 2;
++    while (!rest.empty()) {
++      size_t n = 1;
++      while (n < rest.size() &&
++             frame->get_string_width(rest.substr(0, n + 1)) <= room) {
++        n++;
++      }
++      if (n < rest.size()) {
++        /* Not in the middle of a word, if a space is on the line. */
++        size_t space = rest.rfind(' ', n);
++        if (space != std::string::npos && space > 0) n = space + 1;
++      }
++      lines.push_back(rest.substr(0, n));
++      rest.erase(0, n);
++    }
++    if (lines.empty() || (focused && frame->get_string_width(lines.back() + "_")
++                                     > room)) {
++      lines.push_back("");
++    }
++    int shown = (height - 2) / 8;
++    size_t first = lines.size() > static_cast<size_t>(shown)
++                   ? lines.size() - shown : 0;
++    int y = 1;
++    for (size_t i = first; i < lines.size(); i++) {
++      std::string line = lines[i];
++      if (focused && i + 1 == lines.size()) line += "_";  /* the cursor */
++      frame->draw_string(1, y, line, color_text);
++      y += 8;
++    }
++  }
++};
++
++/* An e-mail address: letters, digits and @ . _ - + */
++static bool
++email_filter(const char key, TextInput *text_input) {
++  return (key >= 'a' && key <= 'z') || (key >= 'A' && key <= 'Z') ||
++         (key >= '0' && key <= '9') || key == '@' || key == '.' ||
++         key == '_' || key == '-' || key == '+';
++}
++
++/* A few words: the letters and signs the fonts of the game have. */
++static bool
++text_filter(const char key, TextInput *text_input) {
++  return (key >= 'a' && key <= 'z') || (key >= 'A' && key <= 'Z') ||
++         (key >= '0' && key <= '9') ||
++         std::string(" .,:;-?!'()/+=%@_#").find(key) != std::string::npos;
++}
++
++ReportBox::ReportBox(Interface *_interface, bool _lan)
++  : interface(_interface)
++  , email_field(new TextInput())
++  , text_field(new ReportText())
++  , stage(StageAsk)
++  , lan(_lan) {
++  opaque = true;
++  set_size(kWidth, kHeight);
++  email_field->set_size(kEmailWidth, 18);
++  email_field->set_max_length(60);
++  email_field->set_filter(email_filter);
++  email_field->set_text(Settings::get_instance().get("report", "email",
++                                                     std::string()));
++  add_float(email_field.get(), kEmailX, kEmailY);
++  text_field->set_size(kFieldWidth, 2 + 8 * kTextLines);
++  text_field->set_max_length(kTextMax);
++  text_field->set_filter(text_filter);
++  add_float(text_field.get(), kFieldX, kTextY);
++  email_field->set_displayed(true);
++  text_field->set_displayed(true);
++  /* Typing at once: the e-mail, or what happened when the e-mail is
++     known. */
++  if (email_field->get_text().empty()) {
++    email_field->set_focused();
++  } else {
++    text_field->set_focused();
++  }
++}
++
++ReportBox::~ReportBox() {
++  Settings &settings = Settings::get_instance();
++  settings.set("report", "email", email_field->get_text());
++  settings.save();
++}
++
++bool
++ReportBox::inside(int x, int y, int bx, int by, int bw, int bh) {
++  return x >= bx && x < bx + bw && y >= by && y < by + bh;
++}
++
++void
++ReportBox::draw_centered(int y, const std::string &text) {
++  frame->draw_string((width - frame->get_string_width(text)) / 2, y, text,
++                     Color::green, Color::black);
++}
++
++void
++ReportBox::internal_draw() {
++  /* All of this box in the readable font, whatever font the player
++     chose. */
++  ReadableText readable;
++  for (int y = 0; y < height; y += 16) {
++    for (int x = 0; x < width; x += 16) {
++      frame->draw_sprite(x, y, Data::AssetIcon,
++                         PopupBox::PatternDiagonalGreen);
++    }
++  }
++  draw_box_frame(frame, width, height);
++  draw_centered(9, _("Bug report"));
++  if (!status.empty()) {
++    draw_centered(kStatusY + 5, status);
++  } else if (lan) {
++    draw_centered(kStatusY, _("The LAN game went out of step."));
++    draw_centered(kStatusY + 10, _("Send the saves of both sides?"));
++  } else {
++    draw_centered(kStatusY, _("The state of the game is saved."));
++    draw_centered(kStatusY + 10, _("Send it to the author of the port?"));
++  }
++  frame->draw_string(kLabelX, kEmailLabelY, _("Your e-mail"), Color::green,
++                     Color::black);
++  frame->draw_string(kLabelX, kEmailLabelY + 9, _("(for an answer)"),
++                     Color::green, Color::black);
++  frame->draw_string(kLabelX, kTextLabelY, _("What happened"), Color::green,
++                     Color::black);
++  std::string count = std::to_string(text_field->get_text().size()) + " / " +
++                      std::to_string(kTextMax);
++  frame->draw_string(width - 16 - frame->get_string_width(count), kTextLabelY,
++                     count, Color::green, Color::black);
++  bool busy = stage == StageSending;
++  if (stage == StageDone) {
++    ::draw_text_button(frame, (width - kButtonWidth) / 2, kButtonsY,
++                       kButtonWidth, _("CLOSE"), true);
++  } else {
++    ::draw_text_button(frame, kLeftButtonX, kButtonsY, kButtonWidth,
++                       _("SEND"), !busy);
++    ::draw_text_button(frame, kRightButtonX, kButtonsY, kButtonWidth,
++                       _("CANCEL"), !busy);
++  }
++  frame->draw_sprite(width - 8 - kExitSize, height - 7 - kExitSize,
++                     Data::AssetIcon, 60);  // Exit
++}
++
++void
++ReportBox::send() {
++  if (!Interface::report_send) {
++    status = _("No network in this version.");
++    stage = StageFailed;
++    return;
++  }
++  std::vector<std::string> files;
++  if (lan) files = interface->get_report_files();
++  if (Interface::report_send(lan ? "LAN" : "F10", files,
++                             email_field->get_text(),
++                             text_field->get_text())) {
++    stage = StageSending;
++    status = _("Sending the report...");
++  } else {
++    stage = StageFailed;
++    status = _("The report was not sent.");
++  }
++}
++
++void
++ReportBox::update() {
++  if (stage != StageSending || !Interface::report_result) return;
++  std::string text;
++  bool ok = false;
++  if (!Interface::report_result(&text, &ok)) return;
++  if (ok) {
++    stage = StageDone;
++    status = text_with(_("Report no. %s sent. Thank you!"), text);
++    play_sound(Audio::TypeSfxAccepted);
++    if (lan) {
++      /* On the server now: off this Amiga, but for the save of this side
++         (SYNC_..M, kept as before). */
++      for (const std::string &path : interface->get_report_files()) {
++        size_t n = path.size();
++        if (n > 10 && path.compare(n - 10, 10, "M.lan.save") == 0) continue;
++        std::remove(path.c_str());
++      }
++      interface->clear_report_files();
++    }
++  } else {
++    stage = StageFailed;
++    status = _(text.c_str());
++    play_sound(Audio::TypeSfxNotAccepted);
++  }
++  set_redraw();
++}
++
++void
++ReportBox::next_field() {
++  if (text_field->is_focused()) {
++    email_field->set_focused();
++  } else {
++    text_field->set_focused();
++  }
++  set_redraw();
++}
++
++void
++ReportBox::handle_return() {
++  if (stage != StageDone && text_field->is_focused()) {
++    return;  /* Typing what happened: SEND with the mouse. */
++  }
++  if (stage == StageDone) {
++    play_sound(Audio::TypeSfxClick);
++    interface->close_report_box();  /* Deletes this box. */
++  } else if (stage != StageSending) {
++    play_sound(Audio::TypeSfxClick);
++    send();
++    set_redraw();
++  }
++}
++
++bool
++ReportBox::handle_click_left(int x, int y) {
++  if (inside(x, y, width - 8 - kExitSize, height - 7 - kExitSize, kExitSize,
++             kExitSize)) {
++    play_sound(Audio::TypeSfxClick);
++    interface->close_report_box();  /* Deletes this box. */
++    return true;
++  }
++  if (stage == StageSending) {
++    return true;
++  }
++  if (stage == StageDone) {
++    if (inside(x, y, (width - kButtonWidth) / 2, kButtonsY, kButtonWidth,
++               kButtonHeight)) {
++      play_sound(Audio::TypeSfxClick);
++      interface->close_report_box();
++    }
++    return true;
++  }
++  if (inside(x, y, kLeftButtonX, kButtonsY, kButtonWidth, kButtonHeight)) {
++    play_sound(Audio::TypeSfxClick);
++    send();
++    set_redraw();
++  } else if (inside(x, y, kRightButtonX, kButtonsY, kButtonWidth,
++                    kButtonHeight)) {
++    play_sound(Audio::TypeSfxClick);
++    interface->close_report_box();
++  }
++  return true;
++}
+diff --git a/src/report-box.h b/src/report-box.h
+new file mode 100644
+index 0000000..45c829c
+--- /dev/null
++++ b/src/report-box.h
+@@ -0,0 +1,73 @@
++/*
++ * report-box.h - The bug report box: after F10 saved the state of the game
++ * (the Amiga port), the player may send it to the game server with an
++ * e-mail address (to hear when the bug is fixed) and a few words.
++ *
++ * Copyright (C) 2026  The Amiga port of Freeserf
++ *
++ * This file is part of freeserf.
++ *
++ * freeserf is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ */
++
++#ifndef SRC_REPORT_BOX_H_
++#define SRC_REPORT_BOX_H_
++
++#include <memory>
++#include <string>
++
++#include "src/gui.h"
++
++class Interface;
++class TextInput;
++class ReportText;
++
++class ReportBox : public GuiObject {
++ public:
++  /* Fits the smallest screen of the port, 400x300. */
++  static const int kWidth = 400;
++  static const int kHeight = 300;
++  /* What happened: so many letters (23 lines of 46 shown, all of it fits;
++     a longer one would show its last lines). */
++  static const int kTextMax = 1000;
++
++ protected:
++  Interface *interface;
++  std::unique_ptr<TextInput> email_field;
++  std::unique_ptr<ReportText> text_field;
++  typedef enum Stage {
++    StageAsk,       /* SEND or CANCEL */
++    StageSending,
++    StageDone,      /* sent: CLOSE */
++    StageFailed     /* not sent: SEND again or CANCEL */
++  } Stage;
++  Stage stage;
++  std::string status;
++  /* A LAN game out of step: the saves of both sides (Interface::
++     get_report_files), sent as kind LAN; else the state of F10. */
++  bool lan;
++
++ public:
++  ReportBox(Interface *interface, bool lan);
++  virtual ~ReportBox();
++
++  /* With every update of the interface: the result of the sending. */
++  void update();
++  /* Return: SEND (not while typing what happened), or CLOSE when it is
++     sent. */
++  void handle_return();
++  /* Tab: typing in the other field. */
++  void next_field();
++
++ protected:
++  virtual void internal_draw();
++  virtual bool handle_click_left(int x, int y);
++  void send();
++  void draw_centered(int y, const std::string &text);
++  static bool inside(int x, int y, int bx, int by, int bw, int bh);
++};
++
++#endif  // SRC_REPORT_BOX_H_
+diff --git a/src/text-input.cc b/src/text-input.cc
+index 3c075aa..b337469 100644
+--- a/src/text-input.cc
++++ b/src/text-input.cc
+@@ -23,6 +23,8 @@
+ 
+ #include <string>
+ 
++#include "src/gfx.h"
++
+ TextInput::TextInput() : GuiObject() {
+   max_length = 0;
+   filter = NULL;
+@@ -45,6 +47,8 @@ TextInput::get_text() {
+ 
+ void
+ TextInput::internal_draw() {
++  /* What is typed: always in the readable font (Amiga port). */
++  ReadableText readable;
+   frame->fill_rect(0, 0, width, height, color_background);
+   if (draw_focus && focused) {
+     frame->draw_rect(0, 0, width, height, color_focus);
+-- 
+2.45.2.windows.1
+

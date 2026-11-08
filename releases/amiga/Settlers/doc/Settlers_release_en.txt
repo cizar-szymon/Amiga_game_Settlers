@@ -1,9 +1,31 @@
 THE SETTLERS (Freeserf) for the Amiga - version history
 =======================================================
 
-Reporting bugs: give the version number (start screen, "Version Settlers")
-and attach RAM:Settlers-state.save and RAM:Settlers-state.txt, written by
-the F10 key when the bug happens.
+Reporting bugs: F10 when the bug happens saves the state of the game and
+opens the bug report box - SEND sends it to the author of the port (the
+text, an e-mail for an answer, the state files, the version number).
+Without a network: give the version number (start screen, "Version
+Settlers") and attach RAM:Settlers-state.save and RAM:Settlers-state.txt.
+
+
+0.131 (8.11.2026, beta release)
+-------------------------------
+
+- Games over the internet through the game server of the author of the
+  port: LAN box -> INTERNET GAME. The one who sets up the game clicks NEW
+  GAME (name of the game, a password if wanted), the one who joins picks
+  the game from the list of waiting games or types its code and clicks
+  JOIN GAME. Nothing to set up in the router.
+- Bug reports from the game: F10 opens a box - e-mail, a text of up to
+  1000 letters, SEND sends the report with the state files of the game;
+  the box shows the number of the report.
+- When LAN games go out of step (OUT OF STEP), the one who set up the
+  game can send the saves of both sides with one button.
+- The fields to type in, the addresses, names and lists of the LAN box
+  and the whole bug report box always in the readable font, whatever
+  font is chosen.
+- The @ sign in both fonts.
+- LAN game: both sides need version 0.131.
 
 
 0.130 (7.11.2026, beta release)

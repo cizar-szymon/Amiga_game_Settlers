@@ -271,8 +271,110 @@ msgstr "Wyjście"
 msgid "Keys"
 msgstr "Klawisze"
 
+msgid "A game over the internet"
+msgstr "Gra przez internet"
+
+msgid "Game server"
+msgstr "Serwer gry"
+
+msgid "Your name"
+msgstr "Twoja nazwa"
+
+msgid "Game name"
+msgstr "Nazwa gry"
+
+msgid "Code of the game"
+msgstr "Kod gry"
+
+msgid "Password"
+msgstr "Hasło"
+
 msgid "none"
 msgstr "brak"
+
+msgid "Making the game..."
+msgstr "Zakładam grę..."
+
+msgid "The other player chooses it"
+msgstr "Drugi gracz wybiera ją"
+
+msgid "in JOIN GAME or types the code."
+msgstr "w DOŁĄCZ albo wpisuje kod."
+
+msgid "Waiting for a player..."
+msgstr "Czekam na gracza..."
+
+msgid "CANCEL GAME"
+msgstr "ZAMKNIJ GRĘ"
+
+msgid "JOIN GAME"
+msgstr "DOŁĄCZ"
+
+msgid "Asking the game server..."
+msgstr "Pytam serwer gry..."
+
+msgid "Games waiting"
+msgstr "Gry czekające"
+
+msgid "REFRESH"
+msgstr "ODŚWIEŻ"
+
+msgid "None - NEW GAME makes one."
+msgstr "Brak - NOWA GRA zakłada grę."
+
+msgid "NEW GAME"
+msgstr "NOWA GRA"
+
+msgid "CONNECTING"
+msgstr "ŁĄCZĘ"
+
+msgid "BACK"
+msgstr "WRÓĆ"
+
+msgid "The game has a password: type it."
+msgstr "Gra ma hasło: wpisz je."
+
+msgid "Choose a game or type its code."
+msgstr "Wybierz grę albo wpisz jej kod."
+
+msgid "Connecting to the game server..."
+msgstr "Łączę z serwerem gry..."
+
+msgid "Two players on two Amigas"
+msgstr "Dwóch graczy na dwóch Amigach"
+
+msgid "in one network."
+msgstr "w jednej sieci."
+
+msgid "START SERVER"
+msgstr "ZAŁÓŻ GRĘ"
+
+msgid "This Amiga sets up the game."
+msgstr "Ta Amiga zakłada grę."
+
+msgid "JOIN SERVER"
+msgstr "DOŁĄCZ"
+
+msgid "Find the server or type"
+msgstr "Znajdź serwer albo wpisz"
+
+msgid "its address and connect."
+msgstr "jego adres i połącz się."
+
+msgid "INTERNET GAME"
+msgstr "INTERNET"
+
+msgid "Both connect to the game server,"
+msgstr "Obie Amigi łączą się z serwerem,"
+
+msgid "no router to set up."
+msgstr "bez ustawiania routera."
+
+msgid "A player has joined."
+msgstr "Gracz dołączył."
+
+msgid "RUN SERVER to be found."
+msgstr "URUCHOM - wtedy widać grę."
 
 msgid "Server name"
 msgstr "Nazwa serwera"
@@ -298,11 +400,20 @@ msgstr "ZATRZYMAJ"
 msgid "RUN SERVER"
 msgstr "URUCHOM"
 
+msgid "CHANGE"
+msgstr "ZMIEŃ"
+
+msgid "AVERAGE"
+msgstr "ŚREDNIA"
+
 msgid "Go on with a saved game"
 msgstr "Dalsza gra z zapisu"
 
 msgid "USE GAME"
 msgstr "WYBIERZ"
+
+msgid "GREAT"
+msgstr "ŚWIETNA"
 
 msgid "Searching the network..."
 msgstr "Szukam w sieci..."
@@ -319,8 +430,8 @@ msgstr "adres poniżej."
 msgid "SEARCH"
 msgstr "SZUKAJ"
 
-msgid "CONNECTING"
-msgstr "ŁĄCZĘ"
+msgid "No network in this version."
+msgstr "Brak sieci w tej wersji."
 
 msgid "CONNECT"
 msgstr "POŁĄCZ"
@@ -334,23 +445,35 @@ msgstr "rozpocznie grę."
 msgid "Your address"
 msgstr "Twój adres"
 
-msgid "The game server is not ready yet."
-msgstr "Serwer gry nie jest jeszcze gotowy."
+msgid "Password needed."
+msgstr "Gra wymaga hasła."
 
-msgid "CHANGE"
-msgstr "ZMIEŃ"
+msgid "Wrong password."
+msgstr "Złe hasło."
 
-msgid "AVERAGE"
-msgstr "ŚREDNIA"
+msgid "No such game."
+msgstr "Nie ma takiej gry."
 
-msgid "GREAT"
-msgstr "ŚWIETNA"
+msgid "Server full."
+msgstr "Serwer pełny."
+
+msgid "Too many connections."
+msgstr "Za dużo połączeń."
+
+msgid "No answer from the game server."
+msgstr "Serwer gry nie odpowiada."
+
+msgid "Game server not found."
+msgstr "Nie znaleziono serwera gry."
+
+msgid "The other player left."
+msgstr "Drugi gracz odszedł."
+
+msgid "Different version."
+msgstr "Inna wersja."
 
 msgid "The game did not start."
 msgstr "Gra nie wystartowała."
-
-msgid "No network in this version."
-msgstr "Brak sieci w tej wersji."
 
 msgid "Type the server address."
 msgstr "Wpisz adres serwera."
@@ -438,72 +561,6 @@ msgstr "START GRY"
 
 msgid "DISCONNECT"
 msgstr "ROZŁĄCZ"
-
-msgid "Two players on two Amigas"
-msgstr "Dwóch graczy na dwóch Amigach"
-
-msgid "in one network."
-msgstr "w jednej sieci."
-
-msgid "START SERVER"
-msgstr "ZAŁÓŻ GRĘ"
-
-msgid "This Amiga sets up the game."
-msgstr "Ta Amiga zakłada grę."
-
-msgid "JOIN SERVER"
-msgstr "DOŁĄCZ"
-
-msgid "Find the server or type"
-msgstr "Znajdź serwer albo wpisz"
-
-msgid "its address and connect."
-msgstr "jego adres i połącz się."
-
-msgid "INTERNET GAME"
-msgstr "INTERNET"
-
-msgid "Both connect to the game server,"
-msgstr "Obie Amigi łączą się z serwerem,"
-
-msgid "no router to set up."
-msgstr "bez ustawiania routera."
-
-msgid "A game over the game server"
-msgstr "Gra przez serwer gry"
-
-msgid "Game server"
-msgstr "Serwer gry"
-
-msgid "not set yet"
-msgstr "jeszcze brak"
-
-msgid "Your name"
-msgstr "Twoja nazwa"
-
-msgid "Coming soon: the game server"
-msgstr "Wkrótce: serwer gry"
-
-msgid "is being made."
-msgstr "jest w przygotowaniu."
-
-msgid "NEW GAME"
-msgstr "NOWA GRA"
-
-msgid "JOIN GAME"
-msgstr "DOŁĄCZ"
-
-msgid "BACK"
-msgstr "WRÓĆ"
-
-msgid "A player has joined."
-msgstr "Gracz dołączył."
-
-msgid "Waiting for a player..."
-msgstr "Czekam na gracza..."
-
-msgid "RUN SERVER to be found."
-msgstr "URUCHOM - wtedy widać grę."
 
 msgid "GAME SAVED: SYNC ERROR"
 msgstr "ZAPISANO: BŁĄD ZGODNOŚCI"
@@ -864,6 +921,45 @@ msgstr "Bardzo dużo"
 msgctxt "ground analysis"
 msgid "Perfect"
 msgstr "Doskonale"
+
+msgid "Bug report"
+msgstr "Zgłoszenie błędu"
+
+msgid "The LAN game went out of step."
+msgstr "Gry LAN rozjechały się."
+
+msgid "Send the saves of both sides?"
+msgstr "Wysłać zapisy obu stron?"
+
+msgid "The state of the game is saved."
+msgstr "Stan gry jest zapisany."
+
+msgid "Send it to the author of the port?"
+msgstr "Wysłać go autorowi portu?"
+
+msgid "Your e-mail"
+msgstr "Twój e-mail"
+
+msgid "(for an answer)"
+msgstr "(do odpowiedzi)"
+
+msgid "What happened"
+msgstr "Co się stało"
+
+msgid "CLOSE"
+msgstr "ZAMKNIJ"
+
+msgid "SEND"
+msgstr "WYŚLIJ"
+
+msgid "Sending the report..."
+msgstr "Wysyłam zgłoszenie..."
+
+msgid "The report was not sent."
+msgstr "Zgłoszenie nie zostało wysłane."
+
+msgid "Report no. %s sent. Thank you!"
+msgstr "Zgłoszenie nr %s wysłane. Dziękuję!"
 
 msgid "Accelerator"
 msgstr "Akcelerator"

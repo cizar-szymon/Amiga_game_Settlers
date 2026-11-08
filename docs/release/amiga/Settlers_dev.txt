@@ -1,7 +1,7 @@
 THE SETTLERS (Freeserf) na Amige - opis dla programistow
 ========================================================
 
-Wersja 0.111. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
+Wersja 0.131. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
 w repozytorium Settlers.
 
 
@@ -121,14 +121,32 @@ docs/PORTING.md, rozdzial "Gra LAN".
                 piasek, skaly) albo caly zapis gry (kawalki po 240 B)
   tury          4 kroki (80 ms); polecenie z tury t dziala w turze
                 t + opoznienie (2-8 tur wg czasu odpowiedzi)
+  serwer gry    INTERNET GAME: obie Amigi lacza sie wychodzaco z serwerem
+                gry ([lan] relay, domyslnie 83.12.152.135:6810; nazwa DNS
+                albo adres). Przed HELLO ramki tekstowe RELAY (typ 5):
+                LIST / CREATE / JOIN; po PAIRED serwer przekazuje ramki
+                gry bez zmian. Zakladajacy jest MASTER, choc laczy sie
+                wychodzaco. Serwer: Python 3 asyncio (katalog server/
+                w repozytorium)
+  zgloszenia    F10 -> okno ReportBox; wysyla proces "Settlers report"
+                (port/amiga_report.c, priorytet 1, wlasna baza
+                bsdsocket.library): REPORT 1 <wersja> <F10|LAN>, pola
+                email / text (do 1000 znakow) / machine, pliki stanu
+                w ramkach RELAY_DATA; odpowiedz REPORTED <nr>
 
 Koniec gry do testu: opcja LANTEST, w grze LAN Ctrl+Shift+W - gracz
 tego komputera wygrywa od razu (u obu).
 Rozjazd do testu: opcja LANTEST, Ctrl+Shift+X - tylko ta gra losuje
 jedna liczbe wiecej; po kilku s OUT OF STEP, zapisy SYNC_ i resync.
 Ctrl+Shift+R (bez LANTEST): resync na zyczenie.
+LANTEST=n: jak LANTEST, a ta strona sama rozjezdza sie po n s (test
+zgloszenia LAN bez klawiszy).
+RELAYAUTO=HOST|JOIN[:haslo] (test): okno LAN samo przechodzi do
+INTERNET GAME; HOST zaklada gre i 5 s po dolaczeniu gracza klika START
+GAME, JOIN odswieza liste i dolacza do pierwszej gry.
 
 Testy: lansim (ta sama gra bez sieci; -l dwie gry w lockstepie, -s/-r
 piasek/skaly, czas sumy kontrolnej), lantest (proces sieciowy z Shella:
-serve, search, connect, send PLIK, extip; PORT=n jako pierwszy
-argument), tools/lan_peer.py (druga strona na PC; --port N).
+serve, search, connect, send PLIK, extip, relay <host> list|create|join;
+PORT=n jako pierwszy argument), tools/lan_peer.py (druga strona na PC;
+--port N).

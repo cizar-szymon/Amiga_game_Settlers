@@ -18,6 +18,11 @@
  *   "SETTLERS-LAN <protocol> <version> <name>"
  * A search listens on its port, so it finds only servers on the same one.
  *
+ * Through the game server (net_relay) the connection goes to it, and
+ * before HELLO the two talk in RELAY frames (type 5, text): LIST / CREATE /
+ * JOIN from here, SESSION / END / CREATED / PAIRED / ERR from it; after
+ * PAIRED the server passes the frames of the two players unchanged.
+ *
  * The internet address of this side (for a game over the internet: the
  * other player types it in) comes from a process of its own, once a run:
  * an HTTP GET to api.ipify.org (amiga_extip.c).
@@ -51,7 +56,12 @@ typedef enum NetEventKind {
   NEV_LOST,         /* the other player is gone: text1 why; a server
                        goes on waiting for another */
   NEV_PING,         /* value: the time of a PING there and back, ms */
-  NEV_MSG           /* value: type, data / length: a frame of the game */
+  NEV_MSG,          /* value: type, data / length: a frame of the game */
+  NEV_RELAY_GAME,   /* a game waiting on the game server (net_relay list):
+                       text1 its name, text2 its player, text3 its code,
+                       value seconds waiting (bit 30: a password is
+                       needed); the end: NEV_SEARCH_DONE */
+  NEV_RELAY_CODE    /* the game made on the game server: text1 its code */
 } NetEventKind;
 
 typedef struct NetEvent {
@@ -75,6 +85,14 @@ void net_serve(const char *name, int port);   /* RUN SERVER */
 void net_search(int ms, int port);            /* listen for servers for ms */
 void net_connect(const char *address, const char *name, int port);
 void net_stop(void);                /* back to nothing */
+/* A game over the internet through the game server (server/ of the repo)
+   at host (a name or an address) and port; op 'L': the games waiting
+   there (NEV_RELAY_GAME...), 'C': make one, arg its name, a tab and a
+   password or nothing (NEV_RELAY_CODE, then NEV_PEER when a player comes),
+   'J': join one, arg its code, a tab and the password (NEV_PEER). After
+   NEV_PEER all goes as with net_connect. */
+void net_relay(const char *host, int port, int op, const char *name,
+               const char *arg);
 
 /* TCP_NODELAY on the connections made from now on (default on); off only
    to measure what Nagle's delay costs. */
@@ -101,6 +119,20 @@ void net_counters(unsigned long *eclocks, unsigned long *frames_out,
 void net_external_lookup(void);
 int net_external_address(char *text, int size);
 void net_external_quit(void);
+
+/* A bug report to the game server (amiga_report.c): a process sends the
+   fields and up to 4 files (missing ones are left out). report_send: 0 if
+   one is still being sent. report_result: 0 while it goes on; 1 when done,
+   *ok 1 and text the number of the report, or *ok 0 and text why not.
+   report_quit at the end of the program. */
+int report_send(const char *host, int port, const char *version,
+                const char *kind, const char *email, const char *text,
+                const char *machine, const char *const *files, int nfiles);
+int report_result(char *text, int size, int *ok);
+void report_quit(void);
+/* 1: a TCP/IP stack is running (its bsdsocket.library in memory) - a
+   report can go; else F10 only saves the state. */
+int report_network(void);
 
 #ifdef __cplusplus
 }

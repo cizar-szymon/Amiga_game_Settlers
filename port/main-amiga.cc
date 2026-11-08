@@ -24,6 +24,8 @@
 #include "src/game-manager.h"
 #include "src/translation.h"
 #include "port/amiga_sampler.h"
+#include "port/amiga_sysinfo.h"
+#include "port/amiga_net.h"
 #include "port/event_loop-amiga.h"
 #include "port/video-amiga.h"
 #include "port/settlers_version.h"
@@ -35,6 +37,7 @@
 #include "port/amiga-box.h"
 #include "port/lan-amiga.h"
 #include "src/lan-game.h"
+#include "src/lan-box.h"
 
 extern "C" const char ver[];
 const char ver[] = "$VER: Settlers " SETTLERS_VERSION " (" SETTLERS_DATE ")";
@@ -134,6 +137,11 @@ parse_option(const char *a) {
     if (amiga_sampler_start(delay, count, us) == 0) atexit(amiga_sampler_stop);
   } else if ((v = option_value(a, "RUNS")) != nullptr) {
     VideoAmiga::asm_runs = strcasecmp(v, "C") != 0;
+  } else if ((v = option_value(a, "RELAYAUTO")) != nullptr) {
+    /* HOST or JOIN (a test): a game over the game server by itself. */
+    LanBox::relay_auto = strncasecmp(v, "HOST", 4) == 0 ? "HOST" : "JOIN";
+    const char *colon = strchr(v, ':');
+    if (colon != nullptr) LanBox::relay_auto_password = colon + 1;
   } else if ((v = option_value(a, "VIEWDRAW")) != nullptr) {
     /* BLOCKS (a test): the view by changed blocks, NONE / LAND / SPR
        nothing / the landscape / the sprites drawn again. */
@@ -143,6 +151,11 @@ parse_option(const char *a) {
     if (strcasecmp(v, "SPR") == 0) VideoAmiga::view_kinds = 1;
   } else if ((v = option_value(a, "RENDER")) != nullptr) {
     VideoAmiga::render_vram = strcasecmp(v, "FAST") != 0;
+  } else if ((v = option_value(a, "LANTEST")) != nullptr) {
+    /* LANTEST=<seconds>: the test keys, and this side goes apart so far
+       into a LAN game. */
+    Interface::lan_test_keys = true;
+    Interface::lan_test_split_s = static_cast<unsigned int>(atoi(v));
   } else if (strcasecmp(a, "LANTEST") == 0) {
     Interface::lan_test_keys = true;
   } else if (strcasecmp(a, "LANINFO") == 0) {
@@ -310,6 +323,61 @@ main(int argc, char *argv[]) {
 
     EventLoopAmiga &event_loop =
       static_cast<EventLoopAmiga &>(EventLoop::get_instance());
+    /* F10 saved the state: the box that may send it to the game server
+       (amiga_report.c), with the e-mail address of the player. */
+    event_loop.on_state_saved = [&interface]() {
+      /* Only with a network: without it F10 just saves, as before. */
+      if (report_network()) interface.open_report_box();
+    };
+    Interface::report_send = [](const std::string &kind,
+                                const std::vector<std::string> &paths,
+                                const std::string &email,
+                                const std::string &text) {
+      std::string server = Settings::get_instance().get(
+        "lan", "relay", std::string("83.12.152.135:6810"));
+      int port = NET_PORT;
+      size_t colon = server.rfind(':');
+      if (colon != std::string::npos) {
+        port = atoi(server.c_str() + colon + 1);
+        server = server.substr(0, colon);
+      }
+      AmigaInfo info;
+      amiga_info_read(&info);
+      unsigned int w = 0, h = 0;
+      Graphics::get_instance().get_resolution(&w, &h);
+      std::string machine = std::string(info.cpu) +
+        (info.warp ? " " + std::string(info.warp_model[0] ?
+                                       info.warp_model : "Warp") : "") +
+        (info.warp_mhz ? " " + std::to_string(info.warp_mhz) + " MHz" : "") +
+        ", Kickstart " + std::to_string(info.kick_version) + "." +
+        std::to_string(info.kick_revision) + ", fast " +
+        std::to_string(info.fast_kb / 1024) + " MB, " +
+        (info.board[0] ? std::string(info.board) + ", " : "") +
+        std::to_string(w) + "x" + std::to_string(h);
+      /* F10: the state it saved. (Not RAM:Settlers-log.txt: the game holds
+         it open for writing, nothing else can read it.) */
+      const char *files[4] = {
+        "RAM:Settlers-state.save", "RAM:Settlers-state.txt", nullptr, nullptr
+      };
+      int count = 2;
+      if (!paths.empty()) {
+        count = 0;
+        for (const std::string &p : paths) {
+          if (count < 4) files[count++] = p.c_str();
+        }
+      }
+      return report_send(server.c_str(), port, SETTLERS_VERSION, kind.c_str(),
+                         email.c_str(), text.c_str(), machine.c_str(),
+                         files, count) != 0;
+    };
+    Interface::report_result = [](std::string *text, bool *ok) {
+      char t[64];
+      int good = 0;
+      if (!report_result(t, sizeof(t), &good)) return false;
+      *text = t;
+      *ok = good != 0;
+      return true;
+    };
     /* The F10 report says where the view is (VIEW= shows it again). */
     event_loop.state_info = [&interface]() {
       std::string text;

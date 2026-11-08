@@ -201,3 +201,18 @@ Gałąź `experimental-speed` (0.128 SPEED, 0.129 SPEED) scalona i wydana jako 0
 | 3 | Terraforming wasteland: kaktusy i kości znikają z zazielenionego piasku | ✅ |
 | 4 | Postęp wczytywania zapisu (okienko z paskiem), wczytywanie szybsze (20-last 8,1 → 5,8 s) | ✅ |
 | 5 | LAN: odbudowa stanu po 16 ramek na krok (z testów nocnych) | ✅ |
+
+## 0.131 (8.11.2026)
+
+Łatka Freeserf `0063`.
+
+| Nr | Zmiana | Stan |
+|---|---|---|
+| 1 | Serwer gry na Pi (`server/`): gry przez internet, zgłoszenia, strona w sieci domowej | ✅ |
+| 2–3 | Gra: INTERNET GAME (lista, kod, hasło), `lantest relay` | ✅ (Amiga 1 ↔ WinUAE) |
+| 4 | Zgłoszenia z gry: okno F10, rozjazd LAN – zapisy obu stron | ✅ |
+| 5 | `RELAYAUTO` (test) | ✅ |
+| 6 | Strona serwera: IP, ping, Details / zip / Delete | ✅ |
+| 7 | Czytelna czcionka w polach i oknie LAN | ✅ |
+| 8 | Większe okno zgłoszenia, opis do 1000 znaków, szybsza wysyłka | ✅ |
+| 9 | Opisy dla graczy i programistów, README | ✅ |

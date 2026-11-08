@@ -55,6 +55,10 @@ static void print_event(const NetEvent *ev, unsigned long ms)
                           ev->text2, ev->text3); break;
     case NEV_LOST: printf("lost: %s\n", ev->text1); break;
     case NEV_PING: printf("ping %ld ms\n", ev->value); break;
+    case NEV_RELAY_GAME: printf("game %s of %s, code %s, waiting %ld s\n",
+                                ev->text1, ev->text2, ev->text3, ev->value);
+      break;
+    case NEV_RELAY_CODE: printf("game made, code %s\n", ev->text1); break;
     case NEV_MSG:
       /* A saved game coming: counted, not printed frame by frame. */
       if (ev->value == SAVE_BEGIN) {
@@ -168,6 +172,18 @@ int main(int argc, char **argv)
     if (argc > 5 && strcmp(argv[5], "NAGLE") == 0) net_set_nodelay(0);
     net_connect(argv[2], argc > 3 ? argv[3] : "SLAVE", port);
     seconds = argc > 4 ? atoi(argv[4]) : 20;
+  } else if (strcmp(mode, "relay") == 0 && argc > 3) {
+    /* relay <host> list | create <game> [name] [s] | join <code> [name] [s]
+       through the game server (on port, default 6810) */
+    const char *op = argv[3];
+    const char *name = argc > 5 ? argv[5] : "LANTEST";
+    /* the code (or the name of the game), a tab, the password (argument 7) */
+    char arg[40];
+    snprintf(arg, sizeof(arg), "%s	%s", argc > 4 ? argv[4] : "",
+             argc > 7 ? argv[7] : "");
+    net_relay(argv[2], port, op[0] == 'l' ? 'L' : op[0] == 'c' ? 'C' : 'J',
+              name, arg);
+    seconds = argc > 6 ? atoi(argv[6]) : (op[0] == 'l' ? 5 : 60);
   } else if (strcmp(mode, "send") == 0 && argc > 3) {
     net_connect(argv[2], "SENDER", port);
     rc = send_file(argv[3], start);
@@ -176,7 +192,8 @@ int main(int argc, char **argv)
   } else {
     printf("lantest serve [name] [seconds] | search | "
            "connect <address> [name] [seconds] [NAGLE] | "
-           "send <address> <file> | extip\n"
+           "send <address> <file> | extip | "
+           "relay <host> list|create <game>|join <code> [name] [seconds]\n"
            "PORT=n first: another port\n");
     net_quit();
     return 5;

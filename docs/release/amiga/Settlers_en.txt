@@ -1,7 +1,7 @@
 THE SETTLERS - Freeserf for the Amiga with a graphics card
 ==========================================================
 
-Version 0.117 (beta), 4.11.2026
+Version 0.131 (beta), 8.11.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) on an Amiga with a graphics
 card (Picasso96) and a 68040/68060, at up to 800x600 (4:3) or 960x540
@@ -95,7 +95,7 @@ CONTROLS
   QUIT (settings box)      leave the game for the start menu
   QUIT (start menu)        quit (after a question)
   F9                       screenshot to RAM:Settlers-shot.ppm
-  F10                      save the state for a bug report
+  F10                      bug report (saves the state, box to send it)
 
 
 SETTINGS IN THE GAME
@@ -166,7 +166,9 @@ PLAYING OVER A NETWORK (LAN)
 ----------------------------
 
 Two players on two Amigas (or an Amiga and an emulator, e.g. WinUAE or
-Amiberry), and up to 2 computer players.
+Amiberry), and up to 2 computer players. In the same network (LAN) or
+over the internet - through the game server of the author of the port
+(INTERNET GAME, below), with nothing to set up in the router.
 
 Needed:
 - a TCP/IP stack (e.g. Roadshow) on both computers,
@@ -201,7 +203,35 @@ The one who joins (SLAVE):
    6810) and click CONNECT.
 4. Wait for the server to start the game - it begins by itself.
 
-Playing over the internet:
+Playing over the internet through the game server (INTERNET GAME):
+1. Both players: in the start box "LAN game" -> Start -> INTERNET GAME.
+   The field "Game server" holds the address of the game server
+   (83.12.152.135:6810) - no need to change it. Type your name (Your
+   name).
+2. The one who sets up the game: type the name of the game (Game name),
+   a password if wanted (Password; without one anybody can join) and
+   click NEW GAME. The box shows the code of the game (4 letters) and
+   "Waiting for a player..." - you can give the code to the other
+   player. CANCEL GAME closes the game on the server.
+3. The one who joins: the list "Games waiting" shows the games waiting
+   for a player with the same version of the game (code, name, player,
+   minutes of waiting; * - a game with a password); REFRESH asks for it
+   again. Click a game in the list or type its code (Code of the game),
+   the password if needed, and JOIN GAME.
+4. Then as in the LAN: the one who set up the game chooses the map or a
+   LAN save and clicks START GAME, both can write in the chat. The one
+   who set up the game is its server (MASTER), the one who joined - the
+   SLAVE.
+- Only access to the internet is needed (TCP to port 6810); nothing to
+  set up in the router. The game server passes the data between the
+  Amigas and keeps the names of the games and players, the time of the
+  game, the response times and the IP addresses (history of the games
+  on the server). A game waiting without a player closes after 30 min.
+- When the other player leaves, the game on the server ends; the box
+  goes back to INTERNET GAME.
+
+Playing over the internet without the game server (directly between
+the Amigas):
 - The one who sets up the game forwards the port of the game (TCP, 6810
   by default) in the router to the address of their Amiga (Server
   address in the server box).
@@ -209,8 +239,8 @@ Playing over the internet:
   address in its server box) into "Server address", and the same port.
   SEARCH works only in the local network.
 - The game asks for the internet address once, when the server box
-  opens: an HTTP question to api.ipify.org (port 80) - the only
-  connection to the internet in the game; nothing else is sent.
+  opens: an HTTP question to api.ipify.org (port 80); the LAN server
+  box sends nothing else.
 
 During the game:
 - Both Amigas run the same game. Everything you do (building, roads,
@@ -286,9 +316,26 @@ Program stack in the icon: 1000000 (the game needs a large stack).
 REPORTING BUGS
 --------------
 
-Give the version number (on the start screen, and "Version Settlers" in a
-Shell). Press F10 when the bug happens: the game writes
-RAM:Settlers-state.save and RAM:Settlers-state.txt - attach both files.
+Press F10 when the bug happens: the game saves its state
+(RAM:Settlers-state.save and RAM:Settlers-state.txt) and opens the bug
+report box:
+- Your e-mail - an address for an answer (not required, remembered),
+- What happened - what happened, up to 1000 letters,
+- SEND (or Return in the e-mail field) sends the report to the game
+  server of the author of the port; CANCEL (Esc) closes the box without
+  sending. Tab moves between the fields.
+Sent are: the e-mail, the text, the version number, a description of the
+Amiga (CPU and clock, Warp card, Kickstart, memory, graphics card, screen
+mode) and both files of the state of the game. After sending, the box
+shows the number of the report. The box shows only with a working TCP/IP
+stack; without one F10 only saves the files - then attach them to a
+report sent another way and give the version number (on the start
+screen, and "Version Settlers" in a Shell).
+
+When LAN games go out of step (LAN: OUT OF STEP), the other side sends
+its files to the one who set up the game, and its game asks with the
+same box whether to send the saves of both sides (SEND / CANCEL); the
+game goes on.
 Changes of each version: Settlers_release_en.txt.
 
 

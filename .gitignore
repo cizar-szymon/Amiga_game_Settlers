@@ -8,3 +8,6 @@ AmigaSettlersADF/
 /freeserf/
 # The full release with the game data - only on this PC (tools/make_release.sh)
 /private/
+
+# Python caches
+__pycache__/

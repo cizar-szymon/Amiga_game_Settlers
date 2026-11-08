@@ -1,7 +1,7 @@
 THE SETTLERS - Freeserf na Amige z karta graficzna
 ==================================================
 
-Wersja 0.117 (beta), 4.11.2026
+Wersja 0.131 (beta), 8.11.2026
 
 The Settlers (Die Siedler, Blue Byte 1993) na Amige z karta graficzna
 (Picasso96) i procesorem 68040/68060, w rozdzielczosci do 800x600
@@ -90,7 +90,7 @@ STEROWANIE
   QUIT (okno ustawien)     wyjscie z rozgrywki do menu startowego
   QUIT (menu startowe)     koniec gry (po potwierdzeniu)
   F9                       zrzut ekranu do RAM:Settlers-shot.ppm
-  F10                      zapis stanu do zgloszenia bledu
+  F10                      zgloszenie bledu (zapis stanu i okno wysylki)
 
 
 USTAWIENIA W GRZE
@@ -157,7 +157,9 @@ GRA PRZEZ SIEC (LAN)
 --------------------
 
 Dwoch graczy na dwoch Amigach (albo Amiga i emulator, np. WinUAE lub
-Amiberry), do tego do 2 graczy komputerowych.
+Amiberry), do tego do 2 graczy komputerowych. W tej samej sieci (LAN)
+albo przez internet - przez serwer gry autora portu (INTERNET GAME,
+nizej), bez ustawiania routera.
 
 Potrzebne:
 - stos TCP/IP (np. Roadshow) na obu komputerach,
@@ -190,15 +192,37 @@ Dolaczajacy (SLAVE):
    i kliknij CONNECT.
 4. Czekaj, az zakladajacy wystartuje gre - gra zacznie sie sama.
 
-Gra przez internet:
+Gra przez internet przez serwer gry (INTERNET GAME):
+1. Obaj gracze: w oknie startu "LAN game" -> Start -> INTERNET GAME.
+   Pole "Game server" ma adres serwera gry (83.12.152.135:6810) - nie
+   trzeba go zmieniac. Wpisz swoja nazwe (Your name).
+2. Zakladajacy: wpisz nazwe gry (Game name), w razie potrzeby haslo
+   (Password; bez hasla dolaczy kazdy) i kliknij NEW GAME. Okno pokazuje
+   kod gry (4 znaki) i "Waiting for a player..." - kod mozesz podac
+   drugiemu graczowi. CANCEL GAME zamyka gre na serwerze.
+3. Dolaczajacy: lista "Games waiting" pokazuje gry czekajace na gracza
+   z ta sama wersja gry (kod, nazwa, gracz, minuty czekania; * - gra z
+   haslem); REFRESH pobiera ja od nowa. Kliknij gre na liscie albo wpisz
+   jej kod (Code of the game), w razie potrzeby haslo, i JOIN GAME.
+4. Dalej jak w LAN: zakladajacy wybiera mape albo zapis LAN i klika
+   START GAME, obaj moga pisac w czacie. Zakladajacy jest serwerem gry
+   (MASTER), dolaczajacy - SLAVE.
+- Potrzebny tylko dostep do internetu (TCP do portu 6810); router nie
+  wymaga ustawien. Serwer gry przekazuje dane miedzy Amigami i zapisuje
+  nazwy gier i graczy, czas gry, czas odpowiedzi i adresy IP (historia
+  gier na serwerze). Gra czekajaca bez gracza zamyka sie po 30 min.
+- Gdy drugi gracz odejdzie, gra na serwerze sie konczy; okno wraca do
+  INTERNET GAME.
+
+Gra przez internet bez serwera gry (wprost miedzy Amigami):
 - Zakladajacy przekierowuje w routerze port gry (TCP, domyslnie 6810)
   na adres swojej Amigi (Server address w oknie serwera).
 - Dolaczajacy wpisuje w "Server address" adres internetowy zakladajacego
   (Internet address z jego okna serwera) i ten sam port. SEARCH dziala
   tylko w sieci lokalnej.
 - Adres internetowy gra sprawdza raz, przy otwarciu okna serwera:
-  zapytanie HTTP do api.ipify.org (port 80) - jedyne polaczenie z
-  internetem w grze; nic poza tym nie jest wysylane.
+  zapytanie HTTP do api.ipify.org (port 80); okno serwera LAN nic
+  wiecej nie wysyla.
 
 W czasie gry:
 - Obie Amigi licza te sama gre. Wszystko, co robisz (budowa, drogi,
@@ -271,9 +295,23 @@ Stos programu w ikonie: 1000000 (gra potrzebuje duzego stosu).
 ZGLASZANIE BLEDOW
 -----------------
 
-Podaj numer wersji (na ekranie startowym i "Version Settlers" w Shellu).
-Nacisnij F10 w chwili bledu: gra zapisze RAM:Settlers-state.save
-i RAM:Settlers-state.txt - dolacz oba pliki do zgloszenia.
+Nacisnij F10 w chwili bledu: gra zapisze stan gry (RAM:Settlers-state.save
+i RAM:Settlers-state.txt) i otworzy okno zgloszenia:
+- Your e-mail - adres do odpowiedzi (nieobowiazkowy, zapamietywany),
+- What happened - co sie stalo, do 1000 znakow,
+- SEND (albo Return w polu e-mail) wysyla zgloszenie na serwer gry
+  autora portu; CANCEL (Esc) zamyka okno bez wysylania. Tab przechodzi
+  miedzy polami.
+Wysylane sa: e-mail, opis, numer wersji, opis Amigi (procesor i zegar,
+karta Warp, Kickstart, pamiec, karta graficzna, tryb ekranu) i oba pliki
+stanu gry. Po wyslaniu okno podaje numer zgloszenia. Okno pojawia sie
+tylko przy dzialajacym stosie TCP/IP; bez niego F10 tylko zapisuje pliki
+- wtedy dolacz je do zgloszenia wyslanego inaczej i podaj numer wersji
+(na ekranie startowym i "Version Settlers" w Shellu).
+
+Gdy gry LAN sie rozejda (LAN: OUT OF STEP), druga strona odsyla swoje
+pliki do zakladajacego, a jego gra pyta tym samym oknem, czy wyslac
+zapisy obu stron (SEND / CANCEL); gra toczy sie dalej.
 Zmiany w kolejnych wersjach: Settlers_release.txt.
 
 

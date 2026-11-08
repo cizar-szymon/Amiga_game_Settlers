@@ -28,6 +28,9 @@ class LanLinkAmiga : public LanLink {
   bool external_asked;
   bool external_seen;
   std::deque<std::pair<int, std::string>> received;
+  /* Through the game server, and the code of the game made there. */
+  bool relay;
+  std::string relay_code;
 
  public:
   LanLinkAmiga();
@@ -52,11 +55,25 @@ class LanLinkAmiga : public LanLink {
   virtual std::string get_peer_address() { return peer_address; }
   virtual int get_ping_ms() { return ping_ms; }
 
+  virtual void relay_list(const std::string &server);
+  virtual void relay_create(const std::string &server,
+                            const std::string &name,
+                            const std::string &game,
+                            const std::string &password);
+  virtual void relay_join(const std::string &server, const std::string &name,
+                          const std::string &code,
+                          const std::string &password);
+  virtual std::string get_relay_code() { return relay_code; }
+  virtual bool is_relay() { return relay; }
+
   virtual bool send(int type, const std::string &data);
   virtual bool receive(int *type, std::string *data);
 
  protected:
   bool start();
+  /* "host:port" to the net process (net_relay). */
+  void relay_start(const std::string &server, int op, const std::string &name,
+                   const std::string &arg);
   /* keep_received: the frames already here stay for the game (the end of
      the link: a QUIT came before it). */
   void forget_peer(bool keep_received = false);

@@ -5,6 +5,8 @@
 
 #include "port/lan-amiga.h"
 
+#include <cstdlib>
+
 #include "src/log.h"
 
 #include "port/amiga_net.h"
@@ -19,7 +21,8 @@ LanLinkAmiga::LanLinkAmiga()
   , server(false)
   , ping_ms(-1)
   , external_asked(false)
-  , external_seen(false) {
+  , external_seen(false)
+  , relay(false) {
 }
 
 LanLinkAmiga::~LanLinkAmiga() {
@@ -27,6 +30,7 @@ LanLinkAmiga::~LanLinkAmiga() {
     net_quit();
   }
   net_external_quit();
+  report_quit();
 }
 
 /* The process, at the first use. */
@@ -77,6 +81,8 @@ LanLinkAmiga::poll() {
         if (ev.value != 0) {
           state = StateIdle;
           server = false;
+          relay = false;
+          relay_code.clear();
         } else {
           state = StateServing;
         }
@@ -99,6 +105,17 @@ LanLinkAmiga::poll() {
         }
         break;
       }
+      case NEV_RELAY_GAME: {
+        Server s = { ev.text1, ev.text3, SETTLERS_VERSION, true,
+                     ev.text2,
+                     static_cast<unsigned int>(ev.value & 0x3fffffffL),
+                     (ev.value & 0x40000000L) != 0 };
+        servers.push_back(s);
+        break;
+      }
+      case NEV_RELAY_CODE:
+        relay_code = ev.text1;
+        break;
       case NEV_SEARCH_DONE:
         if (state == StateSearching) {
           state = StateIdle;
@@ -118,7 +135,14 @@ LanLinkAmiga::poll() {
            (cleared, it looked like a lost link: "connection lost" and a
            LAN_ERR save after a player ended the game on purpose). */
         forget_peer(true);
-        state = server ? StateServing : StateIdle;
+        /* A game on the game server ends with its player: no waiting for
+           another one there. */
+        state = server && !relay ? StateServing : StateIdle;
+        if (relay) {
+          server = false;
+          relay = false;
+          relay_code.clear();
+        }
         break;
       case NEV_PING:
         ping_ms = static_cast<int>(ev.value);
@@ -193,10 +217,64 @@ LanLinkAmiga::connect(const std::string &address, const std::string &name,
 }
 
 void
+LanLinkAmiga::relay_start(const std::string &server_address, int op,
+                          const std::string &name, const std::string &arg) {
+  std::string host = server_address;
+  int port = kDefaultPort;
+  size_t colon = host.rfind(':');
+  if (colon != std::string::npos) {
+    port = atoi(host.c_str() + colon + 1);
+    host = host.substr(0, colon);
+    if (port <= 0 || port > 65535) port = kDefaultPort;
+  }
+  net_relay(host.c_str(), port, op, name.c_str(), arg.c_str());
+}
+
+void
+LanLinkAmiga::relay_list(const std::string &server_address) {
+  if (!start()) return;
+  forget_peer();
+  servers.clear();
+  server = false;
+  relay = false;
+  relay_code.clear();
+  state = StateSearching;
+  relay_start(server_address, 'L', "", "");
+}
+
+void
+LanLinkAmiga::relay_create(const std::string &server_address,
+                           const std::string &name, const std::string &game,
+                           const std::string &password) {
+  if (!start()) return;
+  forget_peer();
+  server = true;
+  relay = true;
+  relay_code.clear();
+  state = StateServing;
+  relay_start(server_address, 'C', name, game + "\t" + password);
+}
+
+void
+LanLinkAmiga::relay_join(const std::string &server_address,
+                         const std::string &name, const std::string &code,
+                         const std::string &password) {
+  if (!start()) return;
+  forget_peer();
+  server = false;
+  relay = true;
+  relay_code.clear();
+  state = StateConnecting;
+  relay_start(server_address, 'J', name, code + "\t" + password);
+}
+
+void
 LanLinkAmiga::close() {
   if (started) {
     net_stop();
   }
+  relay = false;
+  relay_code.clear();
   forget_peer();
   server = false;
   state = StateIdle;

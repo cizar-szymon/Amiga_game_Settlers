@@ -1,0 +1,16 @@
+{
+  "game_port": 6810,
+  "web_port": 8080,
+  "listen": "0.0.0.0",
+  "data_dir": "data",
+  "max_sessions": 50,
+  "max_connections": 100,
+  "max_per_address": 4,
+  "first_frame_s": 15,
+  "waiting_s": 1800,
+  "idle_s": 60,
+  "report_max_bytes": 4194304,
+  "reports_per_address_day": 20,
+  "reports_total_bytes": 1073741824,
+  "web_allowed": ["127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+}
