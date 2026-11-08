@@ -1703,3 +1703,16 @@ całe w FPGA (kopia z kolorem przezroczystym 0 + cień 1 przez tablicę + lista 
 640×360: 38 → ~60 kl./s (teoretycznie; ekran i tak 50–60 Hz), 960×540: 17,7 → ~30 kl./s. Bez trybu cienia zostaje ~1/3 tego czasu
 (z najwolniejszym odczytem VRAM). Koszt polecenia musi być mały (400–800 sprite'ów na klatkę); widok
 powiększony (×2/×3) wymagałby skalowania w blitterze.
+
+## FPS wersji 0.131 do biuletynu (8.11.2026)
+
+Amiga 1 (A1200 + Warp 1260 Extreme, 68060 100 MHz), wydanie 0.131, `STATS`, odczyt po 45 s od wczytania zapisu,
+Large games = Full speed (50 kroków/s), dźwięk AHI (ustawienie gracza w `Settlers.ini`). Zrzuty F9 tych samych przebiegów: `private/docs/promo/`
+(biuletyn PL/EN, `make_promo.py`).
+
+| Zapis | 640×360 | 640×480 | 800×600 | 800×600 ×2 | 960×540 |
+|---|---|---|---|---|---|
+| `terra.save` (średnia gra) | – | 50,1 | 48,4 | 48,1 | 44,7 |
+| `20-last.save` (~2500 osadników) | 37,3 | – | 19,9 | – | 17,6 |
+
+Względem 0.125 (`terra`, tabela testów nocnych): 800×600 37,5 → 48,4, 960×540 38,7 → 44,7 – efekt 0.126–0.130.
