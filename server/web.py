@@ -19,6 +19,8 @@ import shutil
 import time
 import zipfile
 
+import protocol as P
+
 log = logging.getLogger('web')
 
 
@@ -71,9 +73,13 @@ def spark(values, top):
             'fill="none" stroke="#3b6ea5" stroke-width="1.5"/></svg>' % (w, h, w, h, line))
 
 
-# The subpages of the page: (path, name). Another server on this Pi adds its
-# own load as a block of the Load page (Web.load_blocks).
-PAGES = (('/', 'Games and reports'), ('/load', 'Load'))
+# The subpages of the page: (path, name). '/' shows all the games, each game
+# of protocol.GAMES has a subpage of its own with only its games and reports
+# (/settlers, /dune). Another server on this Pi adds its own load as a block
+# of the Load page (Web.load_blocks).
+GAME_PAGES = {'/' + g[1]: g for g in P.GAMES}
+PAGES = (('/', 'All games'),) + \
+    tuple(('/' + g[1], g[2]) for g in reversed(P.GAMES)) + (('/load', 'Load'),)
 
 
 def nav(active):
@@ -161,9 +167,9 @@ class Web:
                 await self.send(writer, 200, 'application/json',
                                 json.dumps(self.relay.load.status() if self.relay.load
                                            else None, indent=1).encode())
-            elif path == '/':
+            elif path == '/' or path in GAME_PAGES:
                 await self.send(writer, 200, 'text/html; charset=utf-8',
-                                self.page().encode('utf-8'))
+                                self.page(path).encode('utf-8'))
             else:
                 await self.send(writer, 404, 'text/plain', b'Not found.')
         except (asyncio.TimeoutError, asyncio.IncompleteReadError,
@@ -304,7 +310,7 @@ class Web:
                     ('cpu_pi_pct', 'CPU (all cores)', pct),
                     ('net_in_bps', 'Network, received', rate),
                     ('net_out_bps', 'Network, sent', rate))),
-                ('Settlers game server (port %d)' % self.cfg['game_port'], (
+                ('Game server (port %d)' % self.cfg['game_port'], (
                     ('cpu_server_pct', 'CPU of the server (one core = 100 %)', pct),
                     ('game_in_bps', 'Game data from the Amigas', rate),
                     ('game_out_bps', 'Game data to the Amigas', rate))))
@@ -316,7 +322,7 @@ class Web:
                '<meta http-equiv="refresh" content="15">'
                '<meta name="viewport" content="width=device-width">'
                '<title>Server load</title><style>%s</style></head><body>' % STYLE,
-               '<h1>Settlers – game server</h1>', nav('/load'),
+               '<h1>Amiga game server</h1>', nav('/load'),
                '<div class="sub">%s · sampled every %d s, kept for an hour · '
                'refreshed every 15 s · <a href="/load.json">load.json</a></div>'
                % (time.strftime('%Y-%m-%d %H:%M:%S'),
@@ -344,18 +350,27 @@ class Web:
         out.append('</body></html>')
         return ''.join(out)
 
-    def page(self):
+    def page(self, where='/'):
+        """All the games ('/') or those of one game (its subpage)."""
         st = self.relay.status()
-        t = st['totals']
+        game = GAME_PAGES[where][1] if where in GAME_PAGES else None
+        title = GAME_PAGES[where][2] + ' – game server' if game \
+            else 'Amiga game server'
+        sessions = [s for s in st['sessions'] if not game or s['game'] == game]
+        t = st['games'][game]['totals'] if game else st['totals']
+        recent = st['games'][game]['recent'] if game else st['recent']
         e = html.escape
-        playing = [s for s in st['sessions'] if s['playing_s'] is not None]
-        waiting = [s for s in st['sessions'] if s['playing_s'] is None]
+        playing = [s for s in sessions if s['playing_s'] is not None]
+        waiting = [s for s in sessions if s['playing_s'] is None]
         avg = t['seconds'] / t['games'] if t['games'] else None
+        # a third player only where a game of 3 is or was
+        three = any(s.get('guest2') or s.get('max_players', 2) > 2
+                    for s in playing) or any(r.get('guest2') for r in recent[:20])
         out = ['<!doctype html><html><head><meta charset="utf-8">'
                '<meta http-equiv="refresh" content="15">'
                '<meta name="viewport" content="width=device-width">'
-               '<title>Settlers server</title><style>%s</style></head><body>' % STYLE,
-               '<h1>Settlers – game server</h1>', nav('/'),
+               '<title>%s</title><style>%s</style></head><body>' % (e(title), STYLE),
+               '<h1>%s</h1>' % e(title), nav(where),
                '<div class="sub">running %s · %s · port %d · refreshed every 15 s</div>'
                % (hms(st['uptime_s']), time.strftime('%Y-%m-%d %H:%M:%S'),
                   self.cfg['game_port']),
@@ -367,7 +382,7 @@ class Web:
                              ('average game', hms(avg)),
                              ('longest game', hms(t['longest_s'])),
                              ('connections lost', t['dropped']),
-                             ('bug reports', self.reports.count())):
+                             ('bug reports', self.reports.count(game))):
             out.append('<div class="tile">%s<b>%s</b></div>' % (e(label), e(str(value))))
         out.append('</div>')
 
@@ -389,19 +404,24 @@ class Web:
         side_head = ('<th class="sep">Name</th><th>IP</th><th>Ping avg</th>'
                      '<th>Ping max</th><th>Quality</th>')
 
+        third_grp = '<th colspan="5">Player 3 (joined)</th>' if three else ''
+        third_head = side_head if three else ''
+        cols = 19 if three else 14
+
         out.append('<h2>Games now</h2><div class="wrap"><table>'
                    '<tr class="grp"><th colspan="4" style="border-left:0"></th>'
                    '<th colspan="5">Player 1 (made the game)</th>'
-                   '<th colspan="5">Player 2 (joined)</th></tr>'
+                   '<th colspan="5">Player 2 (joined)</th>' + third_grp + '</tr>'
                    '<tr><th>Code</th><th>Game</th><th>Version</th><th>Time</th>'
-                   + side_head + side_head + '</tr>')
+                   + side_head + side_head + third_head + '</tr>')
         for s in playing:
             out.append('<tr><td class="mono">%s</td><td>%s</td><td>%s</td>'
-                       '<td>%s</td>%s%s</tr>'
+                       '<td>%s</td>%s%s%s</tr>'
                        % (e(s['code']), e(s['name']), e(s['version']),
-                          hms(s['playing_s']), side(s['host']), side(s['guest'])))
+                          hms(s['playing_s']), side(s['host']), side(s['guest']),
+                          side(s.get('guest2')) if three else ''))
         if not playing:
-            out.append('<tr><td colspan="14" class="dim">none</td></tr>')
+            out.append('<tr><td colspan="%d" class="dim">none</td></tr>' % cols)
         out.append('</table></div>')
 
         out.append('<h2>Waiting for a player</h2><div class="wrap"><table><tr>'
@@ -410,7 +430,9 @@ class Web:
         for s in waiting:
             out.append('<tr><td class="mono">%s</td><td>%s</td><td>%s</td><td>%s</td>'
                        '<td class="ip">%s</td><td>%s</td><td>%s</td></tr>'
-                       % (e(s['code']), e(s['name']), e(s['version']),
+                       % (e(s['code']), e(s['name'] + (' (up to 3 players)'
+                                                       if s.get('max_players', 2) > 2 else '')),
+                          e(s['version']),
                           e(s['host']['player']), e(s['host'].get('address') or '-'),
                           'yes' if s['password'] else '-', hms(s['waiting_s'])))
         if not waiting:
@@ -427,18 +449,20 @@ class Web:
         out.append('<h2>Last games</h2><div class="wrap"><table>'
                    '<tr class="grp"><th colspan="4" style="border-left:0"></th>'
                    '<th colspan="5">Player 1 (made the game)</th>'
-                   '<th colspan="5">Player 2 (joined)</th>'
+                   '<th colspan="5">Player 2 (joined)</th>' + third_grp +
                    '<th style="border-left:2px solid #c3cbd3"></th></tr>'
                    '<tr><th>Ended</th><th>Game</th><th>Version</th><th>Played</th>'
-                   + side_head + side_head + '<th class="sep">End</th></tr>')
-        for r in st['recent'][:20]:
-            out.append('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td>%s%s'
+                   + side_head + side_head + third_head +
+                   '<th class="sep">End</th></tr>')
+        for r in recent[:20]:
+            out.append('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td>%s%s%s'
                        '<td class="sep">%s</td></tr>'
                        % (e(r['ended']), e(r['name']), e(r['version']),
                           hms(r.get('played_s')), past(r, 'host'), past(r, 'guest'),
+                          past(r, 'guest2') if three else '',
                           e(r.get('end') or 'server restarted')))
-        if not st['recent']:
-            out.append('<tr><td colspan="15" class="dim">none</td></tr>')
+        if not recent:
+            out.append('<tr><td colspan="%d" class="dim">none</td></tr>' % (cols + 1))
         out.append('</table></div>')
 
         out.append('<div class="head"><h2 id="reports">Bug reports</h2>'
@@ -446,7 +470,7 @@ class Web:
                    '</div><div class="wrap"><table><tr><th>No.</th>'
                    '<th>Date</th><th>Version</th><th>Kind</th><th>E-mail</th>'
                    '<th>Text</th><th>Files</th><th>Status</th><th></th></tr>')
-        reports = self.reports.listing(30)
+        reports = self.reports.listing(30, game)
         for r in reports:
             text = e(r.get('text', ''))
             folder = e(r.get('folder', ''))

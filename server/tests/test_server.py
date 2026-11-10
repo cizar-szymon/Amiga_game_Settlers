@@ -307,6 +307,213 @@ class Page(ServerTest):
         self.assertEqual(status, b'404')
 
 
+DUNE = 'OpenDUNE-0.52'
+
+
+class ThreePlayers(ServerTest):
+    """A game of 3 (OpenDUNE): the maker has a connection for each player
+    that joins (ATTACH)."""
+    extra = {'max_per_address': 10}     # all the fake Amigas are 127.0.0.1
+
+    async def make3(self, password=''):
+        a1 = await self.amiga()
+        answer = await a1.relay('CREATE 1 %s ANNA\tDUNES\t%s\t3' % (DUNE, password))
+        self.assertTrue(answer.startswith('CREATED '), answer)
+        code = answer.split()[1]
+        a2 = await self.amiga()
+        self.assertEqual(await a2.relay('ATTACH 1 %s %s' % (DUNE, code)), 'ATTACHED')
+        return a1, a2, code
+
+    async def listing(self, version):
+        b = await self.amiga()
+        b.send(P.F_RELAY, 'LIST 1 ' + version)
+        lines = []
+        while True:
+            t, d = await b.recv()
+            if P.text(d) == 'END':
+                return lines
+            lines.append(P.text(d))
+
+    async def test_three_players(self):
+        a1, a2, code = await self.make3()
+        lines = await self.listing(DUNE)
+        self.assertEqual(len(lines), 1)
+        self.assertTrue(lines[0].endswith('\tANNA\tDUNES\t0\t1/3'), lines[0])
+        b = await self.amiga()
+        self.assertEqual(await b.relay('JOIN 1 %s %s BOB' % (DUNE, code)),
+                         'PAIRED ANNA')
+        self.assertEqual(P.text((await a1.recv())[1]), 'PAIRED BOB')
+        # one place left: still on the list
+        lines = await self.listing(DUNE)
+        self.assertTrue(lines[0].endswith('\t2/3'), lines)
+        c = await self.amiga()
+        self.assertEqual(await c.relay('JOIN 1 %s %s CARL' % (DUNE, code)),
+                         'PAIRED ANNA')
+        self.assertEqual(P.text((await a2.recv())[1]), 'PAIRED CARL')
+        self.assertEqual(await self.listing(DUNE), [])
+        d = await self.amiga()
+        self.assertEqual(await d.relay('JOIN 1 %s %s DAN' % (DUNE, code)),
+                         'ERR No such game.')
+        # each pair apart: what the maker sends on a connection goes to
+        # that player only, and back
+        a1.send(P.GAME_BASE + 4, b'to bob')
+        a2.send(P.GAME_BASE + 4, b'to carl')
+        self.assertEqual(await b.recv(), (P.GAME_BASE + 4, b'to bob'))
+        self.assertEqual(await c.recv(), (P.GAME_BASE + 4, b'to carl'))
+        c.send(P.GAME_BASE + 5, b'from carl')
+        b.send(P.GAME_BASE + 5, b'from bob')
+        self.assertEqual(await a2.recv(), (P.GAME_BASE + 5, b'from carl'))
+        self.assertEqual(await a1.recv(), (P.GAME_BASE + 5, b'from bob'))
+        st = self.relay.status()['sessions'][0]
+        self.assertEqual((st['players'], st['max_players'], st['game']),
+                         (3, 3, 'dune'))
+        self.assertEqual(st['guest2']['player'], 'CARL')
+        # Settlers' quit frame (19) is OpenDUNE's START: not the end
+        a1.send(P.GAME_BASE + 3, b'start')
+        await b.recv()
+        # one player leaves: the game goes on for the other two
+        c.close()
+        t, d = await a2.recv()
+        self.assertEqual(t, P.F_BYE)
+        self.assertTrue(await a2.closed())
+        await asyncio.sleep(0.1)
+        self.assertEqual(len(self.relay.status()['sessions']), 1)
+        a1.send(P.GAME_BASE + 4, b'still')
+        self.assertEqual(await b.recv(), (P.GAME_BASE + 4, b'still'))
+        # the maker ends the game (MT_QUIT, 16 + 7)
+        a1.send(P.GAME_BASE + 7, b'')
+        await b.recv()
+        a1.close()
+        self.assertTrue(await b.closed())
+        await asyncio.sleep(0.1)
+        self.assertEqual(self.relay.status()['sessions'], [])
+        with open(os.path.join(self.tmp, 'sessions.jsonl')) as f:
+            lines = f.readlines()
+        self.assertEqual(len(lines), 1)
+        rec = json.loads(lines[0])
+        self.assertEqual((rec['host'], rec['guest'], rec['guest2'], rec['end']),
+                         ('ANNA', 'BOB', 'CARL', 'game ended'))
+        self.assertEqual(self.relay.games['dune']['totals']['games'], 1)
+        self.assertEqual(self.relay.games['settlers']['totals']['games'], 0)
+
+    async def test_start_with_two_of_three(self):
+        a1, a2, code = await self.make3()
+        b = await self.amiga()
+        self.assertEqual(await b.relay('JOIN 1 %s %s BOB' % (DUNE, code)),
+                         'PAIRED ANNA')
+        await a1.recv()
+        a2.close()                      # the game starts: no third player
+        await asyncio.sleep(0.1)
+        self.assertEqual(await self.listing(DUNE), [])
+        c = await self.amiga()
+        self.assertEqual(await c.relay('JOIN 1 %s %s CARL' % (DUNE, code)),
+                         'ERR No such game.')
+        a1.send(P.GAME_BASE + 4, b'turn')
+        self.assertEqual(await b.recv(), (P.GAME_BASE + 4, b'turn'))
+        self.assertEqual(len(self.relay.status()['sessions']), 1)
+
+    async def test_attach_again_after_a_player_left(self):
+        a1, a2, code = await self.make3()
+        b = await self.amiga()
+        self.assertEqual(await b.relay('JOIN 1 %s %s BOB' % (DUNE, code)),
+                         'PAIRED ANNA')
+        await a1.recv()
+        b.close()                       # leaves in the lobby
+        t, d = await a1.recv()
+        self.assertEqual(t, P.F_BYE)
+        self.assertTrue(await a1.closed())
+        await asyncio.sleep(0.1)
+        # the game is still there (the second connection waits); the maker
+        # opens a new one in place of the one that went
+        a3 = await self.amiga()
+        self.assertEqual(await a3.relay('ATTACH 1 %s %s' % (DUNE, code)), 'ATTACHED')
+        for name, conn in (('CARL', a2), ('DAN', a3)):
+            c = await self.amiga()
+            self.assertEqual(await c.relay('JOIN 1 %s %s %s' % (DUNE, code, name)),
+                             'PAIRED ANNA')
+            self.assertEqual(P.text((await conn.recv())[1]), 'PAIRED ' + name)
+        self.assertEqual(await self.listing(DUNE), [])
+
+    async def test_attach_refused(self):
+        a = await self.amiga()
+        self.assertEqual(await a.relay('ATTACH 1 %s ZZZZ' % DUNE), 'ERR No such game.')
+        # a game of 2 takes no second connection
+        m, code = await self.make_game(version=DUNE)
+        b = await self.amiga()
+        self.assertEqual(await b.relay('ATTACH 1 %s %s' % (DUNE, code)),
+                         'ERR No such game.')
+        # a game of 3 takes one, not two; and only of its version
+        a1, a2, code3 = await self.make3()
+        c = await self.amiga()
+        self.assertEqual(await c.relay('ATTACH 1 %s %s' % (DUNE, code3)),
+                         'ERR No such game.')
+        d = await self.amiga()
+        self.assertEqual(await d.relay('ATTACH 1 %s %s' % (VERSION, code3)),
+                         'ERR No such game.')
+
+    async def test_maker_leaves_game_of_three(self):
+        a1, a2, code = await self.make3()
+        a1.close()
+        self.assertTrue(await a2.closed())
+        await asyncio.sleep(0.1)
+        self.assertEqual(self.relay.status()['sessions'], [])
+
+    async def test_games_apart(self):
+        s, scode = await self.make_game('SARA', 'FOREST')
+        a1, a2, dcode = await self.make3('pw1')
+        lines = await self.listing(VERSION)
+        self.assertEqual(len(lines), 1)
+        self.assertTrue(lines[0].endswith('\tSARA\tFOREST\t0'), lines[0])
+        lines = await self.listing(DUNE)
+        self.assertEqual(len(lines), 1)
+        self.assertTrue(lines[0].endswith('\tANNA\tDUNES\t1\t1/3'), lines[0])
+        b = await self.amiga()
+        self.assertEqual(await b.relay('JOIN 1 %s %s BOB' % (VERSION, dcode)),
+                         'ERR The game needs version %s.' % DUNE)
+
+
+class GamePages(Page):
+    async def report(self, version, text):
+        a = await self.amiga()
+        a.send(P.F_RELAY, 'REPORT 1 %s F10' % version)
+        a.send(P.F_RELAY, 'FIELD text ' + text)
+        for i in range(6):              # 6 files: a game of 3 out of step
+            a.send(P.F_RELAY, 'FILE state%d.txt 2' % i)
+            a.send(P.F_RELAY_DATA, b'ok')
+        a.send(P.F_RELAY, 'DONE')
+        t, d = await a.recv()
+        self.assertTrue(P.text(d).startswith('REPORTED '), d)
+
+    async def test_subpages(self):
+        s, scode = await self.make_game('SARA', 'FOREST')
+        d, dcode = await self.make_game('DAVE', 'DUNES', DUNE)
+        await self.report(VERSION, 'serf report')
+        await self.report(DUNE, 'harvester report')
+        status, body = await self.get('/')
+        self.assertEqual(status, b'200')
+        for word in (scode, dcode, 'serf report', 'harvester report',
+                     'href="/settlers"', 'href="/dune"'):
+            self.assertIn(word.encode(), body)
+        status, body = await self.get('/settlers')
+        self.assertEqual(status, b'200')
+        self.assertIn(b'Settlers', body)
+        self.assertIn(scode.encode(), body)
+        self.assertIn(b'serf report', body)
+        self.assertNotIn(('>%s<' % dcode).encode(), body)
+        self.assertNotIn(b'harvester report', body)
+        status, body = await self.get('/dune')
+        self.assertEqual(status, b'200')
+        self.assertIn(b'OpenDUNE', body)
+        self.assertIn(dcode.encode(), body)
+        self.assertIn(b'harvester report', body)
+        self.assertNotIn(('>%s<' % scode).encode(), body)
+        self.assertNotIn(b'serf report', body)
+        self.assertEqual(self.reports_count('dune'), 1)
+
+    def reports_count(self, game):
+        return self.relay.reports.count(game)
+
+
 @unittest.skipUnless(os.environ.get('LOAD'), 'LOAD=1 for the load test')
 class Load(ServerTest):
     extra = {'max_per_address': 200, 'max_connections': 200}

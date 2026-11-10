@@ -46,20 +46,28 @@ class Reports:
                     pass
         return total
 
-    def listing(self, limit=50):
+    def listing(self, limit=50, game=None):
+        """The newest reports; game: only those of that game (a key of
+        protocol.GAMES, by the version of the report)."""
         out = []
-        for d in sorted(os.listdir(self.dir), reverse=True)[:limit]:
+        for d in sorted(os.listdir(self.dir), reverse=True):
+            if limit is not None and len(out) >= limit:
+                break
             try:
                 with open(os.path.join(self.dir, d, 'report.json'),
                           encoding='utf-8') as f:
                     rec = json.load(f)
+                if game and P.game_of(rec.get('version', ''))[1] != game:
+                    continue
                 rec['folder'] = d
                 out.append(rec)
             except (OSError, ValueError):
                 pass
         return out
 
-    def count(self):
+    def count(self, game=None):
+        if game:
+            return len(self.listing(None, game))
         return len([d for d in os.listdir(self.dir)
                     if os.path.isdir(os.path.join(self.dir, d))])
 

@@ -4,18 +4,35 @@ bytes. Link frames below 16, game frames from 16 on (passed on untouched).
 
 Before HELLO a client talks to the server with F_RELAY text frames:
   client: LIST <proto> <version>
-          CREATE <proto> <version> <player>\t<game name>[\t<password>]
+          CREATE <proto> <version> <player>\t<game name>[\t<password>[\t<M>]]
+                                   (M: the most players, 2 or 3; none: 2)
+          ATTACH <proto> <version> <code>
           JOIN <proto> <version> <code> <player>[\t<password>]
           REPORT <proto> <version> <kind>
-  server: SESSION <code> <waiting s> <version>\t<player>\t<game name>\t<P>
-                                   (P: 1 when the game has a password)
+  server: SESSION <code> <waiting s> <version>\t<player>\t<game name>\t<P>[\t<n>/<M>]
+                                   (P: 1 when the game has a password;
+                                   n/M: players there / the most, only
+                                   for a game of more than 2)
           END                      (end of the list)
           CREATED <code>
+          ATTACHED
           PAIRED <player of the other side>
           REPORTED <number>
           ERR <text>
 A report goes on with F_RELAY "FIELD <key> <value>", "FILE <name> <size>",
 the file in F_RELAY_DATA frames, and "DONE".
+
+A game of 3 (OpenDUNE): the players that join do not talk to each other,
+the maker passes everything on, and it has a connection of its own for each
+of them. So after CREATE ... <M>=3 the maker opens a second connection and
+sends ATTACH with the code; each JOIN is paired with the first free
+connection of the maker, and the frames of each pair are passed on as in a
+game of 2. The maker closes a connection nobody joined when the game
+starts. The game is over when all its pairs are.
+
+The games on the server are told apart by the start of <version> (GAMES):
+Settlers sends "0.131", OpenDUNE "OpenDUNE-0.52". LIST shows and JOIN takes
+only the same version.
 """
 import asyncio
 
@@ -30,6 +47,18 @@ GAME_BASE = 16
 MAX_FRAME = 251         # the length byte: 1 + data
 MAX_DATA = MAX_FRAME - 1
 PROTOCOL = 1            # NET_PROTOCOL of port/amiga_net.h
+
+# The games: (start of <version>, key and subpage of the page, name, type of
+# the game's frame that ends a game on purpose). The last one takes the rest.
+GAMES = (('OpenDUNE-', 'dune', 'OpenDUNE', GAME_BASE + 7),     # MT_QUIT
+         ('', 'settlers', 'Settlers', GAME_BASE + 3))          # MessageQuit
+
+
+def game_of(version):
+    for game in GAMES:
+        if (version or '').startswith(game[0]):
+            return game
+    return GAMES[-1]
 
 
 class FrameError(Exception):
