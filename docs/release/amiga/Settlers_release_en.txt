@@ -8,6 +8,16 @@ Without a network: give the version number (start screen, "Version
 Settlers") and attach RAM:Settlers-state.save and RAM:Settlers-state.txt.
 
 
+0.135 (11.11.2026, beta release)
+--------------------------------
+
+- After a change of the resolution in Options a small box asks whether
+  to keep it: Return or a click on the box - it stays; Esc or 10 s
+  without an answer - the one before comes back. The new resolution is
+  kept for the next start only when confirmed, so the game always
+  starts in a mode the monitor shows.
+
+
 0.134 (11.11.2026, beta release)
 --------------------------------
 

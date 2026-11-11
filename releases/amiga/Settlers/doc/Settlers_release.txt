@@ -8,6 +8,16 @@ startowy, "Version Settlers") i dolacz pliki RAM:Settlers-state.save
 oraz RAM:Settlers-state.txt.
 
 
+0.135 (11.11.2026, wydanie beta)
+--------------------------------
+
+- Po zmianie rozdzielczosci w Options okienko pyta, czy ja zostawic:
+  Return albo klikniecie w okienko - zostaje; Esc albo 10 s bez
+  odpowiedzi - wraca poprzednia. Nowa rozdzielczosc jest zapamietana
+  dopiero po potwierdzeniu, wiec gra zawsze startuje w trybie, ktory
+  monitor pokazuje.
+
+
 0.134 (11.11.2026, wydanie beta)
 --------------------------------
 

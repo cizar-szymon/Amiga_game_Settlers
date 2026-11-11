@@ -162,6 +162,15 @@ parse_option(const char *a) {
   } else if ((v = option_value(a, "LANROAD")) != nullptr) {
     /* LANROAD=<seconds>: a road built and removed in a LAN game (test). */
     Interface::lan_test_road_s = static_cast<unsigned int>(atoi(v));
+  } else if ((v = option_value(a, "MODETEST")) != nullptr) {
+    /* MODETEST=WxH,s: the mode asked for after s seconds, as the Options
+       box does (test of the yes box). */
+    unsigned int w = 0, h = 0, s = 0;
+    if (sscanf(v, "%ux%u,%u", &w, &h, &s) == 3 && s > 0) {
+      EventLoopAmiga::test_mode_w = w;
+      EventLoopAmiga::test_mode_h = h;
+      EventLoopAmiga::test_mode_s = s;
+    }
   } else if ((v = option_value(a, "LANMSG")) != nullptr) {
     /* LANMSG=<seconds>: the messages opened in a LAN game (test). */
     Interface::lan_test_msg_s = static_cast<unsigned int>(atoi(v));
@@ -408,7 +417,7 @@ main(int argc, char *argv[]) {
       }
       return text;
     };
-    event_loop.on_mode_change = [&interface, screen_frame]() {
+    event_loop.on_mode_change = [&interface, &event_loop, screen_frame]() {
       unsigned int w = 0, h = 0;
       Graphics::get_instance().get_resolution(&w, &h);
       int most = max_map_zoom(w, h);
@@ -418,12 +427,22 @@ main(int argc, char *argv[]) {
         interface.set_size(w, h);
       }
       interface.use_frame(screen_frame);
-      /* A LAN game's 640x480 is not the mode of the Options box. */
-      if (interface.get_lan_game() == nullptr) {
+      /* A LAN game's 640x480 is not the mode of the Options box; a mode
+         of the Options box is saved when the player keeps it. */
+      if (interface.get_lan_game() == nullptr &&
+          !event_loop.mode_confirm_pending()) {
         Settings &s = Settings::get_instance();
         s.set("amiga", "mode", std::to_string(w) + "x" + std::to_string(h));
         s.save();
       }
+    };
+    event_loop.on_mode_confirmed = [&interface]() {
+      if (interface.get_lan_game() != nullptr) return;
+      unsigned int w = 0, h = 0;
+      Graphics::get_instance().get_resolution(&w, &h);
+      Settings &s = Settings::get_instance();
+      s.set("amiga", "mode", std::to_string(w) + "x" + std::to_string(h));
+      s.save();
     };
     /* Z and the mouse wheel: the map view magnified around the middle of
        the screen, in steps of x2 and x3 (max_map_zoom). The panel and the

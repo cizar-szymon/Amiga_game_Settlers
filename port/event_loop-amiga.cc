@@ -106,6 +106,9 @@ EventLoopAmiga::EventLoopAmiga()
   , press_used(false)
   , message_until(0)
   , load_percent(-1)
+  , confirm_until(0)
+  , confirm_w(0)
+  , confirm_h(0)
   , load_shown(0) {
   load_progress = on_load_progress;
   start_ms = static_cast<unsigned int>(amiga_now_ms());
@@ -186,8 +189,58 @@ EventLoopAmiga::handle_key(const AmigaEvent &ev) {
   }
 }
 
+/* The box asking whether to keep the screen mode: in the middle of the
+   screen. */
+void
+EventLoopAmiga::confirm_box(int *x, int *y, int *w, int *h) {
+  unsigned int sw = 0, sh = 0;
+  Video::get_instance().get_resolution(&sw, &sh);
+  *w = 280;
+  *h = 50;
+  *x = (static_cast<int>(sw) - *w) / 2;
+  *y = (static_cast<int>(sh) - *h) / 2;
+}
+
+/* Keep the new screen mode (saved by main) or go back to the old one. */
+void
+EventLoopAmiga::mode_confirm(bool keep) {
+  confirm_until = 0;
+  Log::Info["screen"] << (keep ? "mode kept" : "mode not kept: back to ")
+                      << (keep ? "" : std::to_string(confirm_w) + "x" +
+                                      std::to_string(confirm_h));
+  if (keep) {
+    if (on_mode_confirmed) on_mode_confirmed();
+  } else {
+    /* As the Options box asks: the new screen between frames; no yes is
+       asked for the way back. */
+    Video::get_instance().set_resolution(confirm_w, confirm_h, true);
+  }
+}
+
 void
 EventLoopAmiga::handle_event(const AmigaEvent &ev) {
+  if (confirm_until != 0) {
+    /* Return / Enter or a click on the box: keep; Esc: back at once. The
+       rest goes to the game as always. */
+    if (ev.type == AEV_KEY && ev.down &&
+        (ev.code == ARAW_RETURN || ev.code == ARAW_ENTER)) {
+      mode_confirm(true);
+      return;
+    }
+    if (ev.type == AEV_KEY && ev.down && ev.code == ARAW_ESC &&
+        !(ev.qual & AQUAL_SHIFT)) {
+      mode_confirm(false);
+      return;
+    }
+    if (ev.type == AEV_BUTTON && ev.button == Event::ButtonLeft) {
+      int bx, by, bw, bh;
+      confirm_box(&bx, &by, &bw, &bh);
+      if (ev.x >= bx && ev.x < bx + bw && ev.y >= by && ev.y < by + bh) {
+        if (!ev.down) mode_confirm(true);
+        return;
+      }
+    }
+  }
   if (ev.type == AEV_MOVE || ev.type == AEV_BUTTON) {
     static_cast<VideoAmiga &>(Video::get_instance()).set_mouse(ev.x, ev.y);
   }
@@ -393,6 +446,10 @@ EventLoopAmiga::save_state() {
 }
 
 std::function<void()> EventLoopAmiga::on_state_saved;
+bool EventLoopAmiga::mode_asked = false;
+unsigned int EventLoopAmiga::test_mode_w = 0;
+unsigned int EventLoopAmiga::test_mode_h = 0;
+unsigned int EventLoopAmiga::test_mode_s = 0;
 
 /* A short line in the top middle of the screen (F10). */
 /* Loading a game takes some seconds (20-last.save ~7 s on a 68060): a box
@@ -424,6 +481,26 @@ EventLoopAmiga::on_load_progress(int percent) {
 
 void
 EventLoopAmiga::draw_message(Frame *screen) {
+  if (confirm_until != 0) {
+    int x, y, w, h;
+    confirm_box(&x, &y, &w, &h);
+    int left = static_cast<int>(confirm_until - get_ticks());
+    int s = left > 0 ? (left + 999) / 1000 : 0;
+    screen->fill_rect(x, y, w, h, Color::black);
+    screen->draw_rect(x, y, w, h, Color::green);
+    const std::string lines[3] = {
+      _("Keep this screen mode?"),
+      _("Return or click here: keep"),
+      std::string(_("Back to the old mode in")) + " " + std::to_string(s) +
+        " s"
+    };
+    for (int i = 0; i < 3; i++) {
+      screen->draw_string(x + (w - screen->get_string_width(lines[i])) / 2,
+                          y + 6 + 14 * i, lines[i],
+                          i == 0 ? Color(0xdd, 0xdd, 0x00) : Color::green,
+                          Color::black);
+    }
+  }
   if (load_percent >= 0) {
     /* Loading a game: as the map progress of the start box. */
     unsigned int sw = 0, sh = 0;
@@ -538,11 +615,42 @@ EventLoopAmiga::run() {
     if (!running) break;
     check_hold();
 
+    if (test_mode_s != 0 && get_ticks() >= test_mode_s * 1000) {
+      test_mode_s = 0;
+      mode_asked = true;
+      video.set_resolution(test_mode_w, test_mode_h, true);
+    }
+    if (confirm_until != 0 &&
+        static_cast<int>(get_ticks() - confirm_until) >= 0) {
+      mode_confirm(false);  /* No yes in time: the old mode again. */
+    }
     if (video.mode_pending()) {
       /* Between frames: a new screen, then the GUI laid out again. */
+      unsigned int pw = 0, ph = 0;
+      video.get_resolution(&pw, &ph);
+      bool asked = mode_asked;
+      mode_asked = false;
       video.apply_mode();
       unsigned int w = 0, h = 0;
       video.get_resolution(&w, &h);
+      if (asked) {
+        /* The mode to go back to: the one before the first change not yet
+           kept. Back at it: nothing to ask. */
+        if (confirm_until == 0) {
+          confirm_w = pw;
+          confirm_h = ph;
+        }
+        if (w == confirm_w && h == confirm_h) {
+          confirm_until = 0;
+        } else {
+          confirm_until = get_ticks() + kConfirmMs;
+          if (confirm_until == 0) confirm_until = 1;
+        }
+      }
+      Log::Info["screen"] << "mode " << pw << "x" << ph << " -> " << w << "x"
+                          << h << (asked ? " (Options box)" : "")
+                          << ", waiting for a yes: "
+                          << (confirm_until != 0 ? "yes" : "no");
       notify_resize(w, h);
       if (on_mode_change) on_mode_change();
       next_step = get_ticks() + TICK_LENGTH;
@@ -715,4 +823,11 @@ EventLoopAmiga::run() {
   }
 
   delete screen;
+}
+
+/* For the Options box (popup.cc): the next screen mode waits for a yes. */
+bool
+amiga_screen_mode_asked() {
+  EventLoopAmiga::mode_asked = true;
+  return true;
 }

@@ -107,8 +107,11 @@ Options:
              zaczyna od najmniejszej rozdzielczosci: 400x300 / 640x360)
   Screen     rozdzielczosc: strzalki obok zmieniaja ja od razu, w ramach
              wybranych proporcji - 4:3: 400x300, 640x400, 640x480,
-             640x512, 800x600; 16:9: 640x360, 960x540; wybor jest zapamietany
-             na nastepny raz
+             640x512, 800x600; 16:9: 640x360, 960x540; po zmianie okienko
+             pyta, czy zostawic nowa: Return albo klikniecie w okienko -
+             zostaje i jest zapamietana na nastepny raz; Esc albo 10 s bez
+             odpowiedzi - wraca poprzednia (np. gdy monitor nie pokazuje
+             nowej)
 Options -> Amiga:
   dane Amigi; z akceleratorem Warp zegar CPU: tylko MC68060 rev. 6,
   50-100 MHz co 1 MHz (podnoszenie to podkrecanie, moze zawiesic system);

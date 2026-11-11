@@ -385,11 +385,11 @@ msgstr "MITTEL"
 msgid "A player has joined."
 msgstr "Ein Spieler ist da."
 
-msgid "RUN SERVER to be found."
-msgstr "SERVER START: sichtbar."
-
 msgid "GREAT"
 msgstr "TOLL"
+
+msgid "RUN SERVER to be found."
+msgstr "SERVER START: sichtbar."
 
 msgid "Server name"
 msgstr "Servername"
@@ -1011,6 +1011,15 @@ msgstr "Kartenram"
 
 msgid "No Warp found."
 msgstr "Kein Warp gefunden."
+
+msgid "Keep this screen mode?"
+msgstr "Diesen Bildschirmmodus behalten?"
+
+msgid "Return or click here: keep"
+msgstr "Return oder Klick hier: behalten"
+
+msgid "Back to the old mode in"
+msgstr "Zurück zum alten Modus in"
 
 msgid "Loading the game"
 msgstr "Lade das Spiel"

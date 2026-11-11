@@ -1,0 +1,44 @@
+From edc6fc39f385f5bcbff852881b578c59f878f742 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Wed, 11 Nov 2026 21:24:23 +0100
+Subject: [PATCH] 0.135: a screen mode of the Options box is kept only when the
+ player says yes (the port asks; amiga_screen_mode_asked)
+
+---
+ src/popup.cc | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/popup.cc b/src/popup.cc
+index 961dc9d..3dcc51e 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -326,6 +326,10 @@ static bool
+ amiga_wide_screen(unsigned int w, unsigned int h) {
+   return w * 9 == h * 16;
+ }
++
++/* The port (EventLoopAmiga::mode_asked): a mode of this box is kept only
++   when the player says yes. */
++extern bool amiga_screen_mode_asked();
+ #endif
+ 
+ PopupBox::PopupBox(Interface *_interface)
+@@ -3971,6 +3975,7 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+       play_sound(Audio::TypeSfxNotAccepted);
+       break;
+     }
++    amiga_screen_mode_asked();
+     Graphics::get_instance().set_resolution(modes[next][0], modes[next][1],
+                                             true);
+     play_sound(Audio::TypeSfxClick);
+@@ -3980,6 +3985,7 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+     /* 4:3 <-> 16:9, always from the lowest mode of the other aspect. */
+     unsigned int sw = 0, sh = 0;
+     Graphics::get_instance().get_resolution(&sw, &sh);
++    amiga_screen_mode_asked();
+     if (amiga_wide_screen(sw, sh)) {
+       Graphics::get_instance().set_resolution(amiga_modes_4_3[0][0],
+                                               amiga_modes_4_3[0][1], true);
+-- 
+2.45.2.windows.1
+

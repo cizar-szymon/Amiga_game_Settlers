@@ -385,11 +385,11 @@ msgstr "ŚREDNIA"
 msgid "A player has joined."
 msgstr "Gracz dołączył."
 
-msgid "RUN SERVER to be found."
-msgstr "URUCHOM - wtedy widać grę."
-
 msgid "GREAT"
 msgstr "ŚWIETNA"
+
+msgid "RUN SERVER to be found."
+msgstr "URUCHOM - wtedy widać grę."
 
 msgid "Server name"
 msgstr "Nazwa serwera"
@@ -1011,6 +1011,15 @@ msgstr "Pamięć karty"
 
 msgid "No Warp found."
 msgstr "Nie znaleziono Warpa."
+
+msgid "Keep this screen mode?"
+msgstr "Zostawić ten tryb ekranu?"
+
+msgid "Return or click here: keep"
+msgstr "Return lub klik tutaj: zostaw"
+
+msgid "Back to the old mode in"
+msgstr "Powrót do starego trybu za"
 
 msgid "Loading the game"
 msgstr "Wczytuję grę"

@@ -152,6 +152,9 @@ there is none), 10 s later a road from the castle flag to a new flag,
 command, on both sides). The LAN out-of-step report: the server side
 sends it by itself (Interface::start_lan_report) when the other side's
 files are here, at the latest after 30 s.
+MODETEST=WxH,s (test): s s after the start the game asks for the mode
+WxH as the Options box does (with the yes box, EventLoopAmiga::
+mode_asked).
 LANMSG=n (test): n s into a LAN game the messages of the player opened
 one by one every 2 s, as the button of the panel does (in a LAN game
 Tab is the chat); the messages read go to the other side by a LAN

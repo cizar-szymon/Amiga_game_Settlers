@@ -66,6 +66,12 @@ class EventLoopAmiga : public EventLoop {
   int load_percent;
   unsigned int load_shown;
   static void on_load_progress(int percent);
+  /* A screen mode of the Options box waits for the player's yes: until
+     when (0: none), the mode to go back to. */
+  unsigned int confirm_until;
+  unsigned int confirm_w, confirm_h;
+  void confirm_box(int *x, int *y, int *w, int *h);
+  void mode_confirm(bool keep);
 
  public:
   EventLoopAmiga();
@@ -86,6 +92,18 @@ class EventLoopAmiga : public EventLoop {
  public:
   /* After F10 saved the state (main: the bug report box). */
   static std::function<void()> on_state_saved;
+  /* Set by the Options box before it asks for another screen mode: the
+     new mode is kept only when the player says yes (Return or a click on
+     the small box) within kConfirmMs; else the old one comes back. A
+     monitor may not show a mode - the old one stays saved. */
+  static bool mode_asked;
+  /* MODETEST=WxH,s (a test): s seconds after the start the mode is asked
+     for as the Options box does (with the yes box). */
+  static unsigned int test_mode_w, test_mode_h, test_mode_s;
+  static const unsigned int kConfirmMs = 10000;
+  bool mode_confirm_pending() const { return confirm_until != 0; }
+  /* The player kept the new mode (main: it is saved). */
+  std::function<void()> on_mode_confirmed;
 };
 
 #endif  // PORT_EVENT_LOOP_AMIGA_H_

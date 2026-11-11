@@ -144,6 +144,8 @@ zgloszenia LAN bez klawiszy).
 LANROAD=n (test): n s po starcie gry LAN ta strona stawia zamek (gdy go
 nie ma), 10 s pozniej droge z flagi zamku do nowej flagi, po kolejnych
 10 s usuwa ja jak przycisk w panelu (polecenie LAN po obu stronach).
+MODETEST=WxH,s (test): s s po starcie gra prosi o tryb WxH jak okno
+Options (z okienkiem potwierdzenia, EventLoopAmiga::mode_asked).
 LANMSG=n (test): n s po starcie gry LAN wiadomosci gracza otwierane
 po kolei co 2 s jak przyciskiem w panelu (w grze LAN Tab to czat);
 przeczytane ida do drugiej strony poleceniem LAN (TypeReadMessages).

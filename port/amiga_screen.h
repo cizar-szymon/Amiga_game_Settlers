@@ -48,6 +48,8 @@ typedef struct AmigaEvent {
 #define ARAW_F10    0x59
 #define ARAW_TAB    0x42
 #define ARAW_HELP   0x5f
+#define ARAW_RETURN 0x44
+#define ARAW_ENTER  0x43
 
 /* Opens an 8-bit CLUT RTG screen of width x height with a backdrop window.
    window_mode != 0: a window on the Workbench instead (not yet).
