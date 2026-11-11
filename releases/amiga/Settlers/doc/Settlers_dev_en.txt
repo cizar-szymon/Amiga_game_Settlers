@@ -152,9 +152,15 @@ there is none), 10 s later a road from the castle flag to a new flag,
 command, on both sides). The LAN out-of-step report: the server side
 sends it by itself (Interface::start_lan_report) when the other side's
 files are here, at the latest after 30 s.
+LANMSG=n (test): n s into a LAN game the messages of the player opened
+one by one every 2 s, as the button of the panel does (in a LAN game
+Tab is the chat); the messages read go to the other side by a LAN
+command (TypeReadMessages).
 RELAYAUTO=HOST|JOIN[:password] (test): the LAN box goes to INTERNET GAME
 by itself; HOST sets up a game and clicks START GAME 5 s after a player
 joins, JOIN refreshes the list and joins the first game.
+RELAYSAVE=<save> (test): the HOST of RELAYAUTO starts the game from
+this save.
 
 Tests: lansim (the same game without a network; -l two games in
 lockstep, -s/-r sand/rocks, the time of the checksum), lantest (the

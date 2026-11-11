@@ -8,6 +8,16 @@ startowy, "Version Settlers") i dolacz pliki RAM:Settlers-state.save
 oraz RAM:Settlers-state.txt.
 
 
+0.133 (11.11.2026, wydanie beta)
+--------------------------------
+
+- Gra LAN zaczeta z zapisu i resync: okienko wczytywania znika, gdy
+  gra jest wczytana.
+- Przeczytane wiadomosci sa przeczytane na obu komputerach gry LAN -
+  zapis gry LAN wczytany pozniej ma je jako przeczytane.
+- Gra LAN: obie strony musza miec wersje 0.133.
+
+
 0.132 (11.11.2026, wydanie beta)
 --------------------------------
 

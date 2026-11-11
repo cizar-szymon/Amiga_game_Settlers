@@ -1,0 +1,262 @@
+From ee9171bcff5018c6c2e3870260a1c5ca362c7151 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Wed, 11 Nov 2026 03:37:42 +0100
+Subject: [PATCH] 0.133: the loading box goes after a LAN game from a save and
+ after a resync (GameStore::read reports 100%, also on errors); messages read
+ go to the other computer of a LAN game (LanCommand::TypeReadMessages, done
+ only there), so a save of either side has them read; test options RELAYSAVE
+ and LANMSG
+
+---
+ src/interface.cc   | 36 +++++++++++++++++++++++++++++++++---
+ src/interface.h    |  8 ++++++++
+ src/lan-box.cc     |  4 ++++
+ src/lan-box.h      |  1 +
+ src/lan-command.cc |  5 +++++
+ src/lan-command.h  | 10 ++++++++--
+ src/lan-game.cc    |  3 +++
+ src/savegame.cc    | 11 ++++++++++-
+ 8 files changed, 72 insertions(+), 6 deletions(-)
+
+diff --git a/src/interface.cc b/src/interface.cc
+index d220d55..eccb2ed 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -560,6 +560,7 @@ LanLink *Interface::lan_link = nullptr;
+ bool Interface::lan_test_keys = false;
+ unsigned int Interface::lan_test_split_s = 0;
+ unsigned int Interface::lan_test_road_s = 0;
++unsigned int Interface::lan_test_msg_s = 0;
+ 
+ bool
+ Interface::demolish_road_at_cursor() {
+@@ -850,6 +851,14 @@ Interface::close_game_init() {
+   update_map_cursor_pos(map_cursor_pos);
+ }
+ 
++/* The next message taken from this player's queue; in a LAN game counted
++   for the other computer (update()). */
++Message
++Interface::pop_message() {
++  if (lan_game) messages_read++;
++  return player->pop_notification();
++}
++
+ /* Open box for next message in the message queue */
+ void
+ Interface::open_message() {
+@@ -862,7 +871,7 @@ Interface::open_message() {
+     return_pos = pos;
+   }
+ 
+-  Message message = player->pop_notification();
++  Message message = pop_message();
+ 
+   if (message.type == Message::TypeCallToMenu) {
+     /* TODO */
+@@ -2081,6 +2090,20 @@ Interface::update() {
+     }
+   }
+   if (lan_test_road_s != 0 && lan_game) lan_test_road();
++  if (lan_test_msg_s != 0 && lan_game && player != nullptr) {
++    static LanGame *msg_game = nullptr;
++    static unsigned int msg_at = 0;
++    unsigned int now = EventLoop::get_instance().get_ticks();
++    if (msg_game != lan_game.get()) {
++      msg_game = lan_game.get();
++      msg_at = now + lan_test_msg_s * 1000;
++    } else if (static_cast<int>(now - msg_at) >= 0 &&
++               player->has_notification()) {
++      msg_at = now + 2000;
++      Log::Info["lan"] << "LANMSG: a message opened";
++      open_message();
++    }
++  }
+   /* A LAN game steps only with the other side's commands of the turn. */
+   if (lan_game && !lan_game->before_step()) {
+     return;
+@@ -2134,7 +2157,7 @@ Interface::update() {
+         message_waiting = true;
+         break;
+       }
+-      player->pop_notification();
++      pop_message();
+     }
+   }
+ 
+@@ -2148,10 +2171,17 @@ Interface::update() {
+ 
+       Message message = player->peek_notification();
+       if (shows_message(message.type)) break;
+-      player->pop_notification();
++      pop_message();
+     }
+   }
+ 
++  /* The messages read go to the other computer too: its save of the game
++     then has them read. */
++  if (messages_read > 0 && lan_game && player != nullptr) {
++    command(LanCommand::TypeReadMessages, 0, messages_read);
++    messages_read = 0;
++  }
++
+   viewport->update();
+   set_redraw();
+ }
+diff --git a/src/interface.h b/src/interface.h
+index d1660e2..7e6d49a 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -139,6 +139,10 @@ class Interface : public GuiObject, public GameManager::Handler {
+   int message_level;
+   bool message_waiting;   /* A message to show in the queue. */
+   bool message_opened;    /* A message was opened: skip the hidden ones. */
++  /* Messages taken from the queue, not yet told to the other computer of
++     a LAN game (LanCommand::TypeReadMessages). */
++  int messages_read = 0;
++  Message pop_message();
+   bool return_arrow;      /* The arrow back from the message is shown. */
+   /* Advanced options (not in the original game). */
+   bool invert_scrolling;
+@@ -382,6 +386,10 @@ class Interface : public GuiObject, public GameManager::Handler {
+      road from its castle flag to a new flag, 10 s later removes it as the
+      button of the panel does (demolish_road_at_cursor). 0: never. */
+   static unsigned int lan_test_road_s;
++  /* LANMSG=<s> (a test): so far into a LAN game, the messages of this
++     player opened one by one, every 2 s, as the button of the panel does
++     (in a LAN game Tab is the chat). 0: never. */
++  static unsigned int lan_test_msg_s;
+   /* Shown where the FPS are while they are off (the port: "TEST 0.108",
+      the build of a test version); "": nothing. */
+   static std::string build_label;
+diff --git a/src/lan-box.cc b/src/lan-box.cc
+index 52f44c3..3f01e43 100644
+--- a/src/lan-box.cc
++++ b/src/lan-box.cc
+@@ -135,6 +135,7 @@ static const char kNoNetwork[] = N_("No network in this version.");
+ 
+ std::string LanBox::relay_auto;
+ std::string LanBox::relay_auto_password;
++std::string LanBox::relay_auto_save;
+ /* RELAYAUTO: when the next click is due, when the player joined. */
+ static unsigned int relay_auto_due = 0;
+ static unsigned int relay_auto_joined = 0;
+@@ -1140,6 +1141,9 @@ LanBox::relay_auto_step() {
+   relay_auto_due = now + 3000;
+   bool host = relay_auto == "HOST";
+   LanLink::State state = link_state();
++  if (host && !relay_auto_save.empty() && save_path.empty()) {
++    use_saved_game(relay_auto_save);  /* The game from this save. */
++  }
+   if (view == ViewChoose) {
+     handle_click_left(kButtonX + 4, kInternetButtonY + 4);
+   } else if (view == ViewInternet && state == LanLink::StateIdle) {
+diff --git a/src/lan-box.h b/src/lan-box.h
+index 4eab995..a14e62a 100644
+--- a/src/lan-box.h
++++ b/src/lan-box.h
+@@ -137,6 +137,7 @@ class LanBox : public GuiObject {
+      over the game server by itself (and the host starts it). */
+   static std::string relay_auto;
+   static std::string relay_auto_password;  /* RELAYAUTO=HOST:pass, JOIN:pass */
++  static std::string relay_auto_save;      /* RELAYSAVE=<save> (the host) */
+ 
+   LanBox(Interface *interface, PGameInfo mission);
+   virtual ~LanBox();
+diff --git a/src/lan-command.cc b/src/lan-command.cc
+index c9c9176..3e17e62 100644
+--- a/src/lan-command.cc
++++ b/src/lan-command.cc
+@@ -166,6 +166,11 @@ LanCommand::apply(Game *game) const {
+       return game->pull_roads_through_flag(pos, p);
+     case TypeDemolishRoad:
+       return game->demolish_road(pos, p);
++    case TypeReadMessages:
++      for (int i = 0; i < a && p->has_notification(); i++) {
++        p->pop_notification();
++      }
++      return true;
+     case TypeSendGeologist: {
+       Flag *flag = game->get_flag_at_pos(pos);
+       return flag != nullptr && game->send_geologist(flag);
+diff --git a/src/lan-command.h b/src/lan-command.h
+index 7d06159..2f78840 100644
+--- a/src/lan-command.h
++++ b/src/lan-command.h
+@@ -62,7 +62,12 @@ class LanCommand {
+     /* pos of the road (0.132: before, the road went only on the computer
+        of the player who removed it - the LAN game went apart). New ones
+        at the end: the numbers go over the link. */
+-    TypeDemolishRoad
++    TypeDemolishRoad,
++    /* a: the number of messages the player read (taken from the front of
++       the queue). Done only on the other computer: on the player's own the
++       box took them at once (0.133: before, a save of the other computer
++       showed them again as new). */
++    TypeReadMessages
+   } Type;
+ 
+   /* The settings boxes of a player (TypeSetting). */
+@@ -97,7 +102,8 @@ class LanCommand {
+      is paused. */
+   bool is_play() const {
+     return type != TypePause && type != TypeSpeed && type != TypeTestWin &&
+-           type != TypeDump && type != TypeResync;
++           type != TypeDump && type != TypeResync &&
++           type != TypeReadMessages;
+   }
+   LanCommand(Type type, unsigned int player, MapPos pos = 0, int a = 0,
+              int b = 0, int c = 0);
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index fa99d57..f445f34 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -720,6 +720,9 @@ LanGame::before_step() {
+           resync_now = true;
+         } else if (c.type == LanCommand::TypeDump) {
+           dump_now = std::max(dump_now, c.a != 0 ? 1 : 0);
++        } else if (c.type == LanCommand::TypeReadMessages &&
++                   (side == 0) == server) {
++          /* This player's own: read on this computer already. */
+         } else {
+           bool done = c.apply(game.get());
+           /* The sound of this player's command, now that its result is
+diff --git a/src/savegame.cc b/src/savegame.cc
+index 6f64a2f..3c60626 100644
+--- a/src/savegame.cc
++++ b/src/savegame.cc
+@@ -865,8 +865,10 @@ GameStore::load(const std::string &path, Game *game) {
+       reader >> *game;
+     } catch (ExceptionFreeserf& e) {
+       Log::Error["savegame"] << "Failed to load save game: " << e.what();
++      load_report(100);  /* The box of the progress goes. */
+       return false;
+     }
++    load_report(100);
+   }
+ 
+   IntegrityCheck::run(game, true);
+@@ -932,12 +934,19 @@ GameStore::save(const std::string &path, Game *game) {
+ 
+ bool
+ GameStore::read(std::istream *is, Game *game) {
++  /* A LAN game from a save and a resync: the parts of the game show the
++     box of the progress too, so it goes at the end (0.133: before, it
++     stayed on the screen, at 94%). */
++  load_last_percent = -1;
++  bool ok = true;
+   try {
+     SaveReaderTextFile reader_text(is);
+     reader_text >> *game;
+   } catch (...) {
+-    return false;
++    ok = false;
+   }
++  load_report(100);
++  if (!ok) return false;
+   IntegrityCheck::run(game, true);
+   return true;
+ }
+-- 
+2.45.2.windows.1
+

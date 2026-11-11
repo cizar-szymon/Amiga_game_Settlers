@@ -142,6 +142,9 @@ parse_option(const char *a) {
     LanBox::relay_auto = strncasecmp(v, "HOST", 4) == 0 ? "HOST" : "JOIN";
     const char *colon = strchr(v, ':');
     if (colon != nullptr) LanBox::relay_auto_password = colon + 1;
+  } else if ((v = option_value(a, "RELAYSAVE")) != nullptr) {
+    /* RELAYSAVE=<save> (a test): the host of RELAYAUTO starts from it. */
+    LanBox::relay_auto_save = v;
   } else if ((v = option_value(a, "VIEWDRAW")) != nullptr) {
     /* BLOCKS (a test): the view by changed blocks, NONE / LAND / SPR
        nothing / the landscape / the sprites drawn again. */
@@ -159,6 +162,9 @@ parse_option(const char *a) {
   } else if ((v = option_value(a, "LANROAD")) != nullptr) {
     /* LANROAD=<seconds>: a road built and removed in a LAN game (test). */
     Interface::lan_test_road_s = static_cast<unsigned int>(atoi(v));
+  } else if ((v = option_value(a, "LANMSG")) != nullptr) {
+    /* LANMSG=<seconds>: the messages opened in a LAN game (test). */
+    Interface::lan_test_msg_s = static_cast<unsigned int>(atoi(v));
   } else if (strcasecmp(a, "LANTEST") == 0) {
     Interface::lan_test_keys = true;
   } else if (strcasecmp(a, "LANINFO") == 0) {

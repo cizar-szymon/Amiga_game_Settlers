@@ -1477,6 +1477,19 @@ test: Amiga 1 / Amiga 2 `WorkSD:Games/Settlers/Settlers-test`.
 | 11 | **Rysowanie mapy zmieniało grę**: dźwięk młyna przełączał bit `playing_sfx` budynku (czyta go logika płatnerza i kopalń), dźwięki postaci (bit `sound`), hut i płonących budynków, a rysowanie płonącego budynku zmniejszało licznik ognia – stan gry zależał od tego, co gracz ma na ekranie. Dźwięki pamięta teraz widok (`Viewport::serf_sfx_on`, `building_sfx_on`, `mill_sfx`), ogień widok tylko czyta. | `viewport.cc/.h` | ✅ jak 10 |
 | 12 | **Spóźnione „zburz” wywracało grę LAN**: polecenie wykonuje się 2 tury po kliknięciu; gdy budynku już nie było (drugie kliknięcie, pożar), `demolish_building` burzył budynek-atrapę 0 (gracza 1) – dziura na początku listy budynków, wywrotka (Software Failure na Amidze 2 i w WinUAE w testach, znalezione ASan-em na PC). Teraz sprawdza, czy budynek stoi. Sieć: EINTR przy odbiorze nie zrywa połączenia, przyczyna zerwania w logu (`Link lost: … (error N)`). | `game.cc`, `port/amiga_net.c`, `port/lan-amiga.cc` | ✅ testy `lansim` na PC (20 ziaren, 40–60 tys. kroków) |
 
+## Zmiany 0.133 (seria poprawek, wydanie 11.11.2026; łatka Freeserf 0065)
+
+Zgłoszenia graczy 7 i 8 z 11.11.2026 (gra przez serwer, gospodarz Warp 1260 115 MHz, gość UAE
+68040, obaj 0.132, oba F10). 7: gra LAN z zapisu wczytała się, ale okienko „Loading the game”
+zostało na 94% i nie znikało. 8: po wczytaniu gry przeczytane wiadomości znów są nowe. W stanie
+gospodarza (7) gracz 2 ma w kolejce 8 wiadomości, w stanie gościa (8) jego kolejka jest pusta –
+przeczytał je tylko u siebie.
+
+| Nr | Zmiana | Pliki | Test |
+|---|---|---|---|
+| 1 | **Okienko postępu wczytywania zostawało na ekranie** w grze LAN z zapisu i po resyncu: stan gry przychodzi tekstem (`GameManager::load_game_text` → `GameStore::read`), części gry (`load_progress_parts`, 72–100%) pokazywały okienko, ale nikt nie zgłaszał 100%. Teraz `read` zaczyna od zera i zawsze kończy 100% (też przy błędzie); `GameStore::load` tak samo w zapasowym odczycie binarnym i przy błędzie. Opcja testowa **`RELAYSAVE=<zapis>`**: gospodarz `RELAYAUTO=HOST` zaczyna grę z tego zapisu. | `savegame.cc`, `lan-box.cc/.h`, `port/main-amiga.cc` | Amiga 1 (`Settlers-test RELAYAUTO=HOST RELAYSAVE=RAM:r7.save`, stan ze zgłoszenia 7) ↔ WinUAE (`RELAYAUTO=JOIN`) przez serwer, 11.11.2026: gra z zapisu na obu stronach, okienka nie ma (zrzuty), sumy zgodne („SAME”) ✅ |
+| 2 | **Przeczytane wiadomości wracały po wczytaniu gry LAN:** wiadomość zdejmowana z kolejki gracza tylko na jego komputerze (`Interface::open_message` i pomijanie ukrytych w `update`); zapis drugiego komputera miał je dalej jako nowe (wiadomości nie wchodzą do sum, więc bez rozjazdu). Teraz każda zdjęta wiadomość liczona (`Interface::pop_message`), w `update` liczba idzie poleceniem `LanCommand::TypeReadMessages` (a = liczba; dopisane na końcu typów, nie „play” – też w pauzie); wykonywane tylko na drugim komputerze (u gracza już zdjęte), zdejmuje tyle z przodu kolejki. Gra LAN: obie strony 0.133. Opcja testowa **`LANMSG=<s>`**: po tylu sekundach gry LAN wiadomości gracza otwierane po kolei co 2 s jak przyciskiem panelu (w grze LAN Tab to czat). | `lan-command.cc/.h`, `lan-game.cc`, `interface.cc/.h`, `port/main-amiga.cc` | Ten sam test, WinUAE z `LANMSG=20`: w logu gościa 8 × „LANMSG: a message opened”; F10 przed odczytaniem – gracz 2 ma 8 wiadomości u obu stron; zapisy obu stron przy końcu gry (`LAN_ERR_261111_033516` gospodarza, `…033520` gościa) – kolejka gracza 2 pusta u obu, gracza 1 bez zmian ✅ |
+
 ## Zmiany 0.132 (seria poprawek, wydanie 11.11.2026; łatka Freeserf 0064)
 
 Zgłoszenia graczy 2 i 3 z 11.11.2026 (gra przez serwer TZE5, gospodarz Warp 1260 115 MHz, gość

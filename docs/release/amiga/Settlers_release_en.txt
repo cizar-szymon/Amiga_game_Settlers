@@ -8,6 +8,16 @@ Without a network: give the version number (start screen, "Version
 Settlers") and attach RAM:Settlers-state.save and RAM:Settlers-state.txt.
 
 
+0.133 (11.11.2026, beta release)
+--------------------------------
+
+- A LAN game started from a save and a resync: the loading box goes
+  when the game is loaded.
+- Messages read are read on both computers of a LAN game - a save of
+  the LAN game loaded later has them as read.
+- LAN game: both sides need version 0.133.
+
+
 0.132 (11.11.2026, beta release)
 --------------------------------
 
