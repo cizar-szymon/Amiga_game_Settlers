@@ -333,9 +333,11 @@ report sent another way and give the version number (on the start
 screen, and "Version Settlers" in a Shell).
 
 When LAN games go out of step (LAN: OUT OF STEP), the other side sends
-its files to the one who set up the game, and its game asks with the
-same box whether to send the saves of both sides (SEND / CANCEL); the
-game goes on.
+its files to the one who set up the game, and its game sends the saves
+of both sides to the game server by itself (with the e-mail address of
+the F10 box, if one was typed); the chat shows the number of the
+report, the game goes on. The box (SEND / CANCEL) opens only when the
+sending fails.
 Changes of each version: Settlers_release_en.txt.
 
 

@@ -8,6 +8,18 @@ startowy, "Version Settlers") i dolacz pliki RAM:Settlers-state.save
 oraz RAM:Settlers-state.txt.
 
 
+0.132 (11.11.2026, wydanie beta)
+--------------------------------
+
+- Usuniecie drogi w grze LAN dzieje sie na obu komputerach naraz, jak
+  budowanie i burzenie - gry zostaja zgodne.
+- Gdy gry LAN sie rozejda (OUT OF STEP), gra zakladajacego sama wysyla
+  zapisy obu stron na serwer gry (z adresem e-mail z okna F10, jesli
+  byl wpisany); w czacie pojawia sie numer zgloszenia. Okno z SEND /
+  CANCEL otwiera sie tylko wtedy, gdy wyslanie sie nie uda.
+- Gra LAN: obie strony musza miec wersje 0.132.
+
+
 0.131 (8.11.2026, wydanie beta)
 -------------------------------
 

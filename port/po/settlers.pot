@@ -227,80 +227,88 @@ msgstr ""
 msgid "%u% of normal"
 msgstr ""
 
-#: freeserf/src/game-init.cc:296 freeserf/src/game-init.cc:308
+#: freeserf/src/game-init.cc:297 freeserf/src/game-init.cc:309
 msgid "Making the map"
 msgstr ""
 
-#: freeserf/src/game-init.cc:307
+#: freeserf/src/game-init.cc:308
 msgid "Starting the game"
 msgstr ""
 
-#: freeserf/src/game-init.cc:322
+#: freeserf/src/game-init.cc:323
 msgid "The map is chosen"
 msgstr ""
 
-#: freeserf/src/game-init.cc:322
+#: freeserf/src/game-init.cc:323
 msgid "in the LAN box,"
 msgstr ""
 
-#: freeserf/src/game-init.cc:322
+#: freeserf/src/game-init.cc:323
 msgid "after the other"
 msgstr ""
 
-#: freeserf/src/game-init.cc:323
+#: freeserf/src/game-init.cc:324
 msgid "player joins."
 msgstr ""
 
-#: freeserf/src/game-init.cc:352
+#: freeserf/src/game-init.cc:353
 msgid "Start mission"
 msgstr ""
 
-#: freeserf/src/game-init.cc:353
+#: freeserf/src/game-init.cc:354
 msgid "Mission:"
 msgstr ""
 
-#: freeserf/src/game-init.cc:367
+#: freeserf/src/game-init.cc:368
 msgid "Start tutorial"
 msgstr ""
 
-#: freeserf/src/game-init.cc:368
+#: freeserf/src/game-init.cc:369
 msgid "Tutorial:"
 msgstr ""
 
-#: freeserf/src/game-init.cc:382
+#: freeserf/src/game-init.cc:383
 msgid "New game"
 msgstr ""
 
-#: freeserf/src/game-init.cc:383
+#: freeserf/src/game-init.cc:384
 msgid "Mapsize:"
 msgstr ""
 
-#: freeserf/src/game-init.cc:396 freeserf/src/lan-box.cc:1217
+#: freeserf/src/game-init.cc:397 freeserf/src/lan-box.cc:1264
 msgid "LAN game"
 msgstr ""
 
-#: freeserf/src/game-init.cc:403
+#: freeserf/src/game-init.cc:404
 msgid "Load game"
 msgstr ""
 
-#: freeserf/src/game-init.cc:408 freeserf/src/lan-box.cc:1305
+#: freeserf/src/game-init.cc:409 freeserf/src/lan-box.cc:1352
 msgid "Delete %u saves?"
 msgstr ""
 
-#: freeserf/src/game-init.cc:409 freeserf/src/lan-box.cc:1306
+#: freeserf/src/game-init.cc:410 freeserf/src/lan-box.cc:1353
 msgid "Delete the save?"
 msgstr ""
 
-#: freeserf/src/game-init.cc:410 freeserf/src/lan-box.cc:1307
+#: freeserf/src/game-init.cc:411 freeserf/src/lan-box.cc:1354
 msgid "YES"
 msgstr ""
 
-#: freeserf/src/game-init.cc:411 freeserf/src/lan-box.cc:1308
+#: freeserf/src/game-init.cc:412 freeserf/src/lan-box.cc:1355
 msgid "NO"
 msgstr ""
 
-#: freeserf/src/game-init.cc:413 freeserf/src/lan-box.cc:1299
+#: freeserf/src/game-init.cc:414 freeserf/src/lan-box.cc:1346
 msgid "DELETE"
+msgstr ""
+
+#: freeserf/src/interface.cc:530
+msgid "SENDING THE BUG REPORT"
+msgstr ""
+
+#: freeserf/src/interface.cc:543
+msgid "BUG REPORT NO. %s SENT"
 msgstr ""
 
 #: freeserf/src/keys-box.cc:44
@@ -359,176 +367,136 @@ msgstr ""
 msgid "Keys"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1058
+#: freeserf/src/lan-box.cc:1068
 msgid "A game over the internet"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1063 freeserf/src/lan-box.cc:1083
+#: freeserf/src/lan-box.cc:1073 freeserf/src/lan-box.cc:1093
 msgid "Game server"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1064 freeserf/src/lan-box.cc:1086 freeserf/src/lan-box.cc:1333
+#: freeserf/src/lan-box.cc:1074 freeserf/src/lan-box.cc:1096 freeserf/src/lan-box.cc:1381
 msgid "Your name"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1065 freeserf/src/lan-box.cc:1088
+#: freeserf/src/lan-box.cc:1075 freeserf/src/lan-box.cc:1098
 msgid "Game name"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1066 freeserf/src/lan-box.cc:1110
+#: freeserf/src/lan-box.cc:1076 freeserf/src/lan-box.cc:1121
 msgid "Code of the game"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1067 freeserf/src/lan-box.cc:1112
+#: freeserf/src/lan-box.cc:1077 freeserf/src/lan-box.cc:1123
 msgid "Password"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1067 freeserf/src/lan-box.cc:1266
+#: freeserf/src/lan-box.cc:1077 freeserf/src/lan-box.cc:1313
 msgid "none"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1072
+#: freeserf/src/lan-box.cc:1082
 msgid "Making the game..."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1074
+#: freeserf/src/lan-box.cc:1084
 msgid "The other player chooses it"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1075
+#: freeserf/src/lan-box.cc:1085
 msgid "in JOIN GAME or types the code."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1076 freeserf/src/lan-box.cc:1248
+#: freeserf/src/lan-box.cc:1086 freeserf/src/lan-box.cc:1295
 msgid "Waiting for a player..."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1079
+#: freeserf/src/lan-box.cc:1089
 msgid "CANCEL GAME"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1081 freeserf/src/lan-box.cc:1117
+#: freeserf/src/lan-box.cc:1091 freeserf/src/lan-box.cc:1128
 msgid "JOIN GAME"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1090
+#: freeserf/src/lan-box.cc:1100
 msgid "Asking the game server..."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1091
+#: freeserf/src/lan-box.cc:1101
 msgid "Games waiting"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1093
+#: freeserf/src/lan-box.cc:1103
 msgid "REFRESH"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1097
+#: freeserf/src/lan-box.cc:1107
 msgid "None - NEW GAME makes one."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1115
+#: freeserf/src/lan-box.cc:1126
 msgid "NEW GAME"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1117 freeserf/src/lan-box.cc:1341
+#: freeserf/src/lan-box.cc:1128 freeserf/src/lan-box.cc:1389
 msgid "CONNECTING"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1120 freeserf/src/lan-box.cc:1301 freeserf/src/lan-box.cc:1342
+#: freeserf/src/lan-box.cc:1131 freeserf/src/lan-box.cc:1348 freeserf/src/lan-box.cc:1390
 msgid "BACK"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1157
+#: freeserf/src/lan-box.cc:1204
 msgid "The game has a password: type it."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1195
+#: freeserf/src/lan-box.cc:1242
 msgid "Choose a game or type its code."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1200
+#: freeserf/src/lan-box.cc:1247
 msgid "Connecting to the game server..."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1228
+#: freeserf/src/lan-box.cc:1275
 msgid "Two players on two Amigas"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1229
+#: freeserf/src/lan-box.cc:1276
 msgid "in one network."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1230
+#: freeserf/src/lan-box.cc:1277
 msgid "START SERVER"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1231
+#: freeserf/src/lan-box.cc:1278
 msgid "This Amiga sets up the game."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1232
+#: freeserf/src/lan-box.cc:1279
 msgid "JOIN SERVER"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1233
+#: freeserf/src/lan-box.cc:1280
 msgid "Find the server or type"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1234
+#: freeserf/src/lan-box.cc:1281
 msgid "its address and connect."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1236
+#: freeserf/src/lan-box.cc:1283
 msgid "INTERNET GAME"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1237
+#: freeserf/src/lan-box.cc:1284
 msgid "Both connect to the game server,"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1238
+#: freeserf/src/lan-box.cc:1285
 msgid "no router to set up."
-msgstr ""
-
-#: freeserf/src/lan-box.cc:1247
-msgid "A player has joined."
-msgstr ""
-
-#: freeserf/src/lan-box.cc:1249
-msgid "RUN SERVER to be found."
-msgstr ""
-
-#: freeserf/src/lan-box.cc:1270 freeserf/src/lan-box.cc:1349
-msgid "Server name"
-msgstr ""
-
-#: freeserf/src/lan-box.cc:1271 freeserf/src/lan-box.cc:1335 freeserf/src/lan-box.cc:1350
-msgid "Server address"
-msgstr ""
-
-#: freeserf/src/lan-box.cc:1272
-msgid "Internet address"
-msgstr ""
-
-#: freeserf/src/lan-box.cc:1273 freeserf/src/lan-box.cc:1337 freeserf/src/lan-box.cc:1351
-msgid "Port"
-msgstr ""
-
-#: freeserf/src/lan-box.cc:1277
-msgid "AI players"
-msgstr ""
-
-#: freeserf/src/lan-box.cc:1281
-msgid "Address"
-msgstr ""
-
-#: freeserf/src/lan-box.cc:1287
-msgid "STOP SERVER"
-msgstr ""
-
-#: freeserf/src/lan-box.cc:1287
-msgid "RUN SERVER"
 msgstr ""
 
 #: freeserf/src/lan-box.cc:129
@@ -539,311 +507,351 @@ msgstr ""
 msgid "AVERAGE"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1296
-msgid "Go on with a saved game"
+#: freeserf/src/lan-box.cc:1294
+msgid "A player has joined."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1298
-msgid "USE GAME"
+#: freeserf/src/lan-box.cc:1296
+msgid "RUN SERVER to be found."
 msgstr ""
 
 #: freeserf/src/lan-box.cc:130
 msgid "GREAT"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1313
-msgid "Searching the network..."
+#: freeserf/src/lan-box.cc:1317 freeserf/src/lan-box.cc:1397
+msgid "Server name"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1314
-msgid "Servers found"
+#: freeserf/src/lan-box.cc:1318 freeserf/src/lan-box.cc:1383 freeserf/src/lan-box.cc:1398
+msgid "Server address"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1318
-msgid "None - SEARCH or type"
+#: freeserf/src/lan-box.cc:1319
+msgid "Internet address"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1320
-msgid "the address below."
+#: freeserf/src/lan-box.cc:1320 freeserf/src/lan-box.cc:1385 freeserf/src/lan-box.cc:1399
+msgid "Port"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1332
-msgid "SEARCH"
+#: freeserf/src/lan-box.cc:1324
+msgid "AI players"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:134 freeserf/src/report-box.cc:146
+#: freeserf/src/lan-box.cc:1328
+msgid "Address"
+msgstr ""
+
+#: freeserf/src/lan-box.cc:1334
+msgid "STOP SERVER"
+msgstr ""
+
+#: freeserf/src/lan-box.cc:1334
+msgid "RUN SERVER"
+msgstr ""
+
+#: freeserf/src/lan-box.cc:134 freeserf/src/report-box.cc:208
 msgid "No network in this version."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1341
+#: freeserf/src/lan-box.cc:1343
+msgid "Go on with a saved game"
+msgstr ""
+
+#: freeserf/src/lan-box.cc:1345
+msgid "USE GAME"
+msgstr ""
+
+#: freeserf/src/lan-box.cc:1360
+msgid "Searching the network..."
+msgstr ""
+
+#: freeserf/src/lan-box.cc:1361
+msgid "Servers found"
+msgstr ""
+
+#: freeserf/src/lan-box.cc:1365
+msgid "None - SEARCH or type"
+msgstr ""
+
+#: freeserf/src/lan-box.cc:1367
+msgid "the address below."
+msgstr ""
+
+#: freeserf/src/lan-box.cc:1380
+msgid "SEARCH"
+msgstr ""
+
+#: freeserf/src/lan-box.cc:1389
 msgid "CONNECT"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1346
+#: freeserf/src/lan-box.cc:1394
 msgid "Connected. Waiting for the"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1347
+#: freeserf/src/lan-box.cc:1395
 msgid "server to start the game."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1354
+#: freeserf/src/lan-box.cc:1402
 msgid "Your address"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:139
+#: freeserf/src/lan-box.cc:145
 msgid "Password needed."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:139
+#: freeserf/src/lan-box.cc:145
 msgid "Wrong password."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:139
+#: freeserf/src/lan-box.cc:145
 msgid "No such game."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:140
+#: freeserf/src/lan-box.cc:146
 msgid "Server full."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:140
+#: freeserf/src/lan-box.cc:146
 msgid "Too many connections."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:141
+#: freeserf/src/lan-box.cc:147
 msgid "No answer from the game server."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:141
+#: freeserf/src/lan-box.cc:147
 msgid "Game server not found."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:142 freeserf/src/lan-box.cc:601
+#: freeserf/src/lan-box.cc:148 freeserf/src/lan-box.cc:608
 msgid "The other player left."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:142
+#: freeserf/src/lan-box.cc:148
 msgid "Different version."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1459
+#: freeserf/src/lan-box.cc:1507
 msgid "The game did not start."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1502
+#: freeserf/src/lan-box.cc:1550
 msgid "Type the server address."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1506
+#: freeserf/src/lan-box.cc:1554
 msgid "Connecting to "
 msgstr ""
 
-#: freeserf/src/lan-box.cc:1538
+#: freeserf/src/lan-box.cc:1586
 msgid "A save was not deleted."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:645
+#: freeserf/src/lan-box.cc:652
 msgid "Bad settings from the server."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:656 freeserf/src/lan-box.cc:1447
+#: freeserf/src/lan-box.cc:663 freeserf/src/lan-box.cc:1495
 msgid "The saved game could not be read."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:676
+#: freeserf/src/lan-box.cc:683
 msgid "The saved game came broken."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:681
+#: freeserf/src/lan-box.cc:688
 msgid "Receiving the game... "
 msgstr ""
 
-#: freeserf/src/lan-box.cc:690
+#: freeserf/src/lan-box.cc:697
 msgid "Choose a saved game."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:695
+#: freeserf/src/lan-box.cc:702
 msgid "Player 2 is not a person there."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:837 freeserf/src/lan-box.cc:1275
+#: freeserf/src/lan-box.cc:844 freeserf/src/lan-box.cc:1322
 msgid "Saved game"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:837
+#: freeserf/src/lan-box.cc:844
 msgid "Making the map..."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:838
+#: freeserf/src/lan-box.cc:845
 msgid "No map yet."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:851
+#: freeserf/src/lan-box.cc:858
 msgid "Saved"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:851 freeserf/src/lan-box.cc:1275 freeserf/src/lan-box.cc:1277
+#: freeserf/src/lan-box.cc:858 freeserf/src/lan-box.cc:1322 freeserf/src/lan-box.cc:1324
 msgid "Map size"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:866
+#: freeserf/src/lan-box.cc:873
 msgid "Server"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:867 freeserf/src/lan-box.cc:1280
+#: freeserf/src/lan-box.cc:874 freeserf/src/lan-box.cc:1327
 msgid "Player 2"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:868 freeserf/src/lan-box.cc:1282 freeserf/src/lan-box.cc:1355
+#: freeserf/src/lan-box.cc:875 freeserf/src/lan-box.cc:1329 freeserf/src/lan-box.cc:1403
 msgid "Response"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:880
+#: freeserf/src/lan-box.cc:888
 msgid "SMALLER"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:882
+#: freeserf/src/lan-box.cc:890
 msgid "LARGER"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:884
+#: freeserf/src/lan-box.cc:892
 msgid "OTHER MAP"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:887 freeserf/src/lan-box.cc:1291
+#: freeserf/src/lan-box.cc:895 freeserf/src/lan-box.cc:1338
 msgid "NEW MAP"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:887 freeserf/src/lan-box.cc:1291
+#: freeserf/src/lan-box.cc:895 freeserf/src/lan-box.cc:1338
 msgid "LOAD GAME"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:889
+#: freeserf/src/lan-box.cc:897
 msgid "The server chooses"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:891
+#: freeserf/src/lan-box.cc:899
 msgid "the map. Agree on"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:893
+#: freeserf/src/lan-box.cc:901
 msgid "it in the chat."
 msgstr ""
 
-#: freeserf/src/lan-box.cc:896
+#: freeserf/src/lan-box.cc:904
 msgid "Chat: type, Return"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:916 freeserf/src/lan-box.cc:1292 freeserf/src/report-box.cc:137
+#: freeserf/src/lan-box.cc:924 freeserf/src/lan-box.cc:1339 freeserf/src/report-box.cc:199
 msgid "CANCEL"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:918 freeserf/src/lan-box.cc:1288
+#: freeserf/src/lan-box.cc:926 freeserf/src/lan-box.cc:1335
 msgid "START GAME"
 msgstr ""
 
-#: freeserf/src/lan-box.cc:925 freeserf/src/lan-box.cc:1359
+#: freeserf/src/lan-box.cc:933 freeserf/src/lan-box.cc:1407
 msgid "DISCONNECT"
 msgstr ""
 
-#: freeserf/src/lan-game.cc:314
+#: freeserf/src/lan-game.cc:321
 msgid "GAME SAVED: SYNC ERROR"
 msgstr ""
 
-#: freeserf/src/lan-game.cc:315
+#: freeserf/src/lan-game.cc:322
 msgid "GAME NOT SAVED"
 msgstr ""
 
-#: freeserf/src/lan-game.cc:346
+#: freeserf/src/lan-game.cc:353
 msgid "RESYNC: WAITING FOR THE SERVER"
 msgstr ""
 
-#: freeserf/src/lan-game.cc:355 freeserf/src/lan-game.cc:429
+#: freeserf/src/lan-game.cc:362 freeserf/src/lan-game.cc:436
 msgid "RESYNC FAILED"
 msgstr ""
 
-#: freeserf/src/lan-game.cc:374
+#: freeserf/src/lan-game.cc:381
 msgid "RESYNC: THE GAME GOES TO THE OTHER SIDE"
 msgstr ""
 
-#: freeserf/src/lan-game.cc:400
+#: freeserf/src/lan-game.cc:407
 msgid "RESYNC: THE GAME CAME BROKEN"
 msgstr ""
 
-#: freeserf/src/lan-game.cc:446
+#: freeserf/src/lan-game.cc:453
 msgid "RESYNC DONE - THE GAMES ARE THE SAME"
 msgstr ""
 
-#: freeserf/src/lan-game.cc:532
+#: freeserf/src/lan-game.cc:541
 msgid "STATE OF THE OTHER SIDE RECEIVED"
 msgstr ""
 
-#: freeserf/src/lan-game.cc:533
+#: freeserf/src/lan-game.cc:542
 msgid "STATE OF THE OTHER SIDE BROKEN"
 msgstr ""
 
-#: freeserf/src/lan-game.cc:577
+#: freeserf/src/lan-game.cc:586
 msgid "The other player"
 msgstr ""
 
-#: freeserf/src/lan-game.cc:582
+#: freeserf/src/lan-game.cc:591
 msgid "The player %s ended the game."
 msgstr ""
 
-#: freeserf/src/lan-game.cc:583
+#: freeserf/src/lan-game.cc:592
 msgid "The server %s ended the game."
 msgstr ""
 
-#: freeserf/src/lan-game.cc:585
+#: freeserf/src/lan-game.cc:594
 msgid "%s left the game."
 msgstr ""
 
-#: freeserf/src/lan-game.cc:586
+#: freeserf/src/lan-game.cc:595
 msgid "%s ended the game."
 msgstr ""
 
-#: freeserf/src/lan-game.cc:588
+#: freeserf/src/lan-game.cc:597
 msgid "The connection to %s is lost."
 msgstr ""
 
-#: freeserf/src/lan-game.cc:591
+#: freeserf/src/lan-game.cc:600
 msgid "Game saved."
 msgstr ""
 
-#: freeserf/src/lan-game.cc:810
+#: freeserf/src/lan-game.cc:819
 msgid "OUT OF STEP AT "
 msgstr ""
 
-#: freeserf/src/lan-game.cc:845
+#: freeserf/src/lan-game.cc:854
 msgid "LAN: NO CONNECTION"
 msgstr ""
 
-#: freeserf/src/lan-game.cc:846
+#: freeserf/src/lan-game.cc:855
 msgid "LAN: PLAYER GONE"
 msgstr ""
 
-#: freeserf/src/lan-game.cc:848
+#: freeserf/src/lan-game.cc:857
 msgid "LAN: OUT OF STEP "
 msgstr ""
 
-#: freeserf/src/lan-game.cc:851
+#: freeserf/src/lan-game.cc:860
 msgid "LAN: SENDING THE GAME "
 msgstr ""
 
-#: freeserf/src/lan-game.cc:856
+#: freeserf/src/lan-game.cc:865
 msgid "LAN: WAITING FOR "
 msgstr ""
 
-#: freeserf/src/lan-game.cc:856
+#: freeserf/src/lan-game.cc:865
 msgid "PLAYER"
 msgstr ""
 
-#: freeserf/src/lan-game.cc:861
+#: freeserf/src/lan-game.cc:870
 msgid "LAN: SLOW CONNECTION "
 msgstr ""
 
-#: freeserf/src/lan-game.cc:967
+#: freeserf/src/lan-game.cc:976
 msgid "NOT SENT - NO CONNECTION"
 msgstr ""
 
@@ -1220,55 +1228,55 @@ msgctxt "ground analysis"
 msgid "Perfect"
 msgstr ""
 
-#: freeserf/src/report-box.cc:111
+#: freeserf/src/report-box.cc:171
 msgid "Bug report"
 msgstr ""
 
-#: freeserf/src/report-box.cc:113
+#: freeserf/src/report-box.cc:175
 msgid "The LAN game went out of step."
 msgstr ""
 
-#: freeserf/src/report-box.cc:114
+#: freeserf/src/report-box.cc:176
 msgid "Send the saves of both sides?"
 msgstr ""
 
-#: freeserf/src/report-box.cc:116
+#: freeserf/src/report-box.cc:178
 msgid "The state of the game is saved."
 msgstr ""
 
-#: freeserf/src/report-box.cc:117
+#: freeserf/src/report-box.cc:179
 msgid "Send it to the author of the port?"
 msgstr ""
 
-#: freeserf/src/report-box.cc:119
+#: freeserf/src/report-box.cc:181
 msgid "Your e-mail"
 msgstr ""
 
-#: freeserf/src/report-box.cc:122
+#: freeserf/src/report-box.cc:183
 msgid "(for an answer)"
 msgstr ""
 
-#: freeserf/src/report-box.cc:124
+#: freeserf/src/report-box.cc:185
 msgid "What happened"
 msgstr ""
 
-#: freeserf/src/report-box.cc:132
+#: freeserf/src/report-box.cc:194
 msgid "CLOSE"
 msgstr ""
 
-#: freeserf/src/report-box.cc:135
+#: freeserf/src/report-box.cc:197
 msgid "SEND"
 msgstr ""
 
-#: freeserf/src/report-box.cc:156
+#: freeserf/src/report-box.cc:218
 msgid "Sending the report..."
 msgstr ""
 
-#: freeserf/src/report-box.cc:159
+#: freeserf/src/report-box.cc:221
 msgid "The report was not sent."
 msgstr ""
 
-#: freeserf/src/report-box.cc:171
+#: freeserf/src/report-box.cc:233
 msgid "Report no. %s sent. Thank you!"
 msgstr ""
 

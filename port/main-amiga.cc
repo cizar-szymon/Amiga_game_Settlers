@@ -156,6 +156,9 @@ parse_option(const char *a) {
        into a LAN game. */
     Interface::lan_test_keys = true;
     Interface::lan_test_split_s = static_cast<unsigned int>(atoi(v));
+  } else if ((v = option_value(a, "LANROAD")) != nullptr) {
+    /* LANROAD=<seconds>: a road built and removed in a LAN game (test). */
+    Interface::lan_test_road_s = static_cast<unsigned int>(atoi(v));
   } else if (strcasecmp(a, "LANTEST") == 0) {
     Interface::lan_test_keys = true;
   } else if (strcasecmp(a, "LANINFO") == 0) {

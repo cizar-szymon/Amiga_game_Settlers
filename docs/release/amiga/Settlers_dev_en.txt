@@ -146,6 +146,12 @@ alone draws one more random number; OUT OF STEP within a few s, the
 SYNC_ saves and the resync. Ctrl+Shift+R (no LANTEST): a resync.
 LANTEST=n: as LANTEST, and this side goes apart by itself after n s (a
 test of the LAN report without keys).
+LANROAD=n (test): n s into a LAN game this side builds a castle (when
+there is none), 10 s later a road from the castle flag to a new flag,
+10 s after that removes it as the button of the panel does (a LAN
+command, on both sides). The LAN out-of-step report: the server side
+sends it by itself (Interface::start_lan_report) when the other side's
+files are here, at the latest after 30 s.
 RELAYAUTO=HOST|JOIN[:password] (test): the LAN box goes to INTERNET GAME
 by itself; HOST sets up a game and clicks START GAME 5 s after a player
 joins, JOIN refreshes the list and joins the first game.

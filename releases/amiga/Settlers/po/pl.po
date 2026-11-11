@@ -229,6 +229,12 @@ msgstr "NIE"
 msgid "DELETE"
 msgstr "USUŃ"
 
+msgid "SENDING THE BUG REPORT"
+msgstr "WYSYŁAM ZGŁOSZENIE BŁĘDU"
+
+msgid "BUG REPORT NO. %s SENT"
+msgstr "ZGŁOSZENIE NR %s WYSŁANE"
+
 msgid "Game speed up"
 msgstr "Szybciej"
 
@@ -370,11 +376,20 @@ msgstr "Obie Amigi łączą się z serwerem,"
 msgid "no router to set up."
 msgstr "bez ustawiania routera."
 
+msgid "CHANGE"
+msgstr "ZMIEŃ"
+
+msgid "AVERAGE"
+msgstr "ŚREDNIA"
+
 msgid "A player has joined."
 msgstr "Gracz dołączył."
 
 msgid "RUN SERVER to be found."
 msgstr "URUCHOM - wtedy widać grę."
+
+msgid "GREAT"
+msgstr "ŚWIETNA"
 
 msgid "Server name"
 msgstr "Nazwa serwera"
@@ -400,20 +415,14 @@ msgstr "ZATRZYMAJ"
 msgid "RUN SERVER"
 msgstr "URUCHOM"
 
-msgid "CHANGE"
-msgstr "ZMIEŃ"
-
-msgid "AVERAGE"
-msgstr "ŚREDNIA"
+msgid "No network in this version."
+msgstr "Brak sieci w tej wersji."
 
 msgid "Go on with a saved game"
 msgstr "Dalsza gra z zapisu"
 
 msgid "USE GAME"
 msgstr "WYBIERZ"
-
-msgid "GREAT"
-msgstr "ŚWIETNA"
 
 msgid "Searching the network..."
 msgstr "Szukam w sieci..."
@@ -429,9 +438,6 @@ msgstr "adres poniżej."
 
 msgid "SEARCH"
 msgstr "SZUKAJ"
-
-msgid "No network in this version."
-msgstr "Brak sieci w tej wersji."
 
 msgid "CONNECT"
 msgstr "POŁĄCZ"

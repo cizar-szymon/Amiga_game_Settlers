@@ -1,0 +1,428 @@
+From c9ba8a80660aac91e852eed1ab981e02d3f4911c Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Wed, 11 Nov 2026 01:48:45 +0100
+Subject: [PATCH] 0.132: removing a road is a LAN command (done on both
+ computers; before, only on the one that removed it - the LAN game went
+ apart), the LAN out-of-step report goes to the game server by itself (no box
+ to close unsent), test option LANROAD
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/interface.cc   | 184 +++++++++++++++++++++++++++++++++++++++++++++
+ src/interface.h    |  37 ++++++++-
+ src/lan-command.cc |   2 +
+ src/lan-command.h  |   6 +-
+ src/lan-game.cc    |   9 ++-
+ src/panel.cc       |  13 +---
+ src/report-box.cc  |   8 +-
+ 7 files changed, 236 insertions(+), 23 deletions(-)
+
+diff --git a/src/interface.cc b/src/interface.cc
+index 0b8f7c6..d220d55 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -22,6 +22,7 @@
+ #include "src/interface.h"
+ 
+ #include <algorithm>
++#include <cstdio>
+ #include <vector>
+ #include <iostream>
+ #include <fstream>
+@@ -50,6 +51,7 @@
+ #include "src/panel.h"
+ #include "src/savegame.h"
+ #include "src/translation.h"
++#include "src/flag.h"
+ 
+ // Interval between automatic save games
+ 
+@@ -127,6 +129,8 @@ Interface::Interface()
+   platform_box = nullptr;
+   lan_box = nullptr;
+   report_box = nullptr;
++  lan_report = LanReportNone;
++  lan_report_due = 0;
+   notification_box = nullptr;
+ 
+   GameManager::get_instance().add_handler(this);
+@@ -470,12 +474,190 @@ Interface::close_report_box() {
+     report_box = nullptr;
+   }
+ }
++
++/* The other side's files come some seconds after the dump (16 frames a
++   step); without them by then, the report goes with the files of this
++   side. */
++static const unsigned int kLanReportWaitMs = 30000;
++/* Busy (an F10 report going out): tried again so much later. */
++static const unsigned int kLanReportRetryMs = 2000;
++
++void
++Interface::start_lan_report(const std::string &text) {
++  if (!report_send) return;
++  /* (A second report while one is still going out: these files are
++     already copied by the sending, see lan_report_files.) */
++  lan_report_text = text;
++  lan_report_due = EventLoop::get_instance().get_ticks() + kLanReportWaitMs;
++  if (lan_report != LanReportSending) lan_report = LanReportWaiting;
++}
++
++void
++Interface::lan_report_complete() {
++  if (lan_report == LanReportWaiting) {
++    lan_report_due = EventLoop::get_instance().get_ticks();
++  }
++}
++
++void
++Interface::remove_sent_lan_files(const std::vector<std::string> &files) {
++  for (const std::string &path : files) {
++    size_t n = path.size();
++    if (n > 10 && path.compare(n - 10, 10, "M.lan.save") == 0) continue;
++    std::remove(path.c_str());
++  }
++}
++
++void
++Interface::pump_lan_report() {
++  if (lan_report == LanReportNone || !report_send) return;
++  if (lan_report == LanReportWaiting) {
++    unsigned int now = EventLoop::get_instance().get_ticks();
++    if (static_cast<int>(now - lan_report_due) < 0) return;
++    if (report_files.empty()) {
++      lan_report = LanReportNone;
++      return;
++    }
++    std::string email = Settings::get_instance().get("report", "email",
++                                                     std::string());
++    if (!report_send("LAN", report_files, email, lan_report_text)) {
++      /* An F10 report going out (one at a time): again a little later. */
++      lan_report_due = now + kLanReportRetryMs;
++      return;
++    }
++    lan_report_files = report_files;
++    report_files.clear();
++    lan_report = LanReportSending;
++    if (lan_game) lan_game->note(_("SENDING THE BUG REPORT"));
++    return;
++  }
++  /* Sending: the result (only this one is out now, an F10 box could not
++     start its own). */
++  std::string text;
++  bool ok = false;
++  if (!report_result || !report_result(&text, &ok)) return;
++  lan_report = report_files.empty() ? LanReportNone : LanReportWaiting;
++  if (ok) {
++    remove_sent_lan_files(lan_report_files);
++    lan_report_files.clear();
++    if (lan_game) {
++      lan_game->note(text_with(_("BUG REPORT NO. %s SENT"), text));
++    }
++    Log::Info["lan"] << "LAN report sent: no. " << text;
++  } else {
++    /* Not sent: the box, SEND again (the files stay on this Amiga). */
++    Log::Warn["lan"] << "LAN report not sent: " << text;
++    for (const std::string &p : lan_report_files) add_report_file(p);
++    lan_report_files.clear();
++    lan_report = LanReportNone;
++    open_lan_report_box();
++  }
++}
+ int Interface::platform_box_width = 0;
+ int Interface::platform_box_height = 0;
+ std::function<void(int)> Interface::zoom_hook;
+ LanLink *Interface::lan_link = nullptr;
+ bool Interface::lan_test_keys = false;
+ unsigned int Interface::lan_test_split_s = 0;
++unsigned int Interface::lan_test_road_s = 0;
++
++bool
++Interface::demolish_road_at_cursor() {
++  /* A command: in a LAN game done on both computers (0.132: before, only
++     on this one - the LAN game went apart); checked here for the sound. */
++  bool r = game && game->can_demolish_road(map_cursor_pos, player) &&
++           command(LanCommand::TypeDemolishRoad, map_cursor_pos);
++  if (!r) {
++    play_sound(Audio::TypeSfxNotAccepted);
++    update_map_cursor_pos(map_cursor_pos);
++  } else {
++    play_sound(Audio::TypeSfxAccepted);
++  }
++  return r;
++}
++
++void
++Interface::lan_test_road() {
++  /* Stages: 0 the castle (when there is none), 1 the road, 2 its removal,
++     3 done; 10 s apart. */
++  static LanGame *road_game = nullptr;
++  static unsigned int road_at = 0;
++  static int stage = 0;
++  static MapPos road_pos = 0;
++  unsigned int now = EventLoop::get_instance().get_ticks();
++  if (road_game != lan_game.get()) {
++    road_game = lan_game.get();
++    road_at = now + lan_test_road_s * 1000;
++    stage = 0;
++    return;
++  }
++  if (stage >= 3 || static_cast<int>(now - road_at) < 0) return;
++  PMap map = game->get_map();
++  road_at = now + 10000;
++  Flag *flag = nullptr;
++  for (Building *b : game->get_player_buildings(player)) {
++    if (b->get_type() == Building::TypeCastle) {
++      flag = game->get_flag(b->get_flag_index());
++    }
++  }
++  if (stage == 0) {
++    stage = 1;
++    if (flag != nullptr) return;
++    for (int i = 0; i < 295; i++) {  /* the spiral of the map */
++      MapPos pos = map->pos_add_spirally(map_cursor_pos, i);
++      if (game->can_build_castle(pos, player)) {
++        command(LanCommand::TypeBuildCastle, pos);
++        lan_game->note("LANROAD: CASTLE BUILT");
++        Log::Info["lan"] << "LANROAD: castle built";
++        return;
++      }
++    }
++    lan_game->note("LANROAD: NO PLACE FOR A CASTLE");
++    Log::Info["lan"] << "LANROAD: no place for a castle";
++    stage = 3;
++  } else if (stage == 1) {
++    stage = 3;  /* unless the road goes */
++    if (flag == nullptr) {
++      lan_game->note("LANROAD: NO CASTLE");
++      Log::Info["lan"] << "LANROAD: no castle";
++      return;
++    }
++    for (int len = 2; len <= 4 && stage == 3; len++) {
++      for (int d = DirectionRight; d <= DirectionUp && stage == 3; d++) {
++        Road road;
++        road.start(flag->get_position());
++        for (int i = 0; i < len; i++) road.extend(static_cast<Direction>(d));
++        MapPos end = road.get_end(map.get());
++        MapPos dest;
++        if (!game->can_build_flag(end, player) ||
++            game->can_build_road(road, player, &dest, nullptr) <= 0) {
++          continue;
++        }
++        LanCommand c(LanCommand::TypeBuildRoad, 0, 0, 1);
++        c.road = road;
++        if (command(c)) {
++          road_pos = map->move(flag->get_position(), static_cast<Direction>(d));
++          stage = 2;
++          lan_game->note("LANROAD: ROAD BUILT");
++          Log::Info["lan"] << "LANROAD: road of " << len << " built at "
++                           << map->pos_col(road_pos) << ","
++                           << map->pos_row(road_pos);
++        }
++      }
++    }
++    if (stage == 3) {
++      lan_game->note("LANROAD: NO ROAD");
++      Log::Info["lan"] << "LANROAD: no road";
++    }
++  } else {
++    stage = 3;
++    bool there = map->paths(road_pos) != 0;
++    update_map_cursor_pos(road_pos);
++    bool r = demolish_road_at_cursor();
++    lan_game->note(r ? "LANROAD: ROAD REMOVED" : "LANROAD: ROAD NOT REMOVED");
++    Log::Info["lan"] << "LANROAD: road there " << there << ", removed " << r;
++  }
++}
+ std::string Interface::build_label;
+ 
+ void
+@@ -1868,6 +2050,7 @@ Interface::update() {
+   if (report_box != nullptr) {
+     report_box->update();
+   }
++  pump_lan_report();
+ 
+   if (exit_to_menu) {
+     exit_to_menu = false;
+@@ -1897,6 +2080,7 @@ Interface::update() {
+       Log::Warn["lan"] << "LANTEST: this game made to go apart (timed)";
+     }
+   }
++  if (lan_test_road_s != 0 && lan_game) lan_test_road();
+   /* A LAN game steps only with the other side's commands of the turn. */
+   if (lan_game && !lan_game->before_step()) {
+     return;
+diff --git a/src/interface.h b/src/interface.h
+index 4e90500..d1660e2 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -110,6 +110,18 @@ class Interface : public GuiObject, public GameManager::Handler {
+   LanBox *lan_box;
+   class ReportBox *report_box;
+   std::vector<std::string> report_files;
++  /* The report of a LAN game out of step, sent by itself (0.132): waiting
++     for the other side's files until lan_report_due (event loop ticks),
++     then sent; the files of the sending. */
++  typedef enum LanReport {
++    LanReportNone,
++    LanReportWaiting,
++    LanReportSending
++  } LanReport;
++  LanReport lan_report;
++  unsigned int lan_report_due;
++  std::string lan_report_text;
++  std::vector<std::string> lan_report_files;
+   NotificationBox *notification_box;
+ 
+   MapPos map_cursor_pos;
+@@ -366,6 +378,10 @@ class Interface : public GuiObject, public GameManager::Handler {
+      goes apart by itself, as with Ctrl+Shift+X (the keys of AmiAgent have
+      no qualifiers). 0: never. */
+   static unsigned int lan_test_split_s;
++  /* LANROAD=<seconds> (a test): so far into a LAN game this side builds a
++     road from its castle flag to a new flag, 10 s later removes it as the
++     button of the panel does (demolish_road_at_cursor). 0: never. */
++  static unsigned int lan_test_road_s;
+   /* Shown where the FPS are while they are off (the port: "TEST 0.108",
+      the build of a test version); "": nothing. */
+   static std::string build_label;
+@@ -394,10 +410,20 @@ class Interface : public GuiObject, public GameManager::Handler {
+      platform; without report_send the box cannot send. */
+   void open_report_box();
+   void close_report_box();
+-  /* A LAN game went out of step (the server side): the box asks to send
+-     the saves of both sides; the files come with add_report_file (also
+-     the other side's, as they arrive). */
++  /* A LAN game went out of step (the server side): the saves of both
++     sides go to the game server by themselves (start_lan_report; the
++     files come with add_report_file, also the other side's as they
++     arrive, lan_report_complete when they are all here); the box asks
++     only when the sending failed (open_lan_report_box: SEND again).
++     Players closed the box without sending (0.131, 11.11.2026). */
++  void start_lan_report(const std::string &text);
++  void lan_report_complete();
++  /* With every update: sends the LAN report when due, then its result. */
++  void pump_lan_report();
+   void open_lan_report_box();
++  /* A LAN report on the server: its files off this Amiga, but for the
++     save of this side (SYNC_..M, kept as before). */
++  static void remove_sent_lan_files(const std::vector<std::string> &files);
+   void add_report_file(const std::string &path);
+   const std::vector<std::string> &get_report_files() const {
+     return report_files; }
+@@ -446,6 +472,11 @@ class Interface : public GuiObject, public GameManager::Handler {
+     return (BIT_TEST(building_road_valid_dir, dir) != 0); }
+ 
+   void demolish_object();
++  /* The button "remove road": the road at the map cursor, a command (in
++     a LAN game on both computers); with its sound. */
++  bool demolish_road_at_cursor();
++  /* LANROAD: the next stage of the test (see lan_test_road_s). */
++  void lan_test_road();
+ 
+   void build_flag();
+   void build_building(Building::Type type, bool special = false);
+diff --git a/src/lan-command.cc b/src/lan-command.cc
+index 3610e07..c9c9176 100644
+--- a/src/lan-command.cc
++++ b/src/lan-command.cc
+@@ -164,6 +164,8 @@ LanCommand::apply(Game *game) const {
+       return game->demolish_building(pos, p);
+     case TypePullRoads:
+       return game->pull_roads_through_flag(pos, p);
++    case TypeDemolishRoad:
++      return game->demolish_road(pos, p);
+     case TypeSendGeologist: {
+       Flag *flag = game->get_flag_at_pos(pos);
+       return flag != nullptr && game->send_geologist(flag);
+diff --git a/src/lan-command.h b/src/lan-command.h
+index 407c48c..7d06159 100644
+--- a/src/lan-command.h
++++ b/src/lan-command.h
+@@ -58,7 +58,11 @@ class LanCommand {
+     TypeDump,
+     /* The server's game goes to the player who joined, who goes on from it
+        (a: 1 after OUT OF STEP, 0 Ctrl+Shift+R). Done by LanGame. */
+-    TypeResync
++    TypeResync,
++    /* pos of the road (0.132: before, the road went only on the computer
++       of the player who removed it - the LAN game went apart). New ones
++       at the end: the numbers go over the link. */
++    TypeDemolishRoad
+   } Type;
+ 
+   /* The settings boxes of a player (TypeSetting). */
+diff --git a/src/lan-game.cc b/src/lan-game.cc
+index f9f239e..fa99d57 100644
+--- a/src/lan-game.cc
++++ b/src/lan-game.cc
+@@ -310,7 +310,12 @@ LanGame::dump(bool sync_error) {
+                                  ".save");
+     }
+     interface->add_report_file(folder + base + ".txt");
+-    interface->open_lan_report_box();
++    /* Sent by itself when the other side's files are here (0.132; the
++       box asking first was closed by players without sending). */
++    interface->start_lan_report(
++      "Sent by the game: the LAN game went out of step (step " +
++      std::to_string(steps) + ", tick " + std::to_string(game->get_tick()) +
++      ", players " + own_name + " / " + peer_name + ")");
+   }
+   Log::Warn["lan"] << "LAN dump at step " << steps << ": " << base;
+   add_chat(-1, std::string(), saved ? _("GAME SAVED: SYNC ERROR")
+@@ -531,6 +536,8 @@ LanGame::receive_file(int type, const std::string &data) {
+     }
+     if (file_in_name.size() > 4 &&
+         file_in_name.compare(file_in_name.size() - 4, 4, ".txt") == 0) {
++      /* The text comes last: the report may go now. */
++      if (server) interface->lan_report_complete();
+       add_chat(-1, std::string(), ok ? _("STATE OF THE OTHER SIDE RECEIVED")
+                                      : _("STATE OF THE OTHER SIDE BROKEN"));
+       chat_shown_until = EventLoop::get_instance().get_ticks() + 10000;
+diff --git a/src/panel.cc b/src/panel.cc
+index b106542..6d76959 100644
+--- a/src/panel.cc
++++ b/src/panel.cc
+@@ -319,17 +319,8 @@ PanelBar::button_click(int button, bool special) {
+     case ButtonBuildCastle:
+       interface->build_castle();
+       break;
+-    case ButtonDestroyRoad: {
+-      bool r = interface->get_player()->get_game()->demolish_road(
+-                                                interface->get_map_cursor_pos(),
+-                                                       interface->get_player());
+-      if (!r) {
+-        play_sound(Audio::TypeSfxNotAccepted);
+-        interface->update_map_cursor_pos(interface->get_map_cursor_pos());
+-      } else {
+-        play_sound(Audio::TypeSfxAccepted);
+-      }
+-    }
++    case ButtonDestroyRoad:
++      interface->demolish_road_at_cursor();
+       break;
+     case ButtonGroundAnalysis:
+     case ButtonGroundAnalysisStarred:
+diff --git a/src/report-box.cc b/src/report-box.cc
+index 7d7628d..a858367 100644
+--- a/src/report-box.cc
++++ b/src/report-box.cc
+@@ -233,13 +233,7 @@ ReportBox::update() {
+     status = text_with(_("Report no. %s sent. Thank you!"), text);
+     play_sound(Audio::TypeSfxAccepted);
+     if (lan) {
+-      /* On the server now: off this Amiga, but for the save of this side
+-         (SYNC_..M, kept as before). */
+-      for (const std::string &path : interface->get_report_files()) {
+-        size_t n = path.size();
+-        if (n > 10 && path.compare(n - 10, 10, "M.lan.save") == 0) continue;
+-        std::remove(path.c_str());
+-      }
++      Interface::remove_sent_lan_files(interface->get_report_files());
+       interface->clear_report_files();
+     }
+   } else {
+-- 
+2.45.2.windows.1
+

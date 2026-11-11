@@ -8,6 +8,19 @@ Without a network: give the version number (start screen, "Version
 Settlers") and attach RAM:Settlers-state.save and RAM:Settlers-state.txt.
 
 
+0.132 (11.11.2026, beta release)
+--------------------------------
+
+- Removing a road in a LAN game happens on both computers at once, as
+  building and demolishing do - the games stay the same.
+- When LAN games go out of step (OUT OF STEP), the game of the one who
+  set it up sends the saves of both sides to the game server by itself
+  (with the e-mail address of the F10 box, if one was typed); the chat
+  shows the number of the report. The box with SEND / CANCEL opens only
+  when the sending fails.
+- LAN game: both sides need version 0.132.
+
+
 0.131 (8.11.2026, beta release)
 -------------------------------
 

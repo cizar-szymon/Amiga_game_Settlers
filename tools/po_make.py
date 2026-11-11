@@ -280,6 +280,8 @@ T = {
  ('', 'RESYNC DONE - THE GAMES ARE THE SAME'): ('RESYNC GOTOWY - GRY ZGODNE', 'RESYNC FERTIG - SPIELE GLEICH'),
  ('', 'STATE OF THE OTHER SIDE RECEIVED'): ('STAN DRUGIEJ STRONY ODEBRANY', 'STAND DER GEGENSEITE DA'),
  ('', 'STATE OF THE OTHER SIDE BROKEN'): ('STAN DRUGIEJ STRONY USZKODZONY', 'STAND DER GEGENSEITE KAPUTT'),
+ ('', 'SENDING THE BUG REPORT'): ('WYSYŁAM ZGŁOSZENIE BŁĘDU', 'FEHLERBERICHT WIRD GESENDET'),
+ ('', 'BUG REPORT NO. %s SENT'): ('ZGŁOSZENIE NR %s WYSŁANE', 'FEHLERBERICHT NR. %s GESENDET'),
  ('', 'The other player'): ('Drugi gracz', 'Der Mitspieler'),
  ('', 'The player %s ended the game.'): ('Gracz %s zakończył grę.', 'Spieler %s beendete das Spiel.'),
  ('', 'The server %s ended the game.'): ('Serwer %s zakończył grę.', 'Server %s beendete das Spiel.'),

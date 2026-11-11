@@ -310,8 +310,10 @@ tylko przy dzialajacym stosie TCP/IP; bez niego F10 tylko zapisuje pliki
 (na ekranie startowym i "Version Settlers" w Shellu).
 
 Gdy gry LAN sie rozejda (LAN: OUT OF STEP), druga strona odsyla swoje
-pliki do zakladajacego, a jego gra pyta tym samym oknem, czy wyslac
-zapisy obu stron (SEND / CANCEL); gra toczy sie dalej.
+pliki do zakladajacego, a jego gra sama wysyla zapisy obu stron na
+serwer gry (z adresem e-mail z okna F10, jesli byl wpisany); w czacie
+pojawia sie numer zgloszenia, gra toczy sie dalej. Okno (SEND / CANCEL)
+otwiera sie tylko wtedy, gdy wyslanie sie nie uda.
 Zmiany w kolejnych wersjach: Settlers_release.txt.
 
 

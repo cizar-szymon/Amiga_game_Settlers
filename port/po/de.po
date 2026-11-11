@@ -229,6 +229,12 @@ msgstr "NEIN"
 msgid "DELETE"
 msgstr "LÖSCHEN"
 
+msgid "SENDING THE BUG REPORT"
+msgstr "FEHLERBERICHT WIRD GESENDET"
+
+msgid "BUG REPORT NO. %s SENT"
+msgstr "FEHLERBERICHT NR. %s GESENDET"
+
 msgid "Game speed up"
 msgstr "Schneller"
 
@@ -370,11 +376,20 @@ msgstr "Beide verbinden sich mit dem"
 msgid "no router to set up."
 msgstr "Spielserver, ohne Router."
 
+msgid "CHANGE"
+msgstr "ÄNDERN"
+
+msgid "AVERAGE"
+msgstr "MITTEL"
+
 msgid "A player has joined."
 msgstr "Ein Spieler ist da."
 
 msgid "RUN SERVER to be found."
 msgstr "SERVER START: sichtbar."
+
+msgid "GREAT"
+msgstr "TOLL"
 
 msgid "Server name"
 msgstr "Servername"
@@ -400,20 +415,14 @@ msgstr "SERVER STOP"
 msgid "RUN SERVER"
 msgstr "SERVER START"
 
-msgid "CHANGE"
-msgstr "ÄNDERN"
-
-msgid "AVERAGE"
-msgstr "MITTEL"
+msgid "No network in this version."
+msgstr "Kein Netz in dieser Version."
 
 msgid "Go on with a saved game"
 msgstr "Gespeichertes Spiel fortsetzen"
 
 msgid "USE GAME"
 msgstr "NEHMEN"
-
-msgid "GREAT"
-msgstr "TOLL"
 
 msgid "Searching the network..."
 msgstr "Suche im Netz..."
@@ -429,9 +438,6 @@ msgstr "Adresse unten eingeben."
 
 msgid "SEARCH"
 msgstr "SUCHEN"
-
-msgid "No network in this version."
-msgstr "Kein Netz in dieser Version."
 
 msgid "CONNECT"
 msgstr "VERBINDEN"

@@ -13,8 +13,8 @@ card and a 68040/68060, at up to 800×600. It is a port of
 game (GPL-3.0), with a native Amiga backend (no SDL): an 8-bit Picasso96 screen,
 Paula or AHI sound, the game's own music module and the original Amiga graphics.
 
-**Current version: 0.131 (beta, 8.11.2026)** – the archive is
-[`releases/amiga/Settlers-0.131.zip`](releases/amiga/Settlers-0.131.zip)
+**Current version: 0.132 (beta, 11.11.2026)** – the archive is
+[`releases/amiga/Settlers-0.132.zip`](releases/amiga/Settlers-0.132.zip)
 (the same files unpacked: [`releases/amiga/Settlers`](releases/amiga/Settlers)).
 
 ![The game at 640×480 on a 68060](docs/shots/v1.png)
@@ -40,7 +40,9 @@ changes from the original: [English (PDF)](docs/bulletin/Settlers-bulletin.pdf) 
   nothing to set up in the router), or directly with a forwarded port (TCP
   6810, set in the game)
 - bug reports from the game: F10 saves the state and opens a box (e-mail,
-  what happened) that sends it with the state files to the game server
+  what happened) that sends it with the state files to the game server;
+  when LAN games go out of step, the saves of both sides go there by
+  themselves
 - the options of the original: Fast building, Fast mapclick, Pathway scrolling;
   the mouse as in the original (the right button scrolls on and on, left with
   the right held opens a building or demolishes)
@@ -60,7 +62,7 @@ changes from the original: [English (PDF)](docs/bulletin/Settlers-bulletin.pdf) 
 
 ## Getting started
 
-1. Unpack the archive to your hard disk, e.g. `UnZip Settlers-0.131.zip -d Work:Games`.
+1. Unpack the archive to your hard disk, e.g. `UnZip Settlers-0.132.zip -d Work:Games`.
 2. Copy from the original disks to `Settlers/data/amiga`:
    from disk 3 `gfxheader`, `gfxfast`, `gfxchip`, `sounds`, `extro`;
    from disk 2 `gfxpics`, `music`.
