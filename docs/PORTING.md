@@ -1477,6 +1477,12 @@ test: Amiga 1 / Amiga 2 `WorkSD:Games/Settlers/Settlers-test`.
 | 11 | **Rysowanie mapy zmieniało grę**: dźwięk młyna przełączał bit `playing_sfx` budynku (czyta go logika płatnerza i kopalń), dźwięki postaci (bit `sound`), hut i płonących budynków, a rysowanie płonącego budynku zmniejszało licznik ognia – stan gry zależał od tego, co gracz ma na ekranie. Dźwięki pamięta teraz widok (`Viewport::serf_sfx_on`, `building_sfx_on`, `mill_sfx`), ogień widok tylko czyta. | `viewport.cc/.h` | ✅ jak 10 |
 | 12 | **Spóźnione „zburz” wywracało grę LAN**: polecenie wykonuje się 2 tury po kliknięciu; gdy budynku już nie było (drugie kliknięcie, pożar), `demolish_building` burzył budynek-atrapę 0 (gracza 1) – dziura na początku listy budynków, wywrotka (Software Failure na Amidze 2 i w WinUAE w testach, znalezione ASan-em na PC). Teraz sprawdza, czy budynek stoi. Sieć: EINTR przy odbiorze nie zrywa połączenia, przyczyna zerwania w logu (`Link lost: … (error N)`). | `game.cc`, `port/amiga_net.c`, `port/lan-amiga.cc` | ✅ testy `lansim` na PC (20 ziaren, 40–60 tys. kroków) |
 
+## Zmiany 0.134 (seria poprawek, wydanie 11.11.2026; łatka Freeserf 0066)
+
+| Nr | Zmiana | Pliki | Test |
+|---|---|---|---|
+| 1 | Zgłoszenie gracza 9 (11.11.2026, 0.132, UAE): **okno mapy po otwarciu nie pokazuje miejsca gracza, zawsze ten sam punkt.** Przycisk mapy w panelu (`PanelBar::button_click`) brał wskaźnik okna (`popup`) na początku obsługi kliknięcia; zamknięte okno jest kasowane (`Interface::close_popup`), więc przy otwieraniu był to `nullptr`, `open_popup` tworzył nowe okno, a wyrównanie minimapy do widoku (`minimap->move_to_map_pos`) się nie wykonywało – minimapa zostawała na swoim punkcie startowym. Błąd z przeróbki portu (w Freeserf okno pobierane po otwarciu). Teraz okno pobierane ponownie po `open_popup`. Inne przyciski panelu nie używają okna po otwarciu. | `panel.cc` | Amiga 1, stan ze zgłoszenia 9 (`LOAD=`), mapa klawiszem 3, zrzut F9, okno mapy przy `VIEW=16,39` i `VIEW=60,10`: **0.133 – identyczne** (ten sam punkt), **0.134 – różne**, ramka widoku w środku okna ✅ |
+
 ## Zmiany 0.133 (seria poprawek, wydanie 11.11.2026; łatka Freeserf 0065)
 
 Zgłoszenia graczy 7 i 8 z 11.11.2026 (gra przez serwer, gospodarz Warp 1260 115 MHz, gość UAE

@@ -8,6 +8,12 @@ startowy, "Version Settlers") i dolacz pliki RAM:Settlers-state.save
 oraz RAM:Settlers-state.txt.
 
 
+0.134 (11.11.2026, wydanie beta)
+--------------------------------
+
+- Okno mapy otwiera sie na miejscu, ktore pokazuje widok gry.
+
+
 0.133 (11.11.2026, wydanie beta)
 --------------------------------
 

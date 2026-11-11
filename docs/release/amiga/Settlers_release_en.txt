@@ -8,6 +8,12 @@ Without a network: give the version number (start screen, "Version
 Settlers") and attach RAM:Settlers-state.save and RAM:Settlers-state.txt.
 
 
+0.134 (11.11.2026, beta release)
+--------------------------------
+
+- The map box opens at the place the game view shows.
+
+
 0.133 (11.11.2026, beta release)
 --------------------------------
 

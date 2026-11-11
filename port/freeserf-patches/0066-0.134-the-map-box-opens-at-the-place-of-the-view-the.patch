@@ -1,0 +1,30 @@
+From a4922f40bd8a983d371967034cdc8d6c1084bcd8 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Wed, 11 Nov 2026 20:35:08 +0100
+Subject: [PATCH] 0.134: the map box opens at the place of the view (the panel
+ button used the box pointer from before the click - nullptr after a closed
+ box, so the minimap was not moved and showed always the same place)
+
+---
+ src/panel.cc | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/panel.cc b/src/panel.cc
+index 6d76959..c9fe167 100644
+--- a/src/panel.cc
++++ b/src/panel.cc
+@@ -209,7 +209,10 @@ PanelBar::button_click(int button, bool special) {
+ 
+         interface->open_popup(PopupBox::TypeMap);
+ 
+-        /* Synchronize minimap window with viewport. */
++        /* Synchronize minimap window with viewport. The box is new: the
++           closed one was deleted (0.134: `popup` from before the click was
++           used - nullptr, the map showed always the same place). */
++        popup = interface->get_popup_box();
+         if (popup != nullptr) {
+           Viewport *viewport = interface->get_viewport();
+           Minimap *minimap = popup->get_minimap();
+-- 
+2.45.2.windows.1
+
