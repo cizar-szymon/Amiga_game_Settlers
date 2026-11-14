@@ -1,0 +1,609 @@
+From 8c31eb9e73bf2163c3ea004c04654d6c9d131ba0 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Sat, 14 Nov 2026 11:07:18 +0100
+Subject: [PATCH] 0.136: the name of a building under the right button: held on
+ a building of the boxes to choose one (until it goes up), held still 1 s on a
+ building of the map (Viewport::handle_right_hold, Interface::draw_map_name;
+ TypePress/TypeRelease of the right button); names of the buildings translated
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/box-frame.cc  |  30 +++++++++
+ src/box-frame.h   |  11 ++++
+ src/event_loop.cc |  10 +--
+ src/event_loop.h  |  12 ++--
+ src/gui.cc        |  18 ++++-
+ src/gui.h         |   6 ++
+ src/interface.cc  |  35 ++++++++++
+ src/interface.h   |   7 ++
+ src/popup.cc      | 164 +++++++++++++++++++++++++++++++++++++++++++++-
+ src/popup.h       |  14 ++++
+ src/viewport.cc   |  27 ++++++++
+ src/viewport.h    |   1 +
+ 12 files changed, 322 insertions(+), 13 deletions(-)
+
+diff --git a/src/box-frame.cc b/src/box-frame.cc
+index 0396eaf..083cd1a 100644
+--- a/src/box-frame.cc
++++ b/src/box-frame.cc
+@@ -170,3 +170,33 @@ draw_hint_box(Frame *frame, int x, int top, int w,
+   }
+ }
+ 
++/* The plate of a name (box-frame.h). */
++void
++name_plate_size(Frame *frame, const std::string &name,
++                const std::string &text, int *w, int *h) {
++  int tw = frame->get_string_width(name);
++  if (!text.empty()) tw = std::max(tw, frame->get_string_width(text));
++  *w = tw + 12;
++  *h = text.empty() ? 20 : 30;
++}
++
++void
++draw_name_plate(Frame *frame, int cx, int top, int min_x, int max_x,
++                const std::string &name, const std::string &text,
++                int *w, int *h) {
++  int pw, ph;
++  name_plate_size(frame, name, text, &pw, &ph);
++  if (w != nullptr) *w = pw;
++  if (h != nullptr) *h = ph;
++  int x = cx - pw / 2;
++  if (x + pw > max_x) x = max_x - pw;
++  if (x < min_x) x = min_x;
++  frame->fill_rect(x, top, pw, ph, Color(0x00, 0x33, 0x1a));
++  frame->draw_rect(x, top, pw, ph, Color::green);
++  frame->draw_string(x + 6, top + 6, name, Color(0xdd, 0xdd, 0x00),
++                     Color::black);
++  if (!text.empty()) {
++    frame->draw_string(x + 6, top + 16, text, Color::green, Color::black);
++  }
++}
++
+diff --git a/src/box-frame.h b/src/box-frame.h
+index af2b690..52da00f 100644
+--- a/src/box-frame.h
++++ b/src/box-frame.h
+@@ -45,6 +45,17 @@ void draw_hint_box(Frame *frame, int x, int top, int w,
+ /* The height of that box. */
+ int hint_box_height(Frame *frame, int w, const std::string &text);
+ 
++/* A small plate with a name (yellow) and, when not empty, a second line
++   (green) in the dark frame of the hints, centred on cx with its top at
++   top, kept between min_x and max_x. Its width and height (when not
++   null) come back; nothing is drawn with frame null. */
++void draw_name_plate(Frame *frame, int cx, int top, int min_x, int max_x,
++                     const std::string &name, const std::string &text,
++                     int *w = nullptr, int *h = nullptr);
++/* Its size (the same as draw_name_plate gives back). */
++void name_plate_size(Frame *frame, const std::string &name,
++                     const std::string &text, int *w, int *h);
++
+ void draw_small_letters(Frame *frame, int x, int y, const char *const *rows,
+                         int scale = 1, int row_count = 5);
+ 
+diff --git a/src/event_loop.cc b/src/event_loop.cc
+index bcb91a5..aa59049 100644
+--- a/src/event_loop.cc
++++ b/src/event_loop.cc
+@@ -108,26 +108,26 @@ EventLoop::notify_hold(int x, int y) {
+ }
+ 
+ bool
+-EventLoop::notify_press(int x, int y) {
++EventLoop::notify_press(int x, int y, Event::Button button, int held) {
+   Event event;
+   event.type = Event::TypePress;
+   event.x = x;
+   event.y = y;
+-  event.dx = 0;
++  event.dx = held;
+   event.dy = 0;
+-  event.button = Event::ButtonLeft;
++  event.button = button;
+   return notify_handlers(&event);
+ }
+ 
+ bool
+-EventLoop::notify_release() {
++EventLoop::notify_release(Event::Button button) {
+   Event event;
+   event.type = Event::TypeRelease;
+   event.x = 0;
+   event.y = 0;
+   event.dx = 0;
+   event.dy = 0;
+-  event.button = Event::ButtonLeft;
++  event.button = button;
+   return notify_handlers(&event);
+ }
+ 
+diff --git a/src/event_loop.h b/src/event_loop.h
+index a5d3378..8a64c3c 100644
+--- a/src/event_loop.h
++++ b/src/event_loop.h
+@@ -41,9 +41,12 @@ class Event {
+        the boxes repeat their click (the handler says if it used it). */
+     TypeHold,
+     /* The left button went down at x, y (a hint shown while it is held;
+-       the handler says if it used it - then the release is no click). */
++       the handler says if it used it - then the release is no click).
++       Button right: the right button went down (dx 0: the name of a
++       building in the boxes to choose one) or was held still for a while
++       (dx 1: the name of a building on the map), shown until it goes up. */
+     TypePress,
+-    /* The left button went up after a press that was used. */
++    /* The button went up after a press that was used. */
+     TypeRelease,
+   } Type;
+ 
+@@ -148,8 +151,9 @@ class EventLoop {
+   bool notify_dbl_click(int x, int y, Event::Button button);
+   bool notify_drag(int x, int y, int dx, int dy, Event::Button button);
+   bool notify_hold(int x, int y);
+-  bool notify_press(int x, int y);
+-  bool notify_release();
++  bool notify_press(int x, int y,
++                    Event::Button button = Event::ButtonLeft, int held = 0);
++  bool notify_release(Event::Button button = Event::ButtonLeft);
+   bool notify_key_pressed(unsigned char key, unsigned char morifier);
+   bool notify_resize(unsigned int width, unsigned int height);
+   bool notify_invalidate();
+diff --git a/src/gui.cc b/src/gui.cc
+index 194ab69..4da5199 100644
+--- a/src/gui.cc
++++ b/src/gui.cc
+@@ -214,10 +214,19 @@ GuiObject::handle_event(const Event *event) {
+       result = handle_hold(event_x, event_y);
+       break;
+     case Event::TypePress:
+-      result = handle_press(event_x, event_y);
++      if (event->button == Event::ButtonRight) {
++        result = (event->dx != 0) ? handle_right_hold(event_x, event_y)
++                                  : handle_right_press(event_x, event_y);
++      } else {
++        result = handle_press(event_x, event_y);
++      }
+       break;
+     case Event::TypeRelease:
+-      result = handle_release();
++      if (event->button == Event::ButtonRight) {
++        result = handle_right_release();
++      } else {
++        result = handle_release();
++      }
+       break;
+     default:
+       break;
+@@ -226,7 +235,10 @@ GuiObject::handle_event(const Event *event) {
+   /* A click on a window that it did not use: not on to what is under it
+      (the map). Without taking the focus from a text field in it. */
+   if (!result && opaque && (event->type == Event::TypeClick ||
+-                            event->type == Event::TypeDoubleClick)) {
++                            event->type == Event::TypeDoubleClick ||
++                            (event->type == Event::TypePress &&
++                             event->button == Event::ButtonRight &&
++                             event->dx != 0))) {
+     return true;
+   }
+ 
+diff --git a/src/gui.h b/src/gui.h
+index 30c4e83..3dc495e 100644
+--- a/src/gui.h
++++ b/src/gui.h
+@@ -76,6 +76,12 @@ class GuiObject : public EventLoop::Handler {
+   /* The left button down at x, y / up again (hints): true when used. */
+   virtual bool handle_press(int x, int y) { return false; }
+   virtual bool handle_release() { return false; }
++  /* The right button down at x, y (the name of a building in the boxes
++     to choose one), held still there for a while (the name of a building
++     on the map) / up again: true when used. */
++  virtual bool handle_right_press(int x, int y) { return false; }
++  virtual bool handle_right_hold(int x, int y) { return false; }
++  virtual bool handle_right_release() { return false; }
+   virtual bool handle_key_pressed(char key, int modifier) { return false; }
+   virtual bool handle_focus_loose() { return false; }
+ 
+diff --git a/src/interface.cc b/src/interface.cc
+index eccb2ed..c536cdd 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -51,6 +51,7 @@
+ #include "src/panel.h"
+ #include "src/savegame.h"
+ #include "src/translation.h"
++#include "src/box-frame.h"
+ #include "src/flag.h"
+ 
+ // Interval between automatic save games
+@@ -63,6 +64,7 @@ Interface::Interface()
+   game = nullptr;
+ 
+   map_cursor_pos = 0;
++  map_name_x = map_name_y = 0;
+   map_cursor_type = (CursorType)0;
+   build_possibility = BuildPossibilityNone;
+ 
+@@ -2045,6 +2047,29 @@ Interface::draw_pause(Frame *frame) {
+   }
+ }
+ 
++/* The name of a building on the map, above the pointer (below it at the
++   top of the screen). */
++void
++Interface::show_map_name(const std::string &name, const std::string &text,
++                         int x, int y) {
++  map_name = name;
++  map_name_text = text;
++  map_name_x = x;
++  map_name_y = y;
++  set_redraw();
++}
++
++void
++Interface::draw_map_name(Frame *frame) {
++  if (map_name.empty() || game == nullptr) return;
++  int w, h;
++  name_plate_size(frame, map_name, map_name_text, &w, &h);
++  int top = map_name_y - 12 - h;
++  if (top < 2) top = map_name_y + 16;
++  draw_name_plate(frame, map_name_x, top, 2, width - 2, map_name,
++                  map_name_text);
++}
++
+ /* Called periodically when the game progresses. */
+ void
+ Interface::update() {
+@@ -2372,7 +2397,17 @@ Interface::handle_event(const Event *event) {
+         lan_game->draw(reinterpret_cast<Frame*>(event->object));
+       }
+       draw_pause(reinterpret_cast<Frame*>(event->object));
++      draw_map_name(reinterpret_cast<Frame*>(event->object));
+       break;
++    case Event::TypeRelease:
++      /* The right button up: the name of a building on the map goes. */
++      if (event->button == Event::ButtonRight && !map_name.empty()) {
++        map_name.clear();
++        set_redraw();
++        if (viewport != nullptr) viewport->set_redraw();
++        return true;
++      }
++      return GuiObject::handle_event(event);
+     case Event::TypeInvalidate:
+       invalidate();
+       break;
+diff --git a/src/interface.h b/src/interface.h
+index 7e6d49a..de7f5ab 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -457,6 +457,13 @@ class Interface : public GuiObject, public GameManager::Handler {
+   static std::function<void(int)> zoom_hook;
+   void close_platform_box();
+   void draw_pause(Frame *frame);
++  /* The name of a building on the map (the right button held on it, see
++     Viewport::handle_right_hold), over the point x, y of the screen. */
++  std::string map_name, map_name_text;
++  int map_name_x, map_name_y;
++  void draw_map_name(Frame *frame);
++  void show_map_name(const std::string &name, const std::string &text,
++                     int x, int y);
+ 
+   void open_message();
+   void return_from_message();
+diff --git a/src/popup.cc b/src/popup.cc
+index 3dcc51e..b860fe2 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -344,6 +344,9 @@ PopupBox::PopupBox(Interface *_interface)
+   lan_save_ask = false;
+   quit_after_save = false;
+   options_hint = -1;
++  name_click = false;
++  name_action = -1;
++  bld_name_x = bld_name_top = bld_name_bottom = 0;
+   repeat_click = false;
+   repeat_used = false;
+ 
+@@ -3140,6 +3143,7 @@ PopupBox::internal_draw() {
+   default:
+     break;
+   }
++  if (!bld_name.empty()) draw_bld_name();
+ }
+ 
+ void
+@@ -4102,6 +4106,12 @@ PopupBox::handle_clickmap(int x_, int y_, const int clkmap[]) {
+     if (clkmap[1] <= x_ && x_ < clkmap[1] + clkmap[3] &&
+         clkmap[2] <= y_ && y_ < clkmap[2] + clkmap[4]) {
+       Action action = (Action)clkmap[0];
++      if (name_click) {
++        /* Only what is under the click (handle_click_right). */
++        name_action = action;
++        for (int i = 0; i < 4; i++) name_rect[i] = clkmap[1 + i];
++        return 0;
++      }
+       if (repeat_click) {
+         /* The button held: only the + and - buttons repeat. */
+         if (!is_repeat_action(action)) return -1;
+@@ -4787,8 +4797,95 @@ PopupBox::handle_hold(int cx, int cy) {
+   return repeat_used;
+ }
+ 
++/* The names of the buildings (Building::Type). */
++static const char *const kBuildingNames[] = {
++  "",
++  NC_("building", "Fisher"),
++  NC_("building", "Lumberjack"),
++  NC_("building", "Boatbuilder"),
++  NC_("building", "Stonecutter"),
++  NC_("building", "Stone mine"),
++  NC_("building", "Coal mine"),
++  NC_("building", "Iron mine"),
++  NC_("building", "Gold mine"),
++  NC_("building", "Forester"),
++  NC_("building", "Storehouse"),
++  NC_("building", "Guard hut"),
++  NC_("building", "Farm"),
++  NC_("building", "Butcher"),
++  NC_("building", "Pig farm"),
++  NC_("building", "Mill"),
++  NC_("building", "Bakery"),
++  NC_("building", "Sawmill"),
++  NC_("building", "Steel smelter"),
++  NC_("building", "Toolmaker"),
++  NC_("building", "Weaponsmith"),
++  NC_("building", "Guard tower"),
++  NC_("building", "Fortress"),
++  NC_("building", "Gold smelter"),
++  NC_("building", "Castle")
++};
++
++std::string
++PopupBox::building_name(int type) {
++  if (type <= 0 ||
++      type >= static_cast<int>(sizeof(kBuildingNames) /
++                               sizeof(kBuildingNames[0]))) {
++    return std::string();
++  }
++  return C_("building", kBuildingNames[type]);
++}
++
++/* The building of a build action of the boxes to choose a building, -1:
++   none (the flag: 0). */
++static int
++build_action_type(int action) {
++  switch (action) {
++    case ACTION_BUILD_STONEMINE: return Building::TypeStoneMine;
++    case ACTION_BUILD_COALMINE: return Building::TypeCoalMine;
++    case ACTION_BUILD_IRONMINE: return Building::TypeIronMine;
++    case ACTION_BUILD_GOLDMINE: return Building::TypeGoldMine;
++    case ACTION_BUILD_FLAG: return 0;
++    case ACTION_BUILD_STONECUTTER: return Building::TypeStonecutter;
++    case ACTION_BUILD_HUT: return Building::TypeHut;
++    case ACTION_BUILD_LUMBERJACK: return Building::TypeLumberjack;
++    case ACTION_BUILD_FORESTER: return Building::TypeForester;
++    case ACTION_BUILD_FISHER: return Building::TypeFisher;
++    case ACTION_BUILD_MILL: return Building::TypeMill;
++    case ACTION_BUILD_BOATBUILDER: return Building::TypeBoatbuilder;
++    case ACTION_BUILD_BUTCHER: return Building::TypeButcher;
++    case ACTION_BUILD_WEAPONSMITH: return Building::TypeWeaponSmith;
++    case ACTION_BUILD_STEELSMELTER: return Building::TypeSteelSmelter;
++    case ACTION_BUILD_SAWMILL: return Building::TypeSawmill;
++    case ACTION_BUILD_BAKER: return Building::TypeBaker;
++    case ACTION_BUILD_GOLDSMELTER: return Building::TypeGoldSmelter;
++    case ACTION_BUILD_FORTRESS: return Building::TypeFortress;
++    case ACTION_BUILD_TOWER: return Building::TypeTower;
++    case ACTION_BUILD_TOOLMAKER: return Building::TypeToolMaker;
++    case ACTION_BUILD_FARM: return Building::TypeFarm;
++    case ACTION_BUILD_PIGFARM: return Building::TypePigFarm;
++    case ACTION_BUILD_STOCK: return Building::TypeStock;
++    default: return -1;
++  }
++}
++
++/* The name shown while the right button is held in a box to choose a
++   building, under the building (over it at the bottom of the box). */
++void
++PopupBox::draw_bld_name() {
++  int w, h;
++  name_plate_size(frame, bld_name, std::string(), &w, &h);
++  int top = bld_name_bottom + 2;
++  if (top + h > height - 8) top = bld_name_top - 2 - h;
++  if (top < 8) top = 8;
++  draw_name_plate(frame, bld_name_x, top, 2, width - 2, bld_name,
++                  std::string());
++}
++
+ /* A special click (right button) is handled like a click with the
+-   special click flag set, where the original has a special action. */
++   special click flag set, where the original has a special action. The
++   boxes to choose a building: nothing (the name shows while the right
++   button is held, handle_right_press). */
+ bool
+ PopupBox::handle_click_right(int cx, int cy) {
+   switch (box) {
+@@ -4798,13 +4895,77 @@ PopupBox::handle_click_right(int cx, int cy) {
+       handle_click_left(cx, cy);
+       special_click = false;
+       return true;
++    case TypeMineBuilding:
++    case TypeBasicBld:
++    case TypeBasicBldFlip:
++    case TypeAdv1Bld:
++    case TypeAdv2Bld:
++      return true;
++    default:
++      return false;
++  }
++}
++
++/* The right button down on a building of a box to choose one: its name
++   until the button goes up. */
++bool
++PopupBox::handle_right_press(int cx, int cy) {
++  switch (box) {
++    case TypeMineBuilding:
++    case TypeBasicBld:
++    case TypeBasicBldFlip:
++    case TypeAdv1Bld:
++    case TypeAdv2Bld:
++      break;
+     default:
+       return false;
+   }
++  name_action = -1;
++  name_click = true;
++  handle_click_left(cx, cy);
++  name_click = false;
++  int type = build_action_type(name_action);
++  MapPos pos = interface->get_map_cursor_pos();
++  PGame game = interface->get_game();
++  /* Only what the box shows: the military buildings and the flag
++     where they can be built. */
++  if ((type == Building::TypeHut || type == Building::TypeTower ||
++       type == Building::TypeFortress) && !game->can_build_military(pos)) {
++    type = -1;
++  }
++  if (type == 0 && !game->can_build_flag(pos, interface->get_player())) {
++    type = -1;
++  }
++  std::string name;
++  if (type == 0) {
++    name = _("Flag");
++  } else if (type > 0) {
++    name = building_name(type);
++  }
++  if (name != bld_name) {
++    bld_name = name;
++    bld_name_x = 8 + name_rect[0] + name_rect[2] / 2;
++    bld_name_top = 8 + name_rect[1];
++    bld_name_bottom = 8 + name_rect[1] + name_rect[3];
++    set_redraw();
++  }
++  return !name.empty();
++}
++
++bool
++PopupBox::handle_right_release() {
++  if (bld_name.empty()) return false;
++  bld_name.clear();
++  set_redraw();
++  return true;
+ }
+ 
+ bool
+ PopupBox::handle_click_left(int cx, int cy) {
++  if (!name_click && !bld_name.empty()) {
++    bld_name.clear();  /* the name of a right click goes */
++    set_redraw();
++  }
+   cx -= 8;
+   cy -= 8;
+ 
+@@ -4978,6 +5139,7 @@ PopupBox::set_box(Type box_) {
+   bool wide = ((box == TypeLoadSave) != (box_ == TypeLoadSave)) ||
+               ((box == TypeOptions) != (box_ == TypeOptions));
+   box = box_;
++  bld_name.clear();
+   if (wide) {
+     interface->layout_popup();  /* the Save box is wider */
+   }
+diff --git a/src/popup.h b/src/popup.h
+index 7cb581d..4eba8df 100644
+--- a/src/popup.h
++++ b/src/popup.h
+@@ -42,6 +42,9 @@ class PopupBox : public GuiObject {
+      languages (and Language, its first row). */
+   static const int kOptionsBoxWidth = 256;
+   static const int kOptionsBoxHeight = 160;
++  /* The name of a building of the type (Building::Type), translated;
++     the map shows it too (the right button held on a building). */
++  static std::string building_name(int type);
+   /* The longest name of a file on an Amiga disk (FFS). */
+   static const size_t kMaxFileName = 30;
+ 
+@@ -166,6 +169,15 @@ class PopupBox : public GuiObject {
+   /* The Options box: the row whose hint shows (the left button held on
+      its name), -1: none. */
+   int options_hint;
++  /* The boxes to choose a building: the right button held on a building
++     shows its name until it goes up (name_click: the click only finds the
++     building under it, name_action and name_rect come back). */
++  bool name_click;
++  int name_action;
++  int name_rect[4];
++  std::string bld_name;
++  int bld_name_x, bld_name_top, bld_name_bottom;
++  void draw_bld_name();
+   /* The left button is held (auto repeat): only the + and - buttons act,
+      repeat_used says one did. */
+   bool repeat_click;
+@@ -334,6 +346,8 @@ class PopupBox : public GuiObject {
+   virtual bool handle_hold(int x, int y);
+   virtual bool handle_press(int x, int y);
+   virtual bool handle_release();
++  virtual bool handle_right_press(int x, int y);
++  virtual bool handle_right_release();
+ };
+ 
+ #endif  // SRC_POPUP_H_
+diff --git a/src/viewport.cc b/src/viewport.cc
+index 3d79f38..11a74e4 100644
+--- a/src/viewport.cc
++++ b/src/viewport.cc
+@@ -39,6 +39,7 @@
+ #include "src/notification.h"
+ #include "src/event_loop.h"
+ #include "src/pathfinder.h"
++#include "src/translation.h"
+ 
+ #define MAP_TILE_WIDTH   32
+ #define MAP_TILE_HEIGHT  20
+@@ -2702,6 +2703,32 @@ Viewport::handle_click_right(int lx, int ly) {
+   return true;
+ }
+ 
++/* The right button held still: the name of the building there (built or
++   being built, any player's) until it goes up. The picture of a building
++   stands above its place: a point on it is its place or the one up or up
++   left of it. */
++bool
++Viewport::handle_right_hold(int lx, int ly) {
++  if (interface->is_building_road()) return false;
++  MapPos clk_pos = map_pos_from_screen_pix(lx, ly);
++  const MapPos tries[3] = {
++    clk_pos, map->move_down(clk_pos), map->move_down_right(clk_pos)
++  };
++  for (MapPos pos : tries) {
++    if (!map->has_building(pos)) continue;
++    Building *building = interface->get_game()->get_building_at_pos(pos);
++    if (building == nullptr || building->is_burning()) continue;
++    std::string name = PopupBox::building_name(building->get_type());
++    if (name.empty()) continue;
++    interface->show_map_name(
++      name, building->is_done() ? std::string() : _("Under construction"),
++      x + static_cast<int>(static_cast<float>(lx) * zoom),
++      y + static_cast<int>(static_cast<float>(ly) * zoom));
++    return true;
++  }
++  return false;
++}
++
+ /* Left clicked with the right button held: the window of the building or
+    flag there (each building: castle, lumberjack...); elsewhere, and
+    while a road is being built, an ordinary left click. */
+diff --git a/src/viewport.h b/src/viewport.h
+index 6bd297f..1880a6f 100644
+--- a/src/viewport.h
++++ b/src/viewport.h
+@@ -200,6 +200,7 @@ class Viewport : public GuiObject, public Map::Handler {
+   virtual bool handle_click_left(int x, int y);
+   virtual bool handle_click_right(int x, int y);
+   virtual bool handle_click_both(int x, int y);
++  virtual bool handle_right_hold(int x, int y);
+   virtual bool handle_dbl_click(int x, int y, Event::Button button);
+   void road_click(MapPos clk_pos, bool special);
+   bool open_object_box(MapPos clk_pos);
+-- 
+2.45.2.windows.1
+

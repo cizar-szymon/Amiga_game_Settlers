@@ -880,6 +880,105 @@ msgstr "jeśli jesteś\npewien"
 msgid "Save Game"
 msgstr "Zapisz grę"
 
+msgctxt "building"
+msgid "Fisher"
+msgstr "Rybak"
+
+msgctxt "building"
+msgid "Lumberjack"
+msgstr "Drwal"
+
+msgctxt "building"
+msgid "Boatbuilder"
+msgstr "Szkutnik"
+
+msgctxt "building"
+msgid "Stonecutter"
+msgstr "Kamieniarz"
+
+msgctxt "building"
+msgid "Stone mine"
+msgstr "Kopalnia kamienia"
+
+msgctxt "building"
+msgid "Coal mine"
+msgstr "Kopalnia węgla"
+
+msgctxt "building"
+msgid "Iron mine"
+msgstr "Kopalnia żelaza"
+
+msgctxt "building"
+msgid "Gold mine"
+msgstr "Kopalnia złota"
+
+msgctxt "building"
+msgid "Forester"
+msgstr "Leśniczy"
+
+msgctxt "building"
+msgid "Storehouse"
+msgstr "Magazyn"
+
+msgctxt "building"
+msgid "Guard hut"
+msgstr "Strażnica"
+
+msgctxt "building"
+msgid "Farm"
+msgstr "Farma"
+
+msgctxt "building"
+msgid "Butcher"
+msgstr "Rzeźnik"
+
+msgctxt "building"
+msgid "Pig farm"
+msgstr "Chlewnia"
+
+msgctxt "building"
+msgid "Mill"
+msgstr "Młyn"
+
+msgctxt "building"
+msgid "Bakery"
+msgstr "Piekarnia"
+
+msgctxt "building"
+msgid "Sawmill"
+msgstr "Tartak"
+
+msgctxt "building"
+msgid "Steel smelter"
+msgstr "Huta stali"
+
+msgctxt "building"
+msgid "Toolmaker"
+msgstr "Narzędziownia"
+
+msgctxt "building"
+msgid "Weaponsmith"
+msgstr "Płatnerz"
+
+msgctxt "building"
+msgid "Guard tower"
+msgstr "Wieża"
+
+msgctxt "building"
+msgid "Fortress"
+msgstr "Twierdza"
+
+msgctxt "building"
+msgid "Gold smelter"
+msgstr "Huta złota"
+
+msgctxt "building"
+msgid "Castle"
+msgstr "Zamek"
+
+msgid "Flag"
+msgstr "Flaga"
+
 msgctxt "thousands"
 msgid "K"
 msgstr "T"
@@ -966,6 +1065,9 @@ msgstr "Zgłoszenie nie zostało wysłane."
 
 msgid "Report no. %s sent. Thank you!"
 msgstr "Zgłoszenie nr %s wysłane. Dziękuję!"
+
+msgid "Under construction"
+msgstr "W budowie"
 
 msgid "Accelerator"
 msgstr "Akcelerator"

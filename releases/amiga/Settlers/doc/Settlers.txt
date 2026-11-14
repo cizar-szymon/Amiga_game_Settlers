@@ -69,6 +69,10 @@ STEROWANIE
                            (sam prawy nic nie burzy)
   prawy przycisk + ruch    przewijanie mapy; wskaznik stoi w miejscu
                            wcisniecia, przewijanie bez konca (jak w oryginale)
+  prawy trzymany 1 s       na budynku: jego nazwa (budowany: "W budowie"),
+                           dopoki przycisk jest wcisniety
+  prawy w oknie budowy     nazwa budynku, dopoki przycisk jest wcisniety;
+                           lewy klik buduje
   strzalki                 przewijanie mapy
   Z, rolka myszy           powiekszenie mapy: x2 (powyzej 400x300), x3 (800x600
                            i 960x540); w 640x360 bez powiekszenia;

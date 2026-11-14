@@ -8,6 +8,16 @@ startowy, "Version Settlers") i dolacz pliki RAM:Settlers-state.save
 oraz RAM:Settlers-state.txt.
 
 
+0.136 (14.11.2026, wydanie beta)
+--------------------------------
+
+- W oknie budowy prawy przycisk wcisniety na budynku pokazuje jego
+  nazwe, dopoki jest trzymany; lewy klik buduje.
+- Na mapie prawy przycisk trzymany 1 s bez ruchu na budynku pokazuje
+  jego nazwe (budowany: "W budowie"), dopoki jest wcisniety.
+- Nazwy budynkow po polsku i niemiecku.
+
+
 0.135 (11.11.2026, wydanie beta)
 --------------------------------
 

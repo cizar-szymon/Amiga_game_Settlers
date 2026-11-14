@@ -73,6 +73,10 @@ CONTROLS
   right button + move      scroll the map; the pointer stays where the
                            button went down, the map scrolls on and on
                            (as in the original)
+  right held 1 s           on a building: its name (one being built:
+                           "Under construction"), while the button is down
+  right in building window the name of the building, while the button is
+                           down; a left click builds
   cursor keys              scroll the map
   Z, mouse wheel           the map magnified: x2 (above 400x300), x3 (800x600
                            and 960x540); none on 640x360;

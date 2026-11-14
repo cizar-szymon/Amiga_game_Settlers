@@ -155,6 +155,10 @@ files are here, at the latest after 30 s.
 MODETEST=WxH,s (test): s s after the start the game asks for the mode
 WxH as the Options box does (with the yes box, EventLoopAmiga::
 mode_asked).
+MOUSETEST=steps (test): mouse buttons from a script, steps split by
+commas: <ms><L|R><d|u><x>:<y> (e.g. 20000Rd210:75 - the right button
+down at 210,75 20 s after the start) or <ms>S (a screenshot
+RAM:mtN.ppm).
 LANMSG=n (test): n s into a LAN game the messages of the player opened
 one by one every 2 s, as the button of the panel does (in a LAN game
 Tab is the chat); the messages read go to the other side by a LAN

@@ -42,6 +42,8 @@ void (*settlers_frame_check)(const char *where) = nullptr;
 #define HOLD_SLOW        120
 #define HOLD_FAST         50
 #define HOLD_FAST_AFTER   10
+/* The right button held still on a building of the map: its name. */
+#define RHOLD_DELAY     1000
 #define MOUSE_MOVE_SENSITIVITY  8
 
 EventLoop &
@@ -104,6 +106,10 @@ EventLoopAmiga::EventLoopAmiga()
   , hold_next(0)
   , hold_count(0)
   , press_used(false)
+  , rhold_at(0)
+  , rhold_x(0)
+  , rhold_y(0)
+  , rhold_shown(false)
   , message_until(0)
   , load_percent(-1)
   , confirm_until(0)
@@ -249,7 +255,25 @@ EventLoopAmiga::handle_event(const AmigaEvent &ev) {
       int b = ev.button;
       if (ev.down) {
         buttons_down[b] = 1;
-        if (b == Event::ButtonRight) right_used = false;
+        if (b == Event::ButtonRight) {
+          right_used = false;
+          end_rhold();
+          if (!buttons_down[Event::ButtonLeft]) {
+            if (notify_press(ev.x, ev.y, Event::ButtonRight, 0)) {
+              /* The name of a building of a box to choose one, while the
+                 button is held; its release is no click. */
+              rhold_shown = true;
+              right_used = true;
+            } else {
+              rhold_at = get_ticks() + RHOLD_DELAY;
+              if (rhold_at == 0) rhold_at = 1;
+              rhold_x = ev.x;
+              rhold_y = ev.y;
+            }
+          }
+        } else {
+          rhold_at = 0;  /* Both buttons: no name. */
+        }
         if (b == Event::ButtonLeft) {
           hold_next = get_ticks() + HOLD_DELAY;
           if (hold_next == 0) hold_next = 1;
@@ -268,6 +292,11 @@ EventLoopAmiga::handle_event(const AmigaEvent &ev) {
       buttons_down[b] = 0;
       int x = ev.x;
       int y = ev.y;
+      if (b == Event::ButtonRight) {
+        rhold_at = 0;
+        if (rhold_shown) right_used = true;  /* no click */
+        end_rhold();
+      }
       if (b == Event::ButtonLeft && press_used) {
         /* The hint goes; the release is no click. */
         press_used = false;
@@ -376,6 +405,11 @@ EventLoopAmiga::handle_event(const AmigaEvent &ev) {
           notify_drag(drag_x, drag_y, dx, dy, static_cast<Event::Button>(b));
           dragged = true;
           drag_dist += std::abs(dx) + std::abs(dy);
+          if (b == Event::ButtonRight &&
+              drag_dist > MOUSE_MOVE_SENSITIVITY) {
+            rhold_at = 0;  /* The map scrolls: no name of a building. */
+            end_rhold();
+          }
         }
         break;
       }
@@ -414,6 +448,35 @@ EventLoopAmiga::check_hold() {
   if (hold_next == 0) hold_next = 1;
 }
 
+/* The right button held still RHOLD_DELAY ms: the name of the building
+   under it (Viewport::handle_right_hold), until it goes up or the map
+   scrolls. */
+void
+EventLoopAmiga::check_rhold() {
+  if (rhold_at == 0) return;
+  if (!buttons_down[Event::ButtonRight] || buttons_down[Event::ButtonLeft]) {
+    rhold_at = 0;
+    return;
+  }
+  if (static_cast<int>(get_ticks() - rhold_at) < 0) return;
+  rhold_at = 0;
+  if (drag_button == Event::ButtonRight &&
+      drag_dist > MOUSE_MOVE_SENSITIVITY) {
+    return;
+  }
+  if (notify_press(rhold_x, rhold_y, Event::ButtonRight, 1)) {
+    rhold_shown = true;
+    right_used = true;  /* its release is no click */
+  }
+}
+
+void
+EventLoopAmiga::end_rhold() {
+  if (!rhold_shown) return;
+  rhold_shown = false;
+  notify_release(Event::ButtonRight);
+}
+
 /* F10: the whole game state for bug reports (the standard of the ports):
    a Freeserf save (text, the same on every machine; the PC version loads
    it with -l) and a short description. */
@@ -450,6 +513,46 @@ bool EventLoopAmiga::mode_asked = false;
 unsigned int EventLoopAmiga::test_mode_w = 0;
 unsigned int EventLoopAmiga::test_mode_h = 0;
 unsigned int EventLoopAmiga::test_mode_s = 0;
+std::string EventLoopAmiga::test_mouse;
+
+/* MOUSETEST: the next step when its time came. */
+void
+EventLoopAmiga::check_test_mouse() {
+  static int shots = 0;
+  while (!test_mouse.empty()) {
+    unsigned int ms = 0;
+    char k = 0, d = 0;
+    int x = 0, y = 0;
+    int n = sscanf(test_mouse.c_str(), "%u%c%c%d:%d", &ms, &k, &d, &x, &y);
+    if (n < 2) {
+      test_mouse.clear();
+      return;
+    }
+    if (get_ticks() < ms) return;
+    size_t comma = test_mouse.find(',');
+    test_mouse = (comma == std::string::npos) ? std::string()
+                                              : test_mouse.substr(comma + 1);
+    if (k == 'S' || k == 's') {
+      char name[32];
+      snprintf(name, sizeof(name), "RAM:mt%d.ppm", shots++);
+      static_cast<VideoAmiga &>(Video::get_instance()).save_screenshot(name);
+      Log::Info["mousetest"] << "screenshot " << name;
+      continue;
+    }
+    if (n < 5) continue;
+    AmigaEvent ev;
+    memset(&ev, 0, sizeof(ev));
+    ev.type = AEV_BUTTON;
+    ev.button = (k == 'R' || k == 'r') ? Event::ButtonRight
+                                       : Event::ButtonLeft;
+    ev.down = (d == 'd' || d == 'D');
+    ev.x = x;
+    ev.y = y;
+    Log::Info["mousetest"] << (ev.button == Event::ButtonRight ? "R" : "L")
+                           << (ev.down ? " down " : " up ") << x << "," << y;
+    handle_event(ev);
+  }
+}
 
 /* A short line in the top middle of the screen (F10). */
 /* Loading a game takes some seconds (20-last.save ~7 s on a 68060): a box
@@ -614,6 +717,8 @@ EventLoopAmiga::run() {
     }
     if (!running) break;
     check_hold();
+    check_rhold();
+    if (!test_mouse.empty()) check_test_mouse();
 
     if (test_mode_s != 0 && get_ticks() >= test_mode_s * 1000) {
       test_mode_s = 0;

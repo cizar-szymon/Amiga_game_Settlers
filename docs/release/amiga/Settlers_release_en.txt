@@ -8,6 +8,16 @@ Without a network: give the version number (start screen, "Version
 Settlers") and attach RAM:Settlers-state.save and RAM:Settlers-state.txt.
 
 
+0.136 (14.11.2026, beta release)
+--------------------------------
+
+- In the building window the right button held on a building shows its
+  name while it is down; a left click builds.
+- On the map the right button held still for 1 s on a building shows
+  its name (one being built: "Under construction") while it is down.
+- The names of the buildings in Polish and German.
+
+
 0.135 (11.11.2026, beta release)
 --------------------------------
 

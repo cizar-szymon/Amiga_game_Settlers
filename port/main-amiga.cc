@@ -171,6 +171,9 @@ parse_option(const char *a) {
       EventLoopAmiga::test_mode_h = h;
       EventLoopAmiga::test_mode_s = s;
     }
+  } else if ((v = option_value(a, "MOUSETEST")) != nullptr) {
+    /* MOUSETEST=<steps>: mouse buttons pressed by a script (test). */
+    EventLoopAmiga::test_mouse = v;
   } else if ((v = option_value(a, "LANMSG")) != nullptr) {
     /* LANMSG=<seconds>: the messages opened in a LAN game (test). */
     Interface::lan_test_msg_s = static_cast<unsigned int>(atoi(v));

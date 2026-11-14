@@ -57,6 +57,13 @@ class EventLoopAmiga : public EventLoop {
   /* The press of the left button was used (a hint): its release is no
      click, it closes the hint. */
   bool press_used;
+  /* The right button down: the name of a building of a box to choose
+     one at once, else the name of the building on the map there after
+     RHOLD_DELAY ms held still (rhold_at, 0: not in this press); shown
+     until it goes up (rhold_shown; its release is then no click). */
+  unsigned int rhold_at;
+  int rhold_x, rhold_y;
+  bool rhold_shown;
   std::string stats_lines[4];
   std::string fps_text;
   std::string message_text;
@@ -85,6 +92,8 @@ class EventLoopAmiga : public EventLoop {
   void handle_event(const AmigaEvent &ev);
   void handle_key(const AmigaEvent &ev);
   void check_hold();
+  void check_rhold();
+  void end_rhold();
   void draw_stats(class Frame *screen);
   void draw_message(class Frame *screen);
   void save_state();
@@ -100,6 +109,11 @@ class EventLoopAmiga : public EventLoop {
   /* MODETEST=WxH,s (a test): s seconds after the start the mode is asked
      for as the Options box does (with the yes box). */
   static unsigned int test_mode_w, test_mode_h, test_mode_s;
+  /* MOUSETEST=<steps> (a test): the buttons of the mouse pressed by a
+     script, steps "<ms><L|R><d|u><x>:<y>" or "<ms>S" (a screenshot
+     RAM:mtN.ppm), split by commas; ms from the start. */
+  static std::string test_mouse;
+  void check_test_mouse();
   static const unsigned int kConfirmMs = 10000;
   bool mode_confirm_pending() const { return confirm_until != 0; }
   /* The player kept the new mode (main: it is saved). */
