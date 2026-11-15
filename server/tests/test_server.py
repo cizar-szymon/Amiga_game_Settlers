@@ -510,6 +510,17 @@ class GamePages(Page):
         self.assertNotIn(b'serf report', body)
         self.assertEqual(self.reports_count('dune'), 1)
 
+    async def test_syndicate_wars_reports(self):
+        await self.report('SyndWars-0.01', 'agent report')
+        await self.report(VERSION, 'serf report')
+        status, body = await self.get('/swars')
+        self.assertEqual(status, b'200')
+        self.assertIn(b'Syndicate Wars', body)
+        self.assertIn(b'agent report', body)
+        self.assertNotIn(b'serf report', body)
+        self.assertEqual(self.reports_count('swars'), 1)
+        self.assertEqual(self.reports_count('settlers'), 1)
+
     def reports_count(self, game):
         return self.relay.reports.count(game)
 

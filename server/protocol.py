@@ -31,7 +31,8 @@ game of 2. The maker closes a connection nobody joined when the game
 starts. The game is over when all its pairs are.
 
 The games on the server are told apart by the start of <version> (GAMES):
-Settlers sends "0.131", OpenDUNE "OpenDUNE-0.52". LIST shows and JOIN takes
+Settlers sends "0.131", OpenDUNE "OpenDUNE-0.52", Syndicate Wars (bug reports
+only, no games over the server) "SyndWars-0.01". LIST shows and JOIN takes
 only the same version.
 """
 import asyncio
@@ -51,6 +52,7 @@ PROTOCOL = 1            # NET_PROTOCOL of port/amiga_net.h
 # The games: (start of <version>, key and subpage of the page, name, type of
 # the game's frame that ends a game on purpose). The last one takes the rest.
 GAMES = (('OpenDUNE-', 'dune', 'OpenDUNE', GAME_BASE + 7),     # MT_QUIT
+         ('SyndWars-', 'swars', 'Syndicate Wars', None),       # reports only
          ('', 'settlers', 'Settlers', GAME_BASE + 3))          # MessageQuit
 
 

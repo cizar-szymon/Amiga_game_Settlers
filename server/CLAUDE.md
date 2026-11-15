@@ -11,7 +11,8 @@ Wyjątek: pilna poprawka na Pi – potem przenieść ją do repo.
   (okno LAN gry → INTERNET GAME). Jedna Amiga zakłada grę (`CREATE` → kod 4 znaki, opcjonalnie
   hasło), druga dołącza (`LIST` / `JOIN` kodu, z hasłem, jeśli gra je ma); serwer przekazuje ramki gry w obie strony i mierzy jakość
   połączenia (PING/PONG). Protokół: `protocol.py`, gra: `port/amiga_net.c` w repo.
-- **Zgłoszenia błędów** z gry (`REPORT`): `data/reports/<rrrrmmdd-ggmmss>-<nr>/report.json`
+- **Zgłoszenia błędów** z gier (`REPORT`; Settlers, OpenDUNE i Syndicate Wars – wersja `SyndWars-…`,
+  sam raport klawiszem Help, bez gier przez serwer; podstrona `/swars`): `data/reports/<rrrrmmdd-ggmmss>-<nr>/report.json`
   (data, godzina, wersja, rodzaj, **e-mail gracza**, opis, maszyna, adres, pliki) + pliki.
   Rodzaje: `F10` – gracz nacisnął F10 (`Settlers-state.save` – pełny zapis gry, `.txt` – wersja,
   tick, ekran, widok `VIEW=`); `LAN` – gry LAN rozjechały się (`SYNC_…M/S.lan.save` – zapisy
