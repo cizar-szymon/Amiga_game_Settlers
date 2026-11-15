@@ -6,6 +6,10 @@ for each report /reports/<folder>/ (its details), /reports/<folder>.zip,
 /reports/<folder>/delete (the Delete button: a joke, an empty report) moves
 the report to data/deleted/ - off the page and the counts, still on the
 disk until that folder is emptied by hand.
+
+A game with reports only (no games over the server: Syndicate Wars) has a
+subpage with its reports alone; a report's IFF screen is shown as PNG
+(/reports/<folder>/<name>.iff.png) and its *-state.txt on its page.
 """
 import asyncio
 import html
@@ -19,6 +23,7 @@ import shutil
 import time
 import zipfile
 
+import iffimage
 import protocol as P
 
 log = logging.getLogger('web')
@@ -241,8 +246,16 @@ class Web:
             return
         folder, _, name = rest.partition('/')
         path = self.folder_path(folder)
+        png = None
+        if path is not None and name.endswith('.iff.png') and \
+                self.FILE.match(name[:-4]) and \
+                os.path.isfile(os.path.join(path, name[:-4])):
+            with open(os.path.join(path, name[:-4]), 'rb') as f:
+                png = iffimage.pbm_to_png(f.read())
         if path is None:
             await self.send(writer, 404, 'text/plain', b'Not found.')
+        elif png is not None:
+            await self.send(writer, 200, 'image/png', png)
         elif name == '':
             await self.send(writer, 200, 'text/html; charset=utf-8',
                             self.report_page(folder, path).encode('utf-8'))
@@ -283,6 +296,15 @@ class Web:
         out.append('<dt>Folder</dt><dd class="mono">%s</dd></dl>' % e(folder))
         text = e(r.get('text') or '') or '<span class="dim">(nothing written)</span>'
         out.append('<h2>What happened</h2><pre>%s</pre>' % text)
+        for name in sorted(os.listdir(path)):
+            full = os.path.join(path, name)
+            if name.endswith('-state.txt') and os.path.getsize(full) < 20000:
+                with open(full, encoding='latin-1') as f:
+                    out.append('<h2>State of the game</h2><pre>%s</pre>' % e(f.read()))
+            elif name.endswith('.iff'):
+                out.append('<h2>Screen</h2><img src="/reports/%s/%s.png" alt="%s" '
+                           'style="width:640px;max-width:100%%;'
+                           'image-rendering:pixelated">' % (e(folder), e(name), e(name)))
         out.append('<h2>Files</h2><table><tr><th>File</th><th>Size</th></tr>')
         for name in sorted(os.listdir(path)):
             size = os.path.getsize(os.path.join(path, name))
@@ -364,6 +386,7 @@ class Web:
         waiting = [s for s in sessions if s['playing_s'] is None]
         avg = t['seconds'] / t['games'] if t['games'] else None
         # a third player only where a game of 3 is or was
+        reports_only = bool(game) and GAME_PAGES[where][3] is None
         three = any(s.get('guest2') or s.get('max_players', 2) > 2
                     for s in playing) or any(r.get('guest2') for r in recent[:20])
         out = ['<!doctype html><html><head><meta charset="utf-8">'
@@ -375,14 +398,17 @@ class Web:
                % (hms(st['uptime_s']), time.strftime('%Y-%m-%d %H:%M:%S'),
                   self.cfg['game_port']),
                '<div class="tiles">']
-        for label, value in (('games now', len(playing)),
-                             ('waiting for a player', len(waiting)),
-                             ('connections', st['connections']),
-                             ('games played', t['games']),
-                             ('average game', hms(avg)),
-                             ('longest game', hms(t['longest_s'])),
-                             ('connections lost', t['dropped']),
-                             ('bug reports', self.reports.count(game))):
+        tiles = (('games now', len(playing)),
+                 ('waiting for a player', len(waiting)),
+                 ('connections', st['connections']),
+                 ('games played', t['games']),
+                 ('average game', hms(avg)),
+                 ('longest game', hms(t['longest_s'])),
+                 ('connections lost', t['dropped']),
+                 ('bug reports', self.reports.count(game)))
+        if reports_only:
+            tiles = tiles[-1:]
+        for label, value in tiles:
             out.append('<div class="tile">%s<b>%s</b></div>' % (e(label), e(str(value))))
         out.append('</div>')
 
@@ -407,6 +433,12 @@ class Web:
         third_grp = '<th colspan="5">Player 3 (joined)</th>' if three else ''
         third_head = side_head if three else ''
         cols = 19 if three else 14
+
+        if reports_only:
+            # a game with reports only: no games over the server
+            self.reports_table(out, game)
+            out.append('</body></html>')
+            return '\n'.join(out)
 
         out.append('<h2>Games now</h2><div class="wrap"><table>'
                    '<tr class="grp"><th colspan="4" style="border-left:0"></th>'
@@ -465,6 +497,12 @@ class Web:
             out.append('<tr><td colspan="%d" class="dim">none</td></tr>' % (cols + 1))
         out.append('</table></div>')
 
+        self.reports_table(out, game)
+        out.append('</body></html>')
+        return '\n'.join(out)
+
+    def reports_table(self, out, game):
+        e = html.escape
         out.append('<div class="head"><h2 id="reports">Bug reports</h2>'
                    '<a class="btn" href="/reports/all.zip">Download all (.zip)</a>'
                    '</div><div class="wrap"><table><tr><th>No.</th>'
@@ -490,5 +528,3 @@ class Web:
         if not reports:
             out.append('<tr><td colspan="9" class="dim">none</td></tr>')
         out.append('</table></div>')
-        out.append('</body></html>')
-        return '\n'.join(out)

@@ -520,6 +520,36 @@ class GamePages(Page):
         self.assertNotIn(b'serf report', body)
         self.assertEqual(self.reports_count('swars'), 1)
         self.assertEqual(self.reports_count('settlers'), 1)
+        self.assertNotIn(b'Games now', body)      # reports only
+
+    async def test_report_iff_screen(self):
+        import struct
+        w, h = 4, 2
+        bmhd = struct.pack('>HHhhBBBBHBBhh', w, h, 0, 0, 8, 0, 0, 0, 0, 1, 1, w, h)
+        cmap = bytes(range(256)) * 3
+        body = bytes(range(w * h))
+        def ck(n, d):
+            return n + struct.pack('>I', len(d)) + d + b'\0' * (len(d) & 1)
+        form = b'PBM ' + ck(b'BMHD', bmhd) + ck(b'CMAP', cmap) + ck(b'BODY', body)
+        iff = b'FORM' + struct.pack('>I', len(form)) + form
+        a = await self.amiga()
+        a.send(P.F_RELAY, 'REPORT 1 SyndWars-0.208 Help')
+        a.send(P.F_RELAY, 'FIELD text screen report')
+        a.send(P.F_RELAY, 'FILE SyndWars-screen.iff %d' % len(iff))
+        for i in range(0, len(iff), 200):
+            a.send(P.F_RELAY_DATA, iff[i:i + 200])
+        a.send(P.F_RELAY, 'FILE SyndWars-state.txt 9')
+        a.send(P.F_RELAY_DATA, b'turn 1234')
+        a.send(P.F_RELAY, 'DONE')
+        t, d = await a.recv()
+        self.assertTrue(P.text(d).startswith('REPORTED '), d)
+        folder = self.relay.reports.listing(1)[0]['folder']
+        status, page = await self.get('/reports/%s/' % folder)
+        self.assertIn(b'SyndWars-screen.iff.png', page)
+        self.assertIn(b'turn 1234', page)
+        status, png = await self.get('/reports/%s/SyndWars-screen.iff.png' % folder)
+        self.assertEqual(status, b'200')
+        self.assertTrue(png.startswith(b'\x89PNG'), png[:16])
 
     def reports_count(self, game):
         return self.relay.reports.count(game)
