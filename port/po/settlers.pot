@@ -303,11 +303,11 @@ msgstr ""
 msgid "DELETE"
 msgstr ""
 
-#: freeserf/src/interface.cc:533
+#: freeserf/src/interface.cc:536
 msgid "SENDING THE BUG REPORT"
 msgstr ""
 
-#: freeserf/src/interface.cc:546
+#: freeserf/src/interface.cc:549
 msgid "BUG REPORT NO. %s SENT"
 msgstr ""
 
@@ -340,30 +340,34 @@ msgid "Pause"
 msgstr ""
 
 #: freeserf/src/keys-box.cc:50
-msgid "Music on-off"
+msgid "MP3 player box"
 msgstr ""
 
 #: freeserf/src/keys-box.cc:51
-msgid "Sound on-off"
+msgid "Music on-off"
 msgstr ""
 
 #: freeserf/src/keys-box.cc:52
-msgid "Quick save"
+msgid "Sound on-off"
 msgstr ""
 
 #: freeserf/src/keys-box.cc:53
-msgid "Screenshot"
+msgid "Quick save"
 msgstr ""
 
 #: freeserf/src/keys-box.cc:54
-msgid "This box"
+msgid "Screenshot"
 msgstr ""
 
 #: freeserf/src/keys-box.cc:55
+msgid "This box"
+msgstr ""
+
+#: freeserf/src/keys-box.cc:56
 msgid "Quit"
 msgstr ""
 
-#: freeserf/src/keys-box.cc:83
+#: freeserf/src/keys-box.cc:84
 msgid "Keys"
 msgstr ""
 
@@ -1288,7 +1292,7 @@ msgctxt "building"
 msgid "Castle"
 msgstr ""
 
-#: freeserf/src/popup.cc:4920
+#: freeserf/src/popup.cc:4941
 msgid "Flag"
 msgstr ""
 
@@ -1468,19 +1472,19 @@ msgstr ""
 msgid "No Warp found."
 msgstr ""
 
-#: port/event_loop-amiga.cc:548
+#: port/event_loop-amiga.cc:596
 msgid "Keep this screen mode?"
 msgstr ""
 
-#: port/event_loop-amiga.cc:549
+#: port/event_loop-amiga.cc:597
 msgid "Return or click here: keep"
 msgstr ""
 
-#: port/event_loop-amiga.cc:550
+#: port/event_loop-amiga.cc:598
 msgid "Back to the old mode in"
 msgstr ""
 
-#: port/event_loop-amiga.cc:567
+#: port/event_loop-amiga.cc:615
 msgid "Loading the game"
 msgstr ""
 

@@ -90,7 +90,8 @@ CONTROLS
   -                        slower, down to x0.5
   0                        normal speed (x1)
                            (a speed other than x1 is shown top right)
-  M / S                    music / sound effects on and off
+  M                        the MP3 player (opens and closes its box)
+  Shift+M / S              game music / sound effects on and off
   Ctrl+Z                   quick save
   Esc                      close a box in the game
   Shift+Esc, Ctrl+Q        quit
@@ -100,6 +101,17 @@ CONTROLS
   QUIT (start menu)        quit (after a question)
   F9                       screenshot to RAM:Settlers-shot.ppm
   F10                      bug report (saves the state, box to send it)
+
+
+THE MP3 PLAYER (key M)
+  The box WARP MP3 Player plays MP3 files through mhi.library of the
+  Warp card (LIBS:MHI). The files of the drawer MP3 in the game drawer
+  are on the list from the start, in the order of their names (01, 02,
+  03...). Add file / Add dir add other files, Remove takes the selected
+  one off the list (not off the disk). Play plays the selected one (or
+  a double click on the list), Pause pauses and goes on, Stop stops.
+  After the last track the first one plays again (1, 2, 3, 1...).
+  Vol: the volume of the player, a slider.
 
 
 SETTINGS IN THE GAME
@@ -160,7 +172,7 @@ Options -> Audio:
     prefs). A click changes it at once, the choice stays for the next
     time; if AHI does not open, Paula stays.
   Music, Sound effects: the music and the effects on / off (also the keys
-    M and S)
+    Shift+M and S)
   Volume: the volume of all, 0-100 in steps of 10
   Music volume, Effects volume: the volume of the music and of the
     effects on their own, 0-100 (times Volume)

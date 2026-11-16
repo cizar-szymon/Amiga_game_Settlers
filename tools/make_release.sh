@@ -10,6 +10,7 @@
 #   releases/amiga/Settlers/data/intro/    intro.script (the recorded intro of the port,
 #                                          build/intro/intro.script) and a ReadMe: the
 #                                          intro files of disks 1 and 2
+#   releases/amiga/Settlers/MP3/           empty, a ReadMe: the player's MP3 files (key M)
 #   releases/amiga/Settlers.info           the game drawer's icon
 #   releases/amiga/Settlers-<v>.zip        the same as an archive - no game data (in git)
 #   private/Settlers-<v>-full.zip          the same + the game data (data/amiga from
@@ -35,11 +36,12 @@ INTRO=build/intro/intro.script	# python tools/intro/make_script.py
 
 # the public tree, made again
 rm -rf "$G"
-mkdir -p "$G/doc" "$G/data/amiga" "$G/data/intro"
+mkdir -p "$G/doc" "$G/data/amiga" "$G/data/intro" "$G/MP3"
 cp build/amiga/Settlers "$G/Settlers"
 cp "$D/Settlers.info" "$G/Settlers.info"	# the game's icon (Tool Types, stack), at 8,4
 cp "$D/data_ReadMe.txt" "$G/data/amiga/ReadMe.txt"
 cp "$D/data_intro_ReadMe.txt" "$G/data/intro/ReadMe.txt"
+cp "$D/mp3_ReadMe.txt" "$G/MP3/ReadMe.txt"	# the MP3 player (M) lists PROGDIR:MP3
 cp "$INTRO" "$G/data/intro/intro.script"
 # The translations (Options -> Advanced -> Language): Polish, German.
 mkdir -p "$G/po"
@@ -65,7 +67,7 @@ EOT
 done
 
 # only these files in the public tree - no data of the original disks
-PUBLIC=" Settlers/Settlers Settlers/Settlers.info Settlers/doc.info Settlers/data/amiga/ReadMe.txt Settlers/data/intro/ReadMe.txt Settlers/data/intro/intro.script Settlers/po/pl.po Settlers/po/de.po "
+PUBLIC=" Settlers/Settlers Settlers/Settlers.info Settlers/doc.info Settlers/data/amiga/ReadMe.txt Settlers/data/intro/ReadMe.txt Settlers/data/intro/intro.script Settlers/MP3/ReadMe.txt Settlers/po/pl.po Settlers/po/de.po "
 bad=$(cd "$R" && find Settlers -type f | while read -r f; do
 	case "$PUBLIC" in *" $f "*) continue ;; esac
 	case "$f" in Settlers/doc/*) continue ;; esac

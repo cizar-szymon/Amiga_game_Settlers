@@ -34,6 +34,8 @@ changes from the original: [English (PDF)](docs/bulletin/Settlers-bulletin.pdf) 
   2500 serfs at about 30 frames a second), a choice between a smooth picture and
   the game speed; maps made with a progress bar
 - game speed x0.5 … x3, quick save, the keys box
+- an MP3 player (key `M`) through mhi.library of the Warp card: the files of the
+  game's `MP3` drawer on its list from the start, played in a loop
 - a LAN game for two players on two Amigas (plus up to two computer players),
   with a chat; over the internet through the game server of the port
   (INTERNET GAME: a list of the waiting games, a code, an optional password,
@@ -87,7 +89,8 @@ the changes of each version:
 | `+` / `-` / `0` | game speed x1.5 … x3, slower, normal (shown top right) |
 | `Z`, mouse wheel | the map magnified x2 (x3 at 800×600) around the middle of the screen |
 | `P` | pause (PAUSE on the screen) |
-| `M` / `S` | music / sound effects on and off |
+| `M` | the MP3 player (the files of the `MP3` drawer, in a loop) |
+| `Shift`+`M` / `S` | game music / sound effects on and off |
 | `I` | the keys of the game (also the I button of the settings box) |
 | `Ctrl`+`Z` | quick save |
 | `F9` / `F10` | screenshot (in `RAM:`) / bug report (state saved, box to send it) |

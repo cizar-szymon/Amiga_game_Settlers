@@ -256,6 +256,9 @@ msgstr "Powiększ, pomniejsz"
 msgid "Pause"
 msgstr "Pauza"
 
+msgid "MP3 player box"
+msgstr "Odtwarzacz MP3"
+
 msgid "Music on-off"
 msgstr "Muzyka wł.-wył."
 

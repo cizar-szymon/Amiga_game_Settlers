@@ -1,0 +1,178 @@
+From 3b728fa3e0be7fb9e2ecfb546a8bc43800201763 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Mon, 16 Nov 2026 18:20:27 +0100
+Subject: [PATCH] 0.137: the MP3 player box of the Amiga port (M; Shift+M the
+ game music): Interface::open_music_box / close_music_box, the box in the
+ middle of the screen; the keys box one line higher
+
+---
+ src/interface.cc | 50 ++++++++++++++++++++++++++++++++++++++++++++----
+ src/interface.h  |  6 ++++++
+ src/keys-box.cc  |  3 ++-
+ src/keys-box.h   |  2 +-
+ 4 files changed, 55 insertions(+), 6 deletions(-)
+
+diff --git a/src/interface.cc b/src/interface.cc
+index c536cdd..e8efc48 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -40,6 +40,7 @@
+ #include "src/game-init.h"
+ #include "src/advanced-box.h"
+ #include "src/keys-box.h"
++#include "port/music-box.h"
+ #include "src/lan-box.h"
+ #include "src/report-box.h"
+ #include "src/lan-game.h"
+@@ -128,6 +129,7 @@ Interface::Interface()
+   init_box = nullptr;
+   advanced_box = nullptr;
+   keys_box = nullptr;
++  music_box = nullptr;
+   platform_box = nullptr;
+   lan_box = nullptr;
+   report_box = nullptr;
+@@ -150,6 +152,7 @@ Interface::~Interface() {
+   delete init_box;
+   delete advanced_box;
+   delete keys_box;
++  delete music_box;
+   delete platform_box;
+   delete lan_box;
+   delete report_box;
+@@ -817,6 +820,29 @@ Interface::close_keys_box() {
+   layout();
+ }
+ 
++/* The MP3 music box (M), over whatever is open. */
++void
++Interface::open_music_box() {
++  if (music_box == nullptr) {
++    music_box = new MusicBox(this);
++    add_float(music_box, 0, 0);
++  }
++  music_box->set_displayed(true);
++  music_box->set_enabled(true);
++  layout();
++}
++
++void
++Interface::close_music_box() {
++  if (music_box != nullptr) {
++    music_box->set_displayed(false);
++    del_float(music_box);
++    delete music_box;
++    music_box = nullptr;
++  }
++  layout();
++}
++
+ void
+ Interface::close_advanced() {
+   if (advanced_box != nullptr) {
+@@ -1594,6 +1620,11 @@ Interface::layout() {
+                       (height - KeysBox::kHeight) / 2);
+   }
+ 
++  if (music_box != nullptr) {
++    music_box->move_to((width - MusicBox::kWidth) / 2,
++                       (height - MusicBox::kHeight) / 2);
++  }
++
+   if (platform_box != nullptr) {
+     platform_box->move_to((width - platform_box_width) / 2,
+                           (height - platform_box_height) / 2);
+@@ -2017,6 +2048,7 @@ Interface::draw_pause(Frame *frame) {
+   /* Not over a box: it would hide its text. */
+   if ((popup != nullptr && popup->is_displayed()) ||
+       (keys_box != nullptr && keys_box->is_displayed()) ||
++      (music_box != nullptr && music_box->is_displayed()) ||
+       (platform_box != nullptr && platform_box->is_displayed()) ||
+       (advanced_box != nullptr && advanced_box->is_displayed()) ||
+       (init_box != nullptr && init_box->is_displayed())) {
+@@ -2329,10 +2361,20 @@ Interface::handle_key_pressed(char key, int modifier) {
+       break;
+     }
+     case 'm': {
+-      Audio &audio = Audio::get_instance();
+-      Audio::PPlayer splayer = audio.get_music_player();
+-      if (splayer) {
+-        splayer->enable(!splayer->is_enabled());
++      /* Shift+M: the old toggle of the game music (as the port had). */
++      if (modifier & 1) {
++        Audio &audio = Audio::get_instance();
++        Audio::PPlayer splayer = audio.get_music_player();
++        if (splayer) {
++          splayer->enable(!splayer->is_enabled());
++        }
++      } else {
++        /* M: the music box of the Amiga port, opened or closed. */
++        if (music_box != nullptr && music_box->is_displayed()) {
++          close_music_box();
++        } else {
++          open_music_box();
++        }
+       }
+       break;
+     }
+diff --git a/src/interface.h b/src/interface.h
+index de7f5ab..943578b 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -48,6 +48,7 @@ class PopupBox;
+ class GameInitBox;
+ class AdvancedBox;
+ class KeysBox;
++class MusicBox;
+ class LanBox;
+ class LanLink;
+ class LanGame;
+@@ -106,6 +107,7 @@ class Interface : public GuiObject, public GameManager::Handler {
+   GameInitBox *init_box;
+   AdvancedBox *advanced_box;
+   KeysBox *keys_box;
++  MusicBox *music_box;
+   GuiObject *platform_box;
+   LanBox *lan_box;
+   class ReportBox *report_box;
+@@ -370,6 +372,10 @@ class Interface : public GuiObject, public GameManager::Handler {
+   void close_advanced();
+   void open_keys_box();
+   void close_keys_box();
++  /* The MP3 music box of the Amiga port (M key): the playlist and the
++     keys to play MP3 files through mhi.library of the Warp card. */
++  void open_music_box();
++  void close_music_box();
+   /* The box of a LAN game (the Start button of a LAN game in the start
+      box), with the settings of the start box. */
+   void open_lan_box(PGameInfo mission);
+diff --git a/src/keys-box.cc b/src/keys-box.cc
+index 99f4e9b..6c45a2a 100644
+--- a/src/keys-box.cc
++++ b/src/keys-box.cc
+@@ -47,7 +47,8 @@ static const struct {
+   { "Z", N_("Zoom") },
+   { N_("Wheel"), N_("Zoom in and out") },
+   { "P", N_("Pause") },
+-  { "M", N_("Music on-off") },
++  { "M", N_("MP3 player box") },
++  { "Shift+M", N_("Music on-off") },
+   { "S", N_("Sound on-off") },
+   { "Ctrl+Z", N_("Quick save") },
+   { "F9", N_("Screenshot") },
+diff --git a/src/keys-box.h b/src/keys-box.h
+index 8410b90..55d6d47 100644
+--- a/src/keys-box.h
++++ b/src/keys-box.h
+@@ -32,7 +32,7 @@ class Interface;
+ class KeysBox : public GuiObject {
+  public:
+   static const int kWidth = 272;
+-  static const int kHeight = 160;
++  static const int kHeight = 170;
+ 
+  protected:
+   Interface *interface;
+-- 
+2.45.2.windows.1
+

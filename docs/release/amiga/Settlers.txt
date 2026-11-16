@@ -86,7 +86,8 @@ STEROWANIE
   -                        wolniej, najnizej x0,5
   0                        normalne tempo (x1)
                            (tempo inne niz x1 widac w prawym gornym rogu)
-  M / S                    muzyka / efekty wl. i wyl.
+  M                        odtwarzacz MP3 (otwiera i zamyka okno)
+  Shift+M / S              muzyka gry / efekty wl. i wyl.
   Ctrl+Z                   szybki zapis gry
   Esc                      zamyka okienko w grze
   Shift+Esc, Ctrl+Q        koniec gry
@@ -95,6 +96,16 @@ STEROWANIE
   QUIT (menu startowe)     koniec gry (po potwierdzeniu)
   F9                       zrzut ekranu do RAM:Settlers-shot.ppm
   F10                      zgloszenie bledu (zapis stanu i okno wysylki)
+
+
+ODTWARZACZ MP3 (klawisz M)
+  Okno WARP MP3 Player gra pliki MP3 przez mhi.library karty Warp
+  (LIBS:MHI). Pliki z szuflady MP3 w katalogu gry sa na liscie od
+  startu, w kolejnosci nazw (01, 02, 03...). Add file / Add dir dodaja
+  inne pliki, Remove zdejmuje wybrany z listy (nie z dysku).
+  Play gra wybrany (albo dwuklik na liscie), Pause wstrzymuje i wznawia,
+  Stop zatrzymuje. Po ostatnim utworze gra znow pierwszy (1, 2, 3, 1...).
+  Vol: glosnosc odtwarzacza, suwak.
 
 
 USTAWIENIA W GRZE
@@ -151,7 +162,7 @@ Options -> Audio:
     warp.audio, albo Paula przez sterowniki AHI; tryb w ustawieniach AHI).
     Klikniecie przelacza od razu, wybor zostaje na nastepny raz; gdy AHI
     sie nie otworzy, zostaje Paula.
-  Music, Sound effects: muzyka i efekty wl. / wyl. (tez klawisze M i S)
+  Music, Sound effects: muzyka i efekty wl. / wyl. (tez klawisze Shift+M i S)
   Volume: glosnosc wszystkiego, 0-100 co 10
   Music volume, Effects volume: osobna glosnosc muzyki i efektow, 0-100
     (razy Volume)

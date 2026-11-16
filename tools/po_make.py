@@ -192,6 +192,7 @@ T = {
  ('', 'Zoom in and out'): ('Powiększ, pomniejsz', 'Zoom ein und aus'),
  ('', 'Pause'): ('Pauza', 'Pause'),
  ('', 'Music on-off'): ('Muzyka wł.-wył.', 'Musik ein-aus'),
+ ('', 'MP3 player box'): ('Odtwarzacz MP3', 'MP3-Player'),
  ('', 'Sound on-off'): ('Dźwięk wł.-wył.', 'Klang ein-aus'),
  ('', 'Quick save'): ('Szybki zapis', 'Schnell speichern'),
  ('', 'Screenshot'): ('Zrzut ekranu', 'Bildschirmfoto'),

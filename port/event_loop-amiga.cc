@@ -25,6 +25,7 @@
 #include "port/amiga_screen.h"
 #include "port/video-amiga.h"
 #include "port/amiga_audio.h"
+#include "port/amiga_mp3.h"
 
 bool EventLoopAmiga::show_stats = false;
 bool EventLoopAmiga::show_fps = false;
@@ -789,6 +790,8 @@ EventLoopAmiga::run() {
     }
     unsigned int t1 = get_ticks();
     notify_draw(screen);
+    /* Pushes the MP3 chunks to MHI (nothing to do when nothing plays). */
+    amiga_mp3_tick();
     unsigned int t2 = get_ticks();
     if (show_stats) draw_stats(screen);
     draw_message(screen);

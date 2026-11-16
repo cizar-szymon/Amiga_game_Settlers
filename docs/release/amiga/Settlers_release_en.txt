@@ -8,6 +8,18 @@ Without a network: give the version number (start screen, "Version
 Settlers") and attach RAM:Settlers-state.save and RAM:Settlers-state.txt.
 
 
+0.137 (16.11.2026, beta release)
+--------------------------------
+
+- An MP3 player (key M): the box WARP MP3 Player plays MP3 files
+  through mhi.library of the Warp card; a list, Add file / Add dir /
+  Remove, Play / Pause / Stop, a volume slider.
+- The files of the drawer MP3 in the game drawer are on the list from
+  the start, in the order of their names; the tracks play in a loop
+  (1, 2, 3, 1, 2, 3...).
+- Shift+M turns the game music on and off.
+
+
 0.136 (14.11.2026, beta release)
 --------------------------------
 

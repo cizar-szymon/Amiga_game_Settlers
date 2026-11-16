@@ -256,6 +256,9 @@ msgstr "Zoom ein und aus"
 msgid "Pause"
 msgstr "Pause"
 
+msgid "MP3 player box"
+msgstr "MP3-Player"
+
 msgid "Music on-off"
 msgstr "Musik ein-aus"
 

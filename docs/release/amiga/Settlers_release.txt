@@ -8,6 +8,17 @@ startowy, "Version Settlers") i dolacz pliki RAM:Settlers-state.save
 oraz RAM:Settlers-state.txt.
 
 
+0.137 (16.11.2026, wydanie beta)
+--------------------------------
+
+- Odtwarzacz MP3 (klawisz M): okno WARP MP3 Player gra pliki MP3 przez
+  mhi.library karty Warp; lista, Add file / Add dir / Remove,
+  Play / Pause / Stop, suwak glosnosci.
+- Pliki z szuflady MP3 w katalogu gry sa na liscie od startu, w
+  kolejnosci nazw; utwory graja w petli (1, 2, 3, 1, 2, 3...).
+- Muzyke gry wlacza i wylacza Shift+M.
+
+
 0.136 (14.11.2026, wydanie beta)
 --------------------------------
 

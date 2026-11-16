@@ -31,6 +31,7 @@
 #include "port/settlers_version.h"
 #include "port/amiga_screen.h"
 #include "port/audio-amiga.h"
+#include "port/amiga_mp3.h"
 #include "port/amiga_wb.h"
 #include "port/intro-amiga.h"
 #include "src/viewport.h"
@@ -487,11 +488,18 @@ main(int argc, char *argv[]) {
       }
     }
 
+    /* The MP3 files of the drawer MP3 of the game: on the list of the
+       music box (M) from the start. */
+    amiga_mp3_scan_game_drawer();
+
     event_loop.add_handler(&interface);
     event_loop.run();
     event_loop.del_handler(&interface);
 
     interface.store_settings();
+    /* Closes the MHI decoder of the Warp card (nothing to do when it was
+       never opened). */
+    amiga_mp3_close();
     delete screen_frame;
   } catch (ExceptionFreeserf &e) {
     amiga_message(e.what());
