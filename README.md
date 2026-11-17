@@ -110,8 +110,7 @@ the changes of each version:
 How it got there – terrain tiles in the card's memory copied by its blitter,
 sprites as runs, paths and borders drawn into the terrain tiles, only changed
 parts of a magnified view sent to the card – is described with every measurement
-in [`docs/PORTING.md`](docs/PORTING.md) (Polish) and
-[`docs/Settlers-raport.pdf`](docs/Settlers-raport.pdf).
+in [`docs/Settlers-raport.pdf`](docs/Settlers-raport.pdf).
 
 ## Building
 
@@ -146,5 +145,4 @@ Port The Settlers (Freeserf) na Amigę z kartą graficzną Picasso96 i procesore
 dyskietek. Dane gry trzeba skopiować z własnych dyskietek do `Settlers/data/amiga`
 (lista plików wyżej). Opis dla graczy po polsku:
 [`docs/release/amiga/Settlers.txt`](docs/release/amiga/Settlers.txt), historia wersji:
-[`Settlers_release.txt`](docs/release/amiga/Settlers_release.txt), pełny opis portu
-i pomiarów: [`docs/PORTING.md`](docs/PORTING.md).
+[`Settlers_release.txt`](docs/release/amiga/Settlers_release.txt).

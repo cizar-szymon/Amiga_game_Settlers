@@ -1,7 +1,7 @@
 THE SETTLERS (Freeserf) na Amige - opis dla programistow
 ========================================================
 
-Wersja 0.131. Pelny opis portu, decyzje i pomiary: docs/PORTING.md
+Wersja 0.131. Opis portu: README.md w repozytorium Settlers
 w repozytorium Settlers.
 
 
@@ -104,8 +104,7 @@ GRA LAN
 
 Lockstep: obie Amigi licza te sama gre (logika bez liczb
 zmiennoprzecinkowych, AI w Game::update), przez siec ida tylko polecenia
-graczy (LanCommand, 18-30 B) i co 5 s suma kontrolna. Szczegoly:
-docs/PORTING.md, rozdzial "Gra LAN".
+graczy (LanCommand, 18-30 B) i co 5 s suma kontrolna.
 
   siec          proces "Settlers LAN" (port/amiga_net.c, priorytet 1,
                 WaitSelect); bsdsocket.library; gra czyta tylko pierscien

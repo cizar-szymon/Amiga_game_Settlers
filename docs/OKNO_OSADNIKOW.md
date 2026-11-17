@@ -23,7 +23,7 @@ narzędzie z kolumny „Potrzebuje” (bez narzędzia osadnik nie dostanie zawod
 | 12 | Hutnik | – | huta żelaza (ruda żelaza + węgiel → stal) i huta złota (ruda złota + węgiel → sztabka) |
 | 13 | Kamieniarz | kilof | rozbija skały → kamień |
 | 14 | Leśniczy | – | sadzi drzewa |
-| 15 | Górnik | kilof | kopalnie kamienia, węgla, żelaza, złota (jedzenie, `docs/ZGODNOSC.md`) |
+| 15 | Górnik | kilof | kopalnie kamienia, węgla, żelaza, złota |
 | 16 | Szkutnik | młotek | stocznia: deska → łódź |
 | 17 | Narzędziowiec | młotek + piła | deska + stal → narzędzie (wg priorytetów narzędzi) |
 | 18 | Płatnerz | młotek + obcęgi | węgiel + stal → miecz, potem tarcza |

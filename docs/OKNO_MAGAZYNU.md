@@ -21,7 +21,7 @@ przypadkiem).
 | 6 | Osadnicy: przyjmuj (IN) | magazyn przyjmuje osadników wracających z pracy; rycerze czekający w nim szkolą się |
 | 7 | Osadnicy: wstrzymaj (STOP) | nie przyjmuje nowych osadników; ci, którzy są, zostają (rycerze dalej się szkolą) |
 | 8 | Osadnicy: wysyłaj (OUT) | nie przyjmuje i wysyła swoich osadników do innych magazynów (gdy kolejka przy wyjściu ma mniej niż 3); rycerze w drodze się nie szkolą |
-| 9–13 | Obrońcy zamku, rycerz poz. 4 … 0 | tylko w oknie zamku: ilu obrońców zamku ma dany poziom (liczbę obrońców ustawia okno rycerzy, 16 / 19; jak są dobierani: `docs/ZGODNOSC.md`, różnica 4) |
+| 9–13 | Obrońcy zamku, rycerz poz. 4 … 0 | tylko w oknie zamku: ilu obrońców zamku ma dany poziom (liczbę obrońców ustawia okno rycerzy, 16 / 19) |
 | 14 | Przewiń | wraca do okna towarów zamku / magazynu |
 | 15 | EXIT | zamyka okno |
 

@@ -1,8 +1,8 @@
 THE SETTLERS (Freeserf) for the Amiga - notes for developers
 ============================================================
 
-Version 0.131. The full description of the port, decisions and
-measurements: docs/PORTING.md in the Settlers repository (Polish).
+Version 0.131. The description of the port: README.md in the Settlers
+repository.
 
 
 BUILDING
@@ -109,8 +109,7 @@ LAN GAME
 
 Lockstep: both Amigas run the same game (logic without floating point,
 the AI in Game::update), only the players' commands (LanCommand, 18-30
-bytes) and a checksum every 5 s go through the network. Details:
-docs/PORTING.md, chapter "Gra LAN".
+bytes) and a checksum every 5 s go through the network.
 
   network       process "Settlers LAN" (port/amiga_net.c, priority 1,
                 WaitSelect); bsdsocket.library; the game reads a ring only

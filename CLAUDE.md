@@ -3,7 +3,7 @@
 @C:/Workprojects/AmigaGAMES/PORTING_PLAN.md
 @C:/Workprojects/AmigaGAMES/AmiAgent/AMIAGENT.md
 
-Plan, decyzje i stan prac: `docs/PORTING.md`. Aktualizować go po każdej fazie.
+Plan, decyzje i stan prac: `private/docs/PORTING.md` (poza publicznym repo; lokalne repo git w `private/docs`, bez push; tam też `ZGODNOSC.md`). Aktualizować go po każdej fazie.
 
 - Baza: Freeserf (C++11, GPL-3.0), natywny backend Amigi bez SDL; ekran P96 8-bit CLUT 640×480 lub 640×400 (800×600 do pomiaru).
 - Toolchain Amigi: bebbo amiga-gcc w Dockerze (wzór `UFO/docker/build.ps1`), `-mcpu=68020 -msoft-float -mtune=68060 -O1` (nie `-O2`, nie `-m68040`).
@@ -27,5 +27,5 @@ Gdy użytkownik prosi o sprawdzenie zgłoszeń / błędu gracza:
    Odtworzenie na Amidze: zapis do `WorkSD:Games/Settlers-test/`, start `Settlers LOAD=<plik>`
    (przy wersji z `report.json`).
 3. `LAN`: `SYNC_…M/S.lan.save` i `.txt` obu stron z tego samego kroku – `python tools/lan_diff.py`.
-4. Po poprawce: pole `status` w `report.json` na Pi (np. `fixed in 0.132`), wpis w `docs/PORTING.md`.
+4. Po poprawce: pole `status` w `report.json` na Pi (np. `fixed in 0.132`), wpis w `private/docs/PORTING.md`.
    **E-maile i IP graczy nie trafiają do repo, commitów ani dokumentów** – zostają w `private/` i na Pi.
