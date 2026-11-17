@@ -17,26 +17,9 @@ Paula or AHI sound, the game's own music module and the original Amiga graphics.
 [`releases/amiga/Settlers-0.138.zip`](releases/amiga/Settlers-0.138.zip)
 (the same files unpacked: [`releases/amiga/Settlers`](releases/amiga/Settlers)).
 
-> **Important update for the gameplay – please use 0.138.** All earlier versions (up to
-> 0.137) had errors in the game logic, taken over from Freeserf: the rules of the game
-> differed from the original Amiga program. Version 0.138 plays by the original rules
-> (checked instruction by instruction against the program on the original disk):
->
-> - **mines** – a miner eats a food portion in only 1 of 8 entries into the mine (it was
->   7 of 8), so mines need about 7 times less food and produce much more ore, coal and
->   stone;
-> - **fishers** – they catch fish in any water that has fish, on average in 63% of their
->   trips (it was 10%; water with 1–4 fish gave nothing);
-> - **train 1 / 5 / 20 / 100** (knights window) – turn exactly that many serfs into
->   knights (every button used up all swords and shields at once);
-> - **castle defenders** – the strongest defender changes places with the weakest knight
->   in the castle's stock, so the strong knights go to the military buildings and to
->   attacks (they stayed in the castle).
->
-> On the same random map with four computer players, after about 33 minutes of play the
-> mines produced 31 coal instead of 2 and 17 iron ore instead of 2. Saved games of older
-> versions load and go on by the new rules; a LAN game needs 0.138 on both sides.
-> Details (in Polish): [`docs/Settlers-0.138-raport.pdf`](docs/Settlers-0.138-raport.pdf).
+> **Important update for the gameplay – please use 0.138.** This version changes the
+> game logic: it now plays by the rules of the original Amiga game. Saved games of
+> older versions load and go on by the new rules; a LAN game needs 0.138 on both sides.
 
 ![The game at 640×480 on a 68060](docs/shots/v1.png)
 
