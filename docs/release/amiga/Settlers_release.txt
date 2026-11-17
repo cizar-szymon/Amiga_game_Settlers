@@ -11,15 +11,7 @@ oraz RAM:Settlers-state.txt.
 0.138 (17.11.2026, wydanie beta)
 --------------------------------
 
-- Zasady gry jak w oryginale na Amige:
-  - gornik zjada porcje jedzenia w 1 wejsciu do kopalni na 8, w
-    pozostalych kopie bez jedzenia;
-  - rybak lowi z kazdej wody, w ktorej sa ryby (czesciej, gdy ryb jest
-    wiecej);
-  - przyciski 1 / 5 / 20 / 100 w oknie rycerzy zamieniaja w rycerzy
-    najwyzej tylu osadnikow, ile jest na przycisku;
-  - zamku bronia najslabsi rycerze: najsilniejszy obronca zamienia sie
-    z najslabszym rycerzem czekajacym w magazynie zamku.
+- Wazna zmiana rozgrywki: logika gry jak w oryginale na Amige.
 - Gra LAN tylko z wersja 0.138 po obu stronach.
 
 
