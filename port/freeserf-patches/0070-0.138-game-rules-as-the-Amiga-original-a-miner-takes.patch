@@ -1,0 +1,120 @@
+From 9d4d7a4d79de8bdc53cc0ec05211693bd63d260a Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Tue, 17 Nov 2026 20:20:01 +0100
+Subject: [PATCH] 0.138: game rules as the Amiga original - a miner takes food
+ in 1 entry of 8 (0xDF56), a fisher catches when (random & 63) < fish + 4
+ (0xDD68), promote_serfs_to_knights stops at the number of the button
+ (0x16940), the strongest castle defender swaps levels with the weakest knight
+ in the castle's stock (0xB972)
+
+---
+ src/building.cc | 32 +++++++++++++++++---------------
+ src/player.cc   |  2 ++
+ src/serf.cc     | 13 ++++++++-----
+ 3 files changed, 27 insertions(+), 20 deletions(-)
+
+diff --git a/src/building.cc b/src/building.cc
+index c1948db..6bb2d48 100644
+--- a/src/building.cc
++++ b/src/building.cc
+@@ -1096,33 +1096,35 @@ void
+ Building::update_castle() {
+   Player *player = game->get_player(get_owner());
+   if (player->get_castle_knights() == player->get_castle_knights_wanted()) {
+-    Serf *best_knight = NULL;
+-    Serf *last_knight = NULL;
++    /* As the Amiga original (0xB972-0xBA18): the strongest defender (the
++       first of the highest level) swaps levels with the weakest knight
++       waiting in the castle's stock, if that one is weaker. The strong
++       knight goes back to the stock, a weak one defends the castle. */
++    Serf *strongest = nullptr;
+     unsigned int next_serf_index = first_knight;
+     while (next_serf_index != 0) {
+       Serf *serf = game->get_serf(next_serf_index);
+       if (serf == nullptr) {
+         throw ExceptionFreeserf("Index of nonexistent serf in the queue.");
+       }
+-      if ((best_knight == NULL) || serf->get_type() < best_knight->get_type()) {
+-        best_knight = serf;
++      if (strongest == nullptr || serf->get_type() > strongest->get_type()) {
++        strongest = serf;
+       }
+-      last_knight = serf;
+       next_serf_index = serf->get_next();
+     }
+ 
+-    if (best_knight != nullptr) {
+-      Serf::Type knight_type = best_knight->get_type();
+-      for (int t = Serf::TypeKnight0; t <= Serf::TypeKnight4; t++) {
+-        if (knight_type > t) {
+-          inventory->call_internal(best_knight);
++    if (strongest != nullptr) {
++      for (int t = Serf::TypeKnight0; t < strongest->get_type(); t++) {
++        Serf *weak = inventory->call_internal(static_cast<Serf::Type>(t));
++        if (weak != nullptr) {
++          /* Switch types; the stock knight registers again under his
++             new type on his next idle update. */
++          Serf::Type tmp = strongest->get_type();
++          strongest->set_type(weak->get_type());
++          weak->set_type(tmp);
++          break;
+         }
+       }
+-
+-      /* Switch types */
+-      Serf::Type tmp = best_knight->get_type();
+-      best_knight->set_type(last_knight->get_type());
+-      last_knight->set_type(tmp);
+     }
+   } else if (player->get_castle_knights() <
+              player->get_castle_knights_wanted()) {
+diff --git a/src/player.cc b/src/player.cc
+index 0be1f6f..d43bda4 100644
+--- a/src/player.cc
++++ b/src/player.cc
+@@ -433,6 +433,8 @@ Player::promote_serfs_to_knights(int number) {
+       if (inv->promote_serf_to_knight(serf)) {
+         promoted += 1;
+         number -= 1;
++        /* As the Amiga original (0x16940): at most `number` serfs. */
++        if (number == 0) break;
+       }
+     }
+   }
+diff --git a/src/serf.cc b/src/serf.cc
+index 36dd1a0..8ffd7aa 100644
+--- a/src/serf.cc
++++ b/src/serf.cc
+@@ -3621,13 +3621,14 @@ Serf::handle_serf_mining_state() {
+     Log::Verbose["serf"] << "mining substate: " << s.mining.substate << ".";
+     switch (s.mining.substate) {
+       case 0: {
+-        /* There is a small chance that the miner will
+-           not require food and skip to state 2. */
++        /* As the Amiga original (0xDF56): the miner takes food in one
++           entry of eight (state 1), in the other seven he mines without
++           (state 2). Freeserf had it the other way round. */
+         int r = game->random_int();
+         if ((r & 7) == 0) {
+-          s.mining.substate = 2;
+-        } else {
+           s.mining.substate = 1;
++        } else {
++          s.mining.substate = 2;
+         }
+         counter += 100 + (r & 0x1ff);
+         break;
+@@ -3861,7 +3862,9 @@ Serf::handle_serf_fishing_state() {
+     }
+ 
+     int res = map->get_res_fish(map->move(pos, dir));
+-    if (res > 0 && (game->random_int() & 0x3f) + 4 < res) {
++    /* As the Amiga original (0xDD68): a catch when (random & 63) < fish + 4
++       (Freeserf: random + 4 < fish). */
++    if (res > 0 && (game->random_int() & 0x3f) < res + 4) {
+       /* Caught a fish. */
+       map->remove_fish(map->move(pos, dir), 1);
+       s.free_walking.neg_dist2 = 1 + Resource::TypeFish;
+-- 
+2.45.2.windows.1
+

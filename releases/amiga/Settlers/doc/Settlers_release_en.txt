@@ -8,6 +8,22 @@ Without a network: give the version number (start screen, "Version
 Settlers") and attach RAM:Settlers-state.save and RAM:Settlers-state.txt.
 
 
+0.138 (17.11.2026, beta release)
+--------------------------------
+
+- Game rules as in the original Amiga game:
+  - a miner eats a food portion in 1 of 8 entries into the mine, in
+    the others he mines without food;
+  - a fisher catches fish in any water that has fish (more often
+    where there are more);
+  - the buttons 1 / 5 / 20 / 100 in the knights window turn at most
+    as many serfs into knights as the button says;
+  - the castle is defended by the weakest knights: the strongest
+    defender changes places with the weakest knight waiting in the
+    castle's stock.
+- A LAN game only with version 0.138 on both sides.
+
+
 0.137 (16.11.2026, beta release)
 --------------------------------
 

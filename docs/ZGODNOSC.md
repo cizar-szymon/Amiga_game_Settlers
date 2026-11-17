@@ -222,7 +222,13 @@ Przeszukiwanie sieci dróg i chodzenie tragarzy (instrukcja po instrukcji), budo
 przenosił z oryginału – adresy w `ai-*.cc`). Wersji DOS nie mamy – nie wiadomo, czy różnice 1 i 2
 są w DOS, czy powstały przy przepisywaniu Freeserf (3 i 4 to błędy przepisania we Freeserf: licznik bez wpływu, zamiana z niewłaściwym rycerzem).
 
-## Co z tym zrobić (do decyzji)
+## Decyzja (17.11.2026)
+
+Użytkownik: wszystkie 4 różnice **na stałe jak oryginał Amigi**, bez opcji – od wersji 0.138
+(`serf.cc` kopalnie i rybak, `player.cc` przyciski szkól, `building.cc` obrońcy zamku;
+`docs/PORTING.md`, „Zmiany 0.138”).
+
+## Co z tym zrobić (pierwotny opis)
 
 Różnice 1 i 2 to po jednej linii w `serf.cc`, 3 – jedna linia w `player.cc`, 4 – kilkanaście linii w `building.cc` (`update_castle`). Zmieniają przebieg gry: stare zapisy grają dalej
 inaczej, w grze LAN obie strony muszą mieć tę samą wersję. Możliwości: na stałe jak oryginał
