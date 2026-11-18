@@ -1,0 +1,30 @@
+From 610ce8e7b220c0c0d8668e73b0b3757530200010 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Wed, 18 Nov 2026 22:54:57 +0100
+Subject: [PATCH] 0.139: fish spawn as the Amiga original - a new fish when
+ (random & 0x3f00) == 0, 1 in 64 (0x969C); Freeserf had != 0 (63 in 64), so
+ the lakes refilled to 10 fish within minutes and a fisher caught in ~91% of
+ his trips
+
+---
+ src/map.cc | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/map.cc b/src/map.cc
+index bdad2f2..f36c1d3 100644
+--- a/src/map.cc
++++ b/src/map.cc
+@@ -527,7 +527,9 @@ Map::update_hidden(MapPos pos, Random *rnd) {
+   if (is_in_water(pos) && landscape_tiles[pos].resource_amount > 0) {
+     int r = rnd->random();
+ 
+-    if (landscape_tiles[pos].resource_amount < 10 && (r & 0x3f00)) {
++    /* As the Amiga original (0x969C): a new fish when (random & 0x3f00) == 0,
++       1 in 64 (Freeserf: != 0, 63 in 64 - the lakes never ran out). */
++    if (landscape_tiles[pos].resource_amount < 10 && !(r & 0x3f00)) {
+       /* Spawn more fish. */
+       landscape_tiles[pos].resource_amount += 1;
+     }
+-- 
+2.45.2.windows.1
+

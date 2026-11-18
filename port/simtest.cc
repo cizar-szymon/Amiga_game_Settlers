@@ -126,6 +126,21 @@ extern unsigned long game_prof_serf[64], game_prof_serf_n[64];
 extern unsigned long flag_search_count[8];
 static unsigned long prof_now() { return now_ms(); }
 
+/* The fish in the water of the whole map (Map::update_hidden spawns and moves
+   them): the positions in water, those with fish, the fish. */
+static void print_fish(Game *game) {
+  PMap map = game->get_map();
+  unsigned long water = 0, with = 0, fish = 0;
+  for (MapPos pos : map->geom()) {
+    if (!map->is_in_water(pos)) continue;
+    water++;
+    unsigned int n = map->get_res_fish(pos);
+    if (n > 0) with++;
+    fish += n;
+  }
+  printf("fish: %lu in %lu of %lu water positions\n", fish, with, water);
+}
+
 int main(int argc, char *argv[]) {
   bool profile = false, detail = false;
   int mission = 0;
@@ -217,6 +232,7 @@ int main(int argc, char *argv[]) {
          : load_file.empty() ? ("mission " + std::to_string(mission)).c_str()
                            : load_file.c_str(),
          static_cast<unsigned>(t1 - t0));
+  print_fish(game.get());
   printf("step %6u crc %08lx\n", 0u,
          static_cast<unsigned long>(crc32(save_state(game.get()))));
 
@@ -246,6 +262,7 @@ int main(int argc, char *argv[]) {
   }
   printf("done: %u steps in %u ms\n", steps,
          static_cast<unsigned>(tsum));
+  print_fish(game.get());
   {
     /* The serfs by the table of the game: all, idle in a stock. */
     unsigned long all = 0, idle = 0;
