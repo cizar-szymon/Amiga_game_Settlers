@@ -8,6 +8,14 @@ Without a network: give the version number (start screen, "Version
 Settlers") and attach RAM:Settlers-state.save and RAM:Settlers-state.txt.
 
 
+0.139 (18.11.2026, beta release)
+--------------------------------
+
+- The fish in the water grow as in the original Amiga game: slowly, a
+  fished lake runs out in time.
+- A LAN game only with version 0.139 on both sides.
+
+
 0.138 (17.11.2026, beta release)
 --------------------------------
 

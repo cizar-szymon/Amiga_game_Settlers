@@ -8,6 +8,14 @@ startowy, "Version Settlers") i dolacz pliki RAM:Settlers-state.save
 oraz RAM:Settlers-state.txt.
 
 
+0.139 (18.11.2026, wydanie beta)
+--------------------------------
+
+- Ryby w wodzie przybywaja jak w oryginale na Amige: powoli, wylowione
+  lowisko z czasem pustoszeje.
+- Gra LAN tylko z wersja 0.139 po obu stronach.
+
+
 0.138 (17.11.2026, wydanie beta)
 --------------------------------
 
