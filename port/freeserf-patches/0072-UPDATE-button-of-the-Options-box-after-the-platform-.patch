@@ -1,0 +1,158 @@
+From cc1bc1eff9326502560d4182f334adf17864e2e4 Mon Sep 17 00:00:00 2001
+From: cizar-szymon <szymon@cs-lab.eu>
+Date: Thu, 19 Nov 2026 10:06:39 +0100
+Subject: [PATCH] UPDATE button of the Options box (after the platform's):
+ Interface::update_box_factory, open_update_box / close_update_box - the box
+ of the platform that checks for a newer release (the Amiga port: from the
+ update server)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/interface.cc | 32 ++++++++++++++++++++++++++++++++
+ src/interface.h  |  9 +++++++++
+ src/popup.cc     | 10 ++++++++++
+ 3 files changed, 51 insertions(+)
+
+diff --git a/src/interface.cc b/src/interface.cc
+index e8efc48..bc6e42f 100644
+--- a/src/interface.cc
++++ b/src/interface.cc
+@@ -131,6 +131,7 @@ Interface::Interface()
+   keys_box = nullptr;
+   music_box = nullptr;
+   platform_box = nullptr;
++  update_box = nullptr;
+   lan_box = nullptr;
+   report_box = nullptr;
+   lan_report = LanReportNone;
+@@ -154,6 +155,7 @@ Interface::~Interface() {
+   delete keys_box;
+   delete music_box;
+   delete platform_box;
++  delete update_box;
+   delete lan_box;
+   delete report_box;
+   delete notification_box;
+@@ -559,6 +561,9 @@ Interface::pump_lan_report() {
+   }
+ }
+ int Interface::platform_box_width = 0;
++Interface::PlatformBoxFactory Interface::update_box_factory;
++int Interface::update_box_width = 0;
++int Interface::update_box_height = 0;
+ int Interface::platform_box_height = 0;
+ std::function<void(int)> Interface::zoom_hook;
+ LanLink *Interface::lan_link = nullptr;
+@@ -678,6 +683,29 @@ Interface::open_platform_box() {
+   layout();
+ }
+ 
++void
++Interface::open_update_box() {
++  if (!update_box_factory) return;
++  if (update_box == nullptr) {
++    update_box = update_box_factory(this);
++    add_float(update_box, 0, 0);
++  }
++  update_box->set_displayed(true);
++  update_box->set_enabled(true);
++  layout();
++}
++
++void
++Interface::close_update_box() {
++  if (update_box != nullptr) {
++    update_box->set_displayed(false);
++    del_float(update_box);
++    delete update_box;
++    update_box = nullptr;
++  }
++  layout();
++}
++
+ void
+ Interface::close_platform_box() {
+   if (platform_box != nullptr) {
+@@ -1629,6 +1657,10 @@ Interface::layout() {
+     platform_box->move_to((width - platform_box_width) / 2,
+                           (height - platform_box_height) / 2);
+   }
++  if (update_box != nullptr) {
++    update_box->move_to((width - update_box_width) / 2,
++                        (height - update_box_height) / 2);
++  }
+ 
+   center_lan_box();
+   if (report_box != nullptr) {
+diff --git a/src/interface.h b/src/interface.h
+index 943578b..f6a73ac 100644
+--- a/src/interface.h
++++ b/src/interface.h
+@@ -109,6 +109,7 @@ class Interface : public GuiObject, public GameManager::Handler {
+   KeysBox *keys_box;
+   MusicBox *music_box;
+   GuiObject *platform_box;
++  GuiObject *update_box;
+   LanBox *lan_box;
+   class ReportBox *report_box;
+   std::vector<std::string> report_files;
+@@ -462,6 +463,14 @@ class Interface : public GuiObject, public GameManager::Handler {
+      the letter first. */
+   static std::function<void(int)> zoom_hook;
+   void close_platform_box();
++  /* The update box of the platform (a button after the platform's in the
++     options box): the newest release of the game, its download. Without a
++     factory there is no button. */
++  static PlatformBoxFactory update_box_factory;
++  static int update_box_width;
++  static int update_box_height;
++  void open_update_box();
++  void close_update_box();
+   void draw_pause(Frame *frame);
+   /* The name of a building on the map (the right button held on it, see
+      Viewport::handle_right_hold), over the point x, y of the screen. */
+diff --git a/src/popup.cc b/src/popup.cc
+index b860fe2..f055883 100644
+--- a/src/popup.cc
++++ b/src/popup.cc
+@@ -213,6 +213,7 @@ typedef enum Action {
+   ACTION_SHOW_SAVE,
+   ActionShowKeysInfo,
+   ActionShowPlatform,
++  ActionShowUpdate,
+   ACTION_SETT_8_CYCLE,
+   ACTION_CLOSE_OPTIONS,
+   ACTION_OPTIONS_PATHWAY_SCROLLING_1,
+@@ -2119,6 +2120,10 @@ PopupBox::draw_options_box() {
+   if (Interface::platform_box_factory) {
+     frame->draw_resource_image(8 + 132, 128 + 9, "button-amiga.png");
+   }
++  /* The update of the game (the Amiga port: from the game server). */
++  if (Interface::update_box_factory) {
++    frame->draw_resource_image(8 + 170, 128 + 9, "button-update.png");
++  }
+   draw_popup_icon(28, 128, 60); /* exit, as in the other boxes */
+ 
+   if (options_hint >= 0) {
+@@ -3710,6 +3715,10 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
+   case ActionShowPlatform:
+     interface->open_platform_box();
+     break;
++  case ActionShowUpdate:
++    play_sound(Audio::TypeSfxClick);
++    interface->open_update_box();
++    break;
+   case ActionShowOptions:
+     interface->open_popup(TypeOptions);
+     break;
+@@ -4149,6 +4158,7 @@ PopupBox::handle_box_options_clk(int cx, int cy) {
+     ACTION_OPTIONS_VIDEO, 56, 126, 38, 16,
+     ACTION_OPTIONS_AUDIO, 94, 126, 38, 16,
+     ActionShowPlatform, 132, 126, 38, 16,
++    ActionShowUpdate, 170, 126, 40, 16,
+ #ifdef __AMIGA__
+     ACTION_OPTIONS_ASPECT, 0, 54, 190, 16,
+     ACTION_OPTIONS_SCREEN_PREV, 192, 70, 16, 16,
+-- 
+2.45.2.windows.1
+
