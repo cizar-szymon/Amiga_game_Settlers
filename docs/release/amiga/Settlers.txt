@@ -170,6 +170,16 @@ Options -> Audio:
 Ustawienia zapisuja sie w pliku Settlers.ini obok gry, zapisy gier
 w szufladzie freeserf.
 
+UPDATE (w oknie Options, za AMIGA): sprawdza, czy jest nowsza wersja
+gry - pokazuje te wersje, najnowsza i co sie zmienilo (strzalki
+i pasek przewijaja opis). Gra niczego nie pobiera; nowa wersje
+pobiera program WARP HUB. Adres serwera aktualizacji jest w
+Settlers.ini:
+  [update]
+    server = 83.12.152.135:6830
+(gra wpisuje go przy pierwszym starcie; nowy adres albo port - wystarczy
+zmienic ten wiersz).
+
 
 GRA PRZEZ SIEC (LAN)
 --------------------

@@ -325,9 +325,18 @@ main(int argc, char *argv[]) {
     Interface::platform_box_height = AmigaBox::kHeight;
     /* The UPDATE button: the newest release from the update server (the
        data server, not the game server). */
-    if (UpdateBox::server.empty()) {
-      UpdateBox::server = Settings::get_instance().get(
-        "update", "server", std::string("83.12.152.135:6830"));
+    {
+      /* The address is kept in Settlers.ini ([update] server = host:port),
+         written there at the first start, so that a new address or port
+         needs only the file changed. UPDATESERVER= (a test) is for this
+         run only. */
+      Settings &settings = Settings::get_instance();
+      std::string address = settings.get("update", "server", std::string());
+      if (address.empty()) {
+        address = "83.12.152.135:6830";
+        settings.set("update", "server", address);
+      }
+      if (UpdateBox::server.empty()) UpdateBox::server = address;
     }
     Interface::update_box_factory = [](Interface *i) -> GuiObject * {
       return new UpdateBox(i);
