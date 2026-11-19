@@ -425,6 +425,18 @@ T = {
  ('', 'no'): ('nie', 'nein'),
  ('', 'Card memory'): ('Pamięć karty', 'Kartenram'),
  ('', 'No Warp found.'): ('Nie znaleziono Warpa.', 'Kein Warp gefunden.'),
+ # The update box (Options > UPDATE, 0.140): only a check, the WARP program updates.
+ ('', 'Update'): ('Aktualizacja', 'Aktualisierung'),
+ ('', 'This version'): ('Ta wersja', 'Diese Version'),
+ ('', 'Newest version'): ('Najnowsza wersja', 'Neueste Version'),
+ ('', 'Asking the update server...'): ('Pytam serwer aktualizacji...', 'Frage den Update-Server...'),
+ ('', 'A new version is out. Get it with the WARP program on the Workbench.'): ('Jest nowa wersja. Pobierz ją programem WARP na Workbenchu.', 'Eine neue Version ist da. Hol sie mit dem WARP-Programm auf der Workbench.'),
+ ('', 'You have the newest version.'): ('Masz najnowszą wersję.', 'Du hast die neueste Version.'),
+ ('', 'CHECK'): ('SPRAWDŹ', 'PRÜFEN'),
+ ('', 'No TCP/IP stack (bsdsocket).'): ('Brak stosu TCP/IP (bsdsocket).', 'Kein TCP/IP-Stack (bsdsocket).'),
+ ('', 'The update server did not answer.'): ('Serwer aktualizacji nie odpowiada.', 'Der Update-Server antwortet nicht.'),
+ ('', 'Update server not found.'): ('Nie znaleziono serwera aktualizacji.', 'Update-Server nicht gefunden.'),
+ ('', 'The answer of the update server came broken.'): ('Odpowiedź serwera aktualizacji przyszła uszkodzona.', 'Die Antwort des Update-Servers kam beschädigt an.'),
 }
 
 

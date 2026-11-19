@@ -26,6 +26,7 @@
 #include "port/video-amiga.h"
 #include "port/amiga_audio.h"
 #include "port/amiga_mp3.h"
+#include "port/update-box.h"
 
 bool EventLoopAmiga::show_stats = false;
 bool EventLoopAmiga::show_fps = false;
@@ -792,6 +793,8 @@ EventLoopAmiga::run() {
     notify_draw(screen);
     /* Pushes the MP3 chunks to MHI (nothing to do when nothing plays). */
     amiga_mp3_tick();
+    /* The update box: what its process did. */
+    UpdateBox::tick_open();
     unsigned int t2 = get_ticks();
     if (show_stats) draw_stats(screen);
     draw_message(screen);

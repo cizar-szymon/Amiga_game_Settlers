@@ -36,6 +36,7 @@
 #include "port/intro-amiga.h"
 #include "src/viewport.h"
 #include "port/amiga-box.h"
+#include "port/update-box.h"
 #include "port/lan-amiga.h"
 #include "src/lan-game.h"
 #include "src/lan-box.h"
@@ -81,6 +82,8 @@ static bool mode_given = false;
 static bool freeze = false;
 /* NOINTRO: no intro of the original before the game. */
 static bool no_intro = false;
+/* UPDATEBOX (a test): the update box open at the start. */
+static bool update_box_at_start = false;
 
 /* One option, from the Shell or a Tool Type of the icon; false when it is
    not known. */
@@ -143,6 +146,11 @@ parse_option(const char *a) {
     LanBox::relay_auto = strncasecmp(v, "HOST", 4) == 0 ? "HOST" : "JOIN";
     const char *colon = strchr(v, ':');
     if (colon != nullptr) LanBox::relay_auto_password = colon + 1;
+  } else if (strcasecmp(a, "UPDATEBOX") == 0) {
+    update_box_at_start = true;
+  } else if ((v = option_value(a, "UPDATESERVER")) != nullptr) {
+    /* UPDATESERVER=<host>[:port] (a test): another update server. */
+    UpdateBox::server = v;
   } else if ((v = option_value(a, "RELAYSAVE")) != nullptr) {
     /* RELAYSAVE=<save> (a test): the host of RELAYAUTO starts from it. */
     LanBox::relay_auto_save = v;
@@ -315,6 +323,17 @@ main(int argc, char *argv[]) {
     };
     Interface::platform_box_width = AmigaBox::kWidth;
     Interface::platform_box_height = AmigaBox::kHeight;
+    /* The UPDATE button: the newest release from the update server (the
+       data server, not the game server). */
+    if (UpdateBox::server.empty()) {
+      UpdateBox::server = Settings::get_instance().get(
+        "update", "server", std::string("83.12.152.135:6830"));
+    }
+    Interface::update_box_factory = [](Interface *i) -> GuiObject * {
+      return new UpdateBox(i);
+    };
+    Interface::update_box_width = UpdateBox::kWidth;
+    Interface::update_box_height = UpdateBox::kHeight;
 
     /* The network of a LAN game (bsdsocket.library, opened when used).
        Made before the interface, so that it goes after it. */
@@ -327,6 +346,7 @@ main(int argc, char *argv[]) {
     interface.set_size(sw, sh);
     interface.set_displayed(true);
     interface.apply_settings();
+    if (update_box_at_start) UpdateBox::open_later = &interface;
     if (EventLoopAmiga::show_fps && !interface.get_show_fps()) {
       interface.switch_show_fps();
     }

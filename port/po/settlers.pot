@@ -63,7 +63,7 @@ msgstr ""
 msgid "Music"
 msgstr ""
 
-#: freeserf/src/advanced-box.cc:150 freeserf/src/popup.cc:2040 freeserf/src/popup.cc:2078
+#: freeserf/src/advanced-box.cc:150 freeserf/src/popup.cc:2041 freeserf/src/popup.cc:2079
 msgid "Language"
 msgstr ""
 
@@ -303,11 +303,11 @@ msgstr ""
 msgid "DELETE"
 msgstr ""
 
-#: freeserf/src/interface.cc:536
+#: freeserf/src/interface.cc:538
 msgid "SENDING THE BUG REPORT"
 msgstr ""
 
-#: freeserf/src/interface.cc:549
+#: freeserf/src/interface.cc:551
 msgid "BUG REPORT NO. %s SENT"
 msgstr ""
 
@@ -935,423 +935,423 @@ msgstr ""
 msgid "Your knights\njust lost the\nfight"
 msgstr ""
 
-#: freeserf/src/popup.cc:1695
+#: freeserf/src/popup.cc:1696
 msgid "GROUND-ANALYSIS:"
 msgstr ""
 
-#: freeserf/src/popup.cc:1859
+#: freeserf/src/popup.cc:1860
 msgctxt "knight occupation"
 msgid "Minimum"
 msgstr ""
 
-#: freeserf/src/popup.cc:1859
+#: freeserf/src/popup.cc:1860
 msgctxt "knight occupation"
 msgid "Weak"
 msgstr ""
 
-#: freeserf/src/popup.cc:1860
+#: freeserf/src/popup.cc:1861
 msgctxt "knight occupation"
 msgid "Medium"
 msgstr ""
 
-#: freeserf/src/popup.cc:1860
+#: freeserf/src/popup.cc:1861
 msgctxt "knight occupation"
 msgid "Good"
 msgstr ""
 
-#: freeserf/src/popup.cc:1861
+#: freeserf/src/popup.cc:1862
 msgctxt "knight occupation"
 msgid "Full"
 msgstr ""
 
-#: freeserf/src/popup.cc:2011
+#: freeserf/src/popup.cc:2012
 msgid "Do you want\nto quit\nSettlers?"
 msgstr ""
 
-#: freeserf/src/popup.cc:2013
+#: freeserf/src/popup.cc:2014
 msgid "Do you want\nto quit\nthis game?"
 msgstr ""
 
-#: freeserf/src/popup.cc:2019 freeserf/src/popup.cc:2021 freeserf/src/popup.cc:2026
+#: freeserf/src/popup.cc:2020 freeserf/src/popup.cc:2022 freeserf/src/popup.cc:2027
 msgid "Yes"
 msgstr ""
 
-#: freeserf/src/popup.cc:2020
+#: freeserf/src/popup.cc:2021
 msgid "Do you want\nto save\nthe game?"
 msgstr ""
 
-#: freeserf/src/popup.cc:2022 freeserf/src/popup.cc:2027 freeserf/src/popup.cc:2035
+#: freeserf/src/popup.cc:2023 freeserf/src/popup.cc:2028 freeserf/src/popup.cc:2036
 msgid "No"
 msgstr ""
 
-#: freeserf/src/popup.cc:2032
+#: freeserf/src/popup.cc:2033
 msgid "The game has not\nbeen saved\nrecently.\nAre you\nsure?"
 msgstr ""
 
-#: freeserf/src/popup.cc:2041
+#: freeserf/src/popup.cc:2042
 msgid "The language of the texts: English, Deutsch, Polski. A click: the next one, kept for the next start."
 msgstr ""
 
-#: freeserf/src/popup.cc:2043 freeserf/src/popup.cc:2082
+#: freeserf/src/popup.cc:2044 freeserf/src/popup.cc:2083
 msgid "Font"
 msgstr ""
 
-#: freeserf/src/popup.cc:2044
+#: freeserf/src/popup.cc:2045
 msgid "The letters of the texts: Original, the font of the game; Readable, plainer letters with small letters. A click: the other one, kept for the next start."
 msgstr ""
 
-#: freeserf/src/popup.cc:2047 freeserf/src/popup.cc:2092
+#: freeserf/src/popup.cc:2048 freeserf/src/popup.cc:2093
 msgid "Messages"
 msgstr ""
 
-#: freeserf/src/popup.cc:2048
+#: freeserf/src/popup.cc:2049
 msgid "How many messages the game shows: None, Few, Most, All."
 msgstr ""
 
-#: freeserf/src/popup.cc:2050 freeserf/src/popup.cc:2100
+#: freeserf/src/popup.cc:2051 freeserf/src/popup.cc:2101
 msgid "Aspect"
 msgstr ""
 
-#: freeserf/src/popup.cc:2051
+#: freeserf/src/popup.cc:2052
 msgid "The shape of the screen, 4:3 or 16:9: it chooses the modes of Screen. A click: the other one."
 msgstr ""
 
-#: freeserf/src/popup.cc:2053 freeserf/src/popup.cc:2102 port/amiga-box.cc:85
+#: freeserf/src/popup.cc:2054 freeserf/src/popup.cc:2103 port/amiga-box.cc:85
 msgid "Screen"
 msgstr ""
 
-#: freeserf/src/popup.cc:2054
+#: freeserf/src/popup.cc:2055
 msgid "The screen mode; the arrows change it at once. Kept for the next start."
 msgstr ""
 
-#: freeserf/src/popup.cc:2085
+#: freeserf/src/popup.cc:2086
 msgid "Readable"
 msgstr ""
 
-#: freeserf/src/popup.cc:2085
+#: freeserf/src/popup.cc:2086
 msgid "Original"
 msgstr ""
 
-#: freeserf/src/popup.cc:2088
+#: freeserf/src/popup.cc:2089
 msgctxt "messages"
 msgid "None"
 msgstr ""
 
-#: freeserf/src/popup.cc:2088
+#: freeserf/src/popup.cc:2089
 msgctxt "messages"
 msgid "Few"
 msgstr ""
 
-#: freeserf/src/popup.cc:2089
+#: freeserf/src/popup.cc:2090
 msgctxt "messages"
 msgid "Most"
 msgstr ""
 
-#: freeserf/src/popup.cc:2089
+#: freeserf/src/popup.cc:2090
 msgctxt "messages"
 msgid "All"
 msgstr ""
 
-#: freeserf/src/popup.cc:2108
+#: freeserf/src/popup.cc:2109
 msgid "Fullscreen video"
 msgstr ""
 
-#: freeserf/src/popup.cc:2253
+#: freeserf/src/popup.cc:2258
 msgid "MINING\nOUTPUT:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2282
+#: freeserf/src/popup.cc:2287
 msgid "Ordered\nBuilding"
 msgstr ""
 
-#: freeserf/src/popup.cc:2362
+#: freeserf/src/popup.cc:2367
 msgid "Defenders:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2372
+#: freeserf/src/popup.cc:2377
 msgid "State:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2439
+#: freeserf/src/popup.cc:2444
 msgid "Transport Info:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2451
+#: freeserf/src/popup.cc:2456
 msgid "Index:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2790
+#: freeserf/src/popup.cc:2795
 msgid "Stock of\nthis building:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2862
+#: freeserf/src/popup.cc:2867
 msgid "CONGRATULATIONS."
 msgstr ""
 
-#: freeserf/src/popup.cc:2863
+#: freeserf/src/popup.cc:2868
 msgid "YOUR ENEMIES\nRESIGN. YOU\nHAVE WON THIS\nMISSION."
 msgstr ""
 
-#: freeserf/src/popup.cc:2869
+#: freeserf/src/popup.cc:2874
 msgid "NEW PASSWORD:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2873
+#: freeserf/src/popup.cc:2878
 msgid "SORRY, ONLY ONE\nOF YOUR ENEMIES\nHAS GAINED THE\nSUPERIORITY IN\nTHIS MISSION"
 msgstr ""
 
-#: freeserf/src/popup.cc:2879
+#: freeserf/src/popup.cc:2884
 msgid "WELL DONE."
 msgstr ""
 
-#: freeserf/src/popup.cc:2880
+#: freeserf/src/popup.cc:2885
 msgid "YOU COMPLETED\nTHIS TUTORIAL\nGAME."
 msgstr ""
 
-#: freeserf/src/popup.cc:2886
+#: freeserf/src/popup.cc:2891
 msgid "THE BLUE\nSETTLERS HAVE\nGAINED THE\nSUPERIORITY"
 msgstr ""
 
-#: freeserf/src/popup.cc:2887
+#: freeserf/src/popup.cc:2892
 msgid "THE RED\nSETTLERS HAVE\nGAINED THE\nSUPERIORITY"
 msgstr ""
 
-#: freeserf/src/popup.cc:2888
+#: freeserf/src/popup.cc:2893
 msgid "THE VIOLET\nSETTLERS HAVE\nGAINED THE\nSUPERIORITY"
 msgstr ""
 
-#: freeserf/src/popup.cc:2889
+#: freeserf/src/popup.cc:2894
 msgid "THE YELLOW\nSETTLERS HAVE\nGAINED THE\nSUPERIORITY"
 msgstr ""
 
-#: freeserf/src/popup.cc:2904
+#: freeserf/src/popup.cc:2909
 msgid "Build a guard hut and a guard tower and a fortress."
 msgstr ""
 
-#: freeserf/src/popup.cc:2905
+#: freeserf/src/popup.cc:2910
 msgid "Produce five planks and five stones."
 msgstr ""
 
-#: freeserf/src/popup.cc:2906
+#: freeserf/src/popup.cc:2911
 msgid "Produce five fish and five meat and five bread."
 msgstr ""
 
-#: freeserf/src/popup.cc:2907
+#: freeserf/src/popup.cc:2912
 msgid "Smelt five steel bars and five gold bars."
 msgstr ""
 
-#: freeserf/src/popup.cc:2908
+#: freeserf/src/popup.cc:2913
 msgid "Make ten weapons and ten tools."
 msgstr ""
 
-#: freeserf/src/popup.cc:2909
+#: freeserf/src/popup.cc:2914
 msgid "Conquer all the land of the enemy."
 msgstr ""
 
-#: freeserf/src/popup.cc:2919
+#: freeserf/src/popup.cc:2924
 msgid "TUTORIAL %d"
 msgstr ""
 
-#: freeserf/src/popup.cc:2925
+#: freeserf/src/popup.cc:2930
 msgid "ORDERS:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2954
+#: freeserf/src/popup.cc:2959
 msgid "Demolish:"
 msgstr ""
 
-#: freeserf/src/popup.cc:2955
+#: freeserf/src/popup.cc:2960
 msgid "Click here"
 msgstr ""
 
-#: freeserf/src/popup.cc:2956
+#: freeserf/src/popup.cc:2961
 msgid "if you are\nsure"
 msgstr ""
 
-#: freeserf/src/popup.cc:2971
+#: freeserf/src/popup.cc:2976
 msgid "Save Game"
-msgstr ""
-
-#: freeserf/src/popup.cc:4803
-msgctxt "building"
-msgid "Fisher"
-msgstr ""
-
-#: freeserf/src/popup.cc:4804
-msgctxt "building"
-msgid "Lumberjack"
-msgstr ""
-
-#: freeserf/src/popup.cc:4805
-msgctxt "building"
-msgid "Boatbuilder"
-msgstr ""
-
-#: freeserf/src/popup.cc:4806
-msgctxt "building"
-msgid "Stonecutter"
-msgstr ""
-
-#: freeserf/src/popup.cc:4807
-msgctxt "building"
-msgid "Stone mine"
-msgstr ""
-
-#: freeserf/src/popup.cc:4808
-msgctxt "building"
-msgid "Coal mine"
-msgstr ""
-
-#: freeserf/src/popup.cc:4809
-msgctxt "building"
-msgid "Iron mine"
-msgstr ""
-
-#: freeserf/src/popup.cc:4810
-msgctxt "building"
-msgid "Gold mine"
-msgstr ""
-
-#: freeserf/src/popup.cc:4811
-msgctxt "building"
-msgid "Forester"
-msgstr ""
-
-#: freeserf/src/popup.cc:4812
-msgctxt "building"
-msgid "Storehouse"
 msgstr ""
 
 #: freeserf/src/popup.cc:4813
 msgctxt "building"
-msgid "Guard hut"
+msgid "Fisher"
 msgstr ""
 
 #: freeserf/src/popup.cc:4814
 msgctxt "building"
-msgid "Farm"
+msgid "Lumberjack"
 msgstr ""
 
 #: freeserf/src/popup.cc:4815
 msgctxt "building"
-msgid "Butcher"
+msgid "Boatbuilder"
 msgstr ""
 
 #: freeserf/src/popup.cc:4816
 msgctxt "building"
-msgid "Pig farm"
+msgid "Stonecutter"
 msgstr ""
 
 #: freeserf/src/popup.cc:4817
 msgctxt "building"
-msgid "Mill"
+msgid "Stone mine"
 msgstr ""
 
 #: freeserf/src/popup.cc:4818
 msgctxt "building"
-msgid "Bakery"
+msgid "Coal mine"
 msgstr ""
 
 #: freeserf/src/popup.cc:4819
 msgctxt "building"
-msgid "Sawmill"
+msgid "Iron mine"
 msgstr ""
 
 #: freeserf/src/popup.cc:4820
 msgctxt "building"
-msgid "Steel smelter"
+msgid "Gold mine"
 msgstr ""
 
 #: freeserf/src/popup.cc:4821
 msgctxt "building"
-msgid "Toolmaker"
+msgid "Forester"
 msgstr ""
 
 #: freeserf/src/popup.cc:4822
 msgctxt "building"
-msgid "Weaponsmith"
+msgid "Storehouse"
 msgstr ""
 
 #: freeserf/src/popup.cc:4823
 msgctxt "building"
-msgid "Guard tower"
+msgid "Guard hut"
 msgstr ""
 
 #: freeserf/src/popup.cc:4824
 msgctxt "building"
-msgid "Fortress"
+msgid "Farm"
 msgstr ""
 
 #: freeserf/src/popup.cc:4825
 msgctxt "building"
-msgid "Gold smelter"
+msgid "Butcher"
 msgstr ""
 
 #: freeserf/src/popup.cc:4826
 msgctxt "building"
+msgid "Pig farm"
+msgstr ""
+
+#: freeserf/src/popup.cc:4827
+msgctxt "building"
+msgid "Mill"
+msgstr ""
+
+#: freeserf/src/popup.cc:4828
+msgctxt "building"
+msgid "Bakery"
+msgstr ""
+
+#: freeserf/src/popup.cc:4829
+msgctxt "building"
+msgid "Sawmill"
+msgstr ""
+
+#: freeserf/src/popup.cc:4830
+msgctxt "building"
+msgid "Steel smelter"
+msgstr ""
+
+#: freeserf/src/popup.cc:4831
+msgctxt "building"
+msgid "Toolmaker"
+msgstr ""
+
+#: freeserf/src/popup.cc:4832
+msgctxt "building"
+msgid "Weaponsmith"
+msgstr ""
+
+#: freeserf/src/popup.cc:4833
+msgctxt "building"
+msgid "Guard tower"
+msgstr ""
+
+#: freeserf/src/popup.cc:4834
+msgctxt "building"
+msgid "Fortress"
+msgstr ""
+
+#: freeserf/src/popup.cc:4835
+msgctxt "building"
+msgid "Gold smelter"
+msgstr ""
+
+#: freeserf/src/popup.cc:4836
+msgctxt "building"
 msgid "Castle"
 msgstr ""
 
-#: freeserf/src/popup.cc:4941
+#: freeserf/src/popup.cc:4951
 msgid "Flag"
 msgstr ""
 
-#: freeserf/src/popup.cc:507
+#: freeserf/src/popup.cc:508
 msgctxt "thousands"
 msgid "K"
 msgstr ""
 
-#: freeserf/src/popup.cc:511 freeserf/src/popup.cc:514
+#: freeserf/src/popup.cc:512 freeserf/src/popup.cc:515
 msgctxt "millions"
 msgid "M"
 msgstr ""
 
-#: freeserf/src/popup.cc:581
+#: freeserf/src/popup.cc:582
 msgctxt "ground analysis"
 msgid "Not Present"
 msgstr ""
 
-#: freeserf/src/popup.cc:582
+#: freeserf/src/popup.cc:583
 msgctxt "ground analysis"
 msgid "Minimum"
 msgstr ""
 
-#: freeserf/src/popup.cc:583
+#: freeserf/src/popup.cc:584
 msgctxt "ground analysis"
 msgid "Very Few"
 msgstr ""
 
-#: freeserf/src/popup.cc:584
+#: freeserf/src/popup.cc:585
 msgctxt "ground analysis"
 msgid "Few"
 msgstr ""
 
-#: freeserf/src/popup.cc:585
+#: freeserf/src/popup.cc:586
 msgctxt "ground analysis"
 msgid "Below Average"
 msgstr ""
 
-#: freeserf/src/popup.cc:586
+#: freeserf/src/popup.cc:587
 msgctxt "ground analysis"
 msgid "Average"
 msgstr ""
 
-#: freeserf/src/popup.cc:587
+#: freeserf/src/popup.cc:588
 msgctxt "ground analysis"
 msgid "Above Average"
 msgstr ""
 
-#: freeserf/src/popup.cc:588
+#: freeserf/src/popup.cc:589
 msgctxt "ground analysis"
 msgid "Much"
 msgstr ""
 
-#: freeserf/src/popup.cc:589
+#: freeserf/src/popup.cc:590
 msgctxt "ground analysis"
 msgid "Very Much"
 msgstr ""
 
-#: freeserf/src/popup.cc:590
+#: freeserf/src/popup.cc:591
 msgctxt "ground analysis"
 msgid "Perfect"
 msgstr ""
@@ -1472,19 +1472,63 @@ msgstr ""
 msgid "No Warp found."
 msgstr ""
 
-#: port/event_loop-amiga.cc:596
+#: port/event_loop-amiga.cc:597
 msgid "Keep this screen mode?"
 msgstr ""
 
-#: port/event_loop-amiga.cc:597
+#: port/event_loop-amiga.cc:598
 msgid "Return or click here: keep"
 msgstr ""
 
-#: port/event_loop-amiga.cc:598
+#: port/event_loop-amiga.cc:599
 msgid "Back to the old mode in"
 msgstr ""
 
-#: port/event_loop-amiga.cc:615
+#: port/event_loop-amiga.cc:616
 msgid "Loading the game"
+msgstr ""
+
+#: port/update-box.cc:178
+msgid "Update"
+msgstr ""
+
+#: port/update-box.cc:184
+msgid "This version"
+msgstr ""
+
+#: port/update-box.cc:188
+msgid "Newest version"
+msgstr ""
+
+#: port/update-box.cc:198
+msgid "Asking the update server..."
+msgstr ""
+
+#: port/update-box.cc:203
+msgid "The update server did not answer."
+msgstr ""
+
+#: port/update-box.cc:205
+msgid "Update server not found."
+msgstr ""
+
+#: port/update-box.cc:207
+msgid "No TCP/IP stack (bsdsocket)."
+msgstr ""
+
+#: port/update-box.cc:209
+msgid "The answer of the update server came broken."
+msgstr ""
+
+#: port/update-box.cc:214
+msgid "A new version is out. Get it with the WARP program on the Workbench."
+msgstr ""
+
+#: port/update-box.cc:217
+msgid "You have the newest version."
+msgstr ""
+
+#: port/update-box.cc:238
+msgid "CHECK"
 msgstr ""
 

@@ -1,4 +1,4 @@
-"""The "Video" and "Audio" buttons of the Options box (Amiga port), in the
+"""The "Video", "Audio" and "Update" buttons of the Options box (Amiga port), in the
 style of Freeserf's Advanced button: a large first letter, the rest of the
 word in the 5 pixel high yellow letters of the original on the dark band,
 as long as its word (as tools/make_button_amiga.py).
@@ -16,6 +16,12 @@ GLYPHS = {
     "I": ["###", ".#.", ".#.", ".#.", "###"],
     "O": [".###.", "#...#", "#...#", "#...#", ".###."],
     "U": ["#...#", "#...#", "#...#", "#...#", ".###."],
+    # narrow ones (4 or 3 wide): UPDATE fits after the Amiga button
+    "p": ["###.", "#..#", "###.", "#...", "#..."],
+    "d": ["###.", "#..#", "#..#", "#..#", "###."],
+    "a": [".##.", "#..#", "####", "#..#", "#..#"],
+    "t": ["###", ".#.", ".#.", ".#.", ".#."],
+    "e": ["####", "#...", "###.", "#...", "####"],
 }
 # The large V, in the cell of the large A of the button (x 1..12, y 2..13):
 # its yellow pixels, the dark outline drawn around them.
@@ -27,6 +33,14 @@ BIG_V_YELLOW = {
     11: [5, 6, 7],
     12: [6],
 }
+# The large U, the same way.
+BIG_U_YELLOW = {
+    3: [2, 3, 4, 5, 7, 8, 9, 10],
+    4: [3, 4, 8, 9], 5: [3, 4, 8, 9], 6: [3, 4, 8, 9], 7: [3, 4, 8, 9],
+    8: [3, 4, 8, 9], 9: [3, 4, 8, 9], 10: [3, 4, 8, 9],
+    11: [4, 5, 6, 7, 8],
+    12: [5, 6, 7],
+}
 DARK = (67, 35, 19)
 YELLOW = (255, 255, 0)
 
@@ -36,19 +50,22 @@ def wood(orig, x, y):
     return orig.getpixel((30 + x % 12, 9 + (y - 2) % 6))
 
 
-def make(orig, word, big_v, out):
-    img = orig.copy()
+def make(orig, word, big_v, out, big=None):
+    """big_v: the large V (BIG_V_YELLOW), or big: another large letter."""
     if big_v:
+        big = BIG_V_YELLOW
+    img = orig.copy()
+    if big:
         # The large A away: wood, then the V with its outline.
         for y in range(2, 14):
             for x in range(1, 13):
                 img.putpixel((x, y), wood(orig, x, y))
-        for y, xs in BIG_V_YELLOW.items():
+        for y, xs in big.items():
             for x in xs:
                 for dy in (-1, 0, 1):
                     for dx in (-1, 0, 1):
                         img.putpixel((x + dx, y + dy), DARK)
-        for y, xs in BIG_V_YELLOW.items():
+        for y, xs in big.items():
             for x in xs:
                 img.putpixel((x, y), YELLOW)
     width = sum(len(GLYPHS[c][0]) for c in word) + len(word) - 1
@@ -56,7 +73,7 @@ def make(orig, word, big_v, out):
     for y in range(2, 9):
         for x in range(11, 54):
             if x <= end:
-                if not (big_v and x == 11 and img.getpixel((x, y)) == YELLOW):
+                if not (big and x == 11 and img.getpixel((x, y)) == YELLOW):
                     img.putpixel((x, y), DARK)
             else:
                 img.putpixel((x, y), orig.getpixel((x, 9 + (y - 2) % 6)))
@@ -80,6 +97,8 @@ def main():
     orig = Image.open(src).convert("RGB")
     make(orig, "IDEO", True, os.path.join(outdir, "button-video.png"))
     make(orig, "UDIO", False, os.path.join(outdir, "button-audio.png"))
+    make(orig, "pdate", False, os.path.join(outdir, "button-update.png"),
+         big=BIG_U_YELLOW)
 
 
 if __name__ == "__main__":

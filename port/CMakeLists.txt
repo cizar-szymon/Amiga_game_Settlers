@@ -78,7 +78,7 @@ if(AMIGA_CPU)
     ${FS}/panel.cc ${FS}/version.cc ${FS}/text-input.cc ${FS}/list.cc
     ${FS}/command_line.cc ${FS}/video.cc ${FS}/audio.cc ${FS}/event_loop.cc
     audio-amiga.cc amiga_audio.c thirdparty/micromod/micromod.c amiga_wb.c
-    amiga_mp3.c music-box.cc
+    amiga_mp3.c music-box.cc amiga_update.c update-box.cc
     intro-player.cc intro-amiga.cc)
   target_include_directories(fs_gui PUBLIC ${FREESERF_DIR}
                              ${CMAKE_CURRENT_SOURCE_DIR}/..

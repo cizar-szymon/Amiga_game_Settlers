@@ -1129,3 +1129,36 @@ msgstr "Powrót do starego trybu za"
 msgid "Loading the game"
 msgstr "Wczytuję grę"
 
+msgid "Update"
+msgstr "Aktualizacja"
+
+msgid "This version"
+msgstr "Ta wersja"
+
+msgid "Newest version"
+msgstr "Najnowsza wersja"
+
+msgid "Asking the update server..."
+msgstr "Pytam serwer aktualizacji..."
+
+msgid "The update server did not answer."
+msgstr "Serwer aktualizacji nie odpowiada."
+
+msgid "Update server not found."
+msgstr "Nie znaleziono serwera aktualizacji."
+
+msgid "No TCP/IP stack (bsdsocket)."
+msgstr "Brak stosu TCP/IP (bsdsocket)."
+
+msgid "The answer of the update server came broken."
+msgstr "Odpowiedź serwera aktualizacji przyszła uszkodzona."
+
+msgid "A new version is out. Get it with the WARP program on the Workbench."
+msgstr "Jest nowa wersja. Pobierz ją programem WARP na Workbenchu."
+
+msgid "You have the newest version."
+msgstr "Masz najnowszą wersję."
+
+msgid "CHECK"
+msgstr "SPRAWDŹ"
+

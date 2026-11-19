@@ -1,0 +1,9 @@
+{
+  "port": 6830,
+  "listen": "0.0.0.0",
+  "data_dir": "data",
+  "check_s": 3600,
+  "max_connections": 30,
+  "max_per_address": 2,
+  "first_frame_s": 15
+}

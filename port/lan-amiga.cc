@@ -31,6 +31,7 @@ LanLinkAmiga::~LanLinkAmiga() {
   }
   net_external_quit();
   report_quit();
+  update_quit();
 }
 
 /* The process, at the first use. */
