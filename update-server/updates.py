@@ -52,7 +52,7 @@ DEFAULT = {
                  'notes_en': 'doc/Settlers_release_en.txt'},
 }
 PATH_OK = re.compile(r'^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*$')
-MAX_NOTE_LINES = 40
+MAX_NOTE_LINES = 200       # all the releases since the version asked about
 
 
 def fnv1a(data):

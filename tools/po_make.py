@@ -430,7 +430,7 @@ T = {
  ('', 'This version'): ('Ta wersja', 'Diese Version'),
  ('', 'Newest version'): ('Najnowsza wersja', 'Neueste Version'),
  ('', 'Asking the update server...'): ('Pytam serwer aktualizacji...', 'Frage den Update-Server...'),
- ('', 'A new version is out. Get it with the WARP program on the Workbench.'): ('Jest nowa wersja. Pobierz ją programem WARP na Workbenchu.', 'Eine neue Version ist da. Hol sie mit dem WARP-Programm auf der Workbench.'),
+ ('', 'A new version is out. Get it with WARP HUB.'): ('Jest nowa wersja. Pobierz ją programem WARP HUB.', 'Eine neue Version ist da. Hol sie mit WARP HUB.'),
  ('', 'You have the newest version.'): ('Masz najnowszą wersję.', 'Du hast die neueste Version.'),
  ('', 'CHECK'): ('SPRAWDŹ', 'PRÜFEN'),
  ('', 'No TCP/IP stack (bsdsocket).'): ('Brak stosu TCP/IP (bsdsocket).', 'Kein TCP/IP-Stack (bsdsocket).'),

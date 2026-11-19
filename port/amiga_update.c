@@ -3,12 +3,12 @@
  * server (the data server, update-server/ of the port; not the game
  * server), by a process of its own ("Settlers update"). The game never
  * waits: it starts the check and reads the state when it draws its box.
- * The game only checks; downloading and updating is the work of the WARP
- * program on the Workbench.
+ * The game only checks; downloading and updating is the work of WARP HUB
+ * on the Workbench.
  *
  * On the wire (the frames of amiga_net.c): RELAY "UPDATE 1 <version>
  * <lang>"; the server: "LATEST <version>", "NOTE <line>"... (what changed
- * since <version>), "FILE ..." lines (for the WARP program; skipped here),
+ * since <version>), "FILE ..." lines (for WARP HUB; skipped here),
  * "END"; then "BYE" from here.
  *
  * Its own bsdsocket.library base (a library base belongs to the task that
@@ -167,7 +167,7 @@ static int read_answer(void)
       say(0, line + 4);
       return 0;
     }
-    /* FILE lines: the list of the release, for the WARP program. */
+    /* FILE lines: the list of the release, for WARP HUB. */
   }
 }
 

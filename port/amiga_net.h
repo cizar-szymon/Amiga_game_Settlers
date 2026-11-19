@@ -135,7 +135,7 @@ void report_quit(void);
 int report_network(void);
 
 /* The check for a newer release on the update server (amiga_update.c; the
-   data server, not the game server; the game only checks, the WARP program
+   data server, not the game server; the game only checks, WARP HUB
    on the Workbench updates). update_check: 0 if one still runs.
    update_poll: the state (0 nothing, 1 working, 2 done) and what is known;
    update_quit at the end of the program. */
@@ -144,7 +144,7 @@ typedef struct UpdateInfo {
   int ok;               /* done: 1 worked, 0 text says why not */
   char text[96];
   char latest[16];      /* the newest release on the server */
-  char notes[2048];     /* what changed since this version, lines */
+  char notes[6144];     /* what changed since this version, lines */
 } UpdateInfo;
 int update_check(const char *host, int port, const char *version,
                  const char *lang);

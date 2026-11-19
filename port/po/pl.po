@@ -1153,8 +1153,8 @@ msgstr "Brak stosu TCP/IP (bsdsocket)."
 msgid "The answer of the update server came broken."
 msgstr "Odpowiedź serwera aktualizacji przyszła uszkodzona."
 
-msgid "A new version is out. Get it with the WARP program on the Workbench."
-msgstr "Jest nowa wersja. Pobierz ją programem WARP na Workbenchu."
+msgid "A new version is out. Get it with WARP HUB."
+msgstr "Jest nowa wersja. Pobierz ją programem WARP HUB."
 
 msgid "You have the newest version."
 msgstr "Masz najnowszą wersję."

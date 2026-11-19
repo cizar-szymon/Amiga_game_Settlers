@@ -1,12 +1,13 @@
 /* Update box of the Amiga port (the UPDATE button of the Options box):
    this version and the newest one on the update server (the data server,
    not the game server) and what changed (amiga_update.c). The game only
-   checks; the update itself is the work of the WARP program on the
+   checks; the update itself is the work of WARP HUB on the
    Workbench. */
 #ifndef PORT_UPDATE_BOX_H_
 #define PORT_UPDATE_BOX_H_
 
 #include <string>
+#include <vector>
 
 #include "src/gui.h"
 
@@ -30,6 +31,8 @@ class UpdateBox : public GuiObject {
   UpdateInfo info;
   /* The state the box last drew (it draws again when it changed). */
   int shown_state;
+  /* The first row of the changes shown (the arrows scroll them). */
+  int first_row;
 
   static UpdateBox *open_box;
 
@@ -44,6 +47,9 @@ class UpdateBox : public GuiObject {
   void tick();
   void check();
   bool newer() const;
+  /* The rows of the changes (wrapped to the width of their column). */
+  void note_rows(std::vector<std::string> *rows) const;
+  void draw_arrow(int bx, int by, bool up, bool enabled);
   void draw_button(int bx, int by, int bw, const std::string &text,
                    bool enabled);
   virtual void internal_draw();

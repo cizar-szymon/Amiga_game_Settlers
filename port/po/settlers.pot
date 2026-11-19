@@ -1488,47 +1488,47 @@ msgstr ""
 msgid "Loading the game"
 msgstr ""
 
-#: port/update-box.cc:178
+#: port/update-box.cc:219
 msgid "Update"
 msgstr ""
 
-#: port/update-box.cc:184
+#: port/update-box.cc:225
 msgid "This version"
 msgstr ""
 
-#: port/update-box.cc:188
+#: port/update-box.cc:229
 msgid "Newest version"
 msgstr ""
 
-#: port/update-box.cc:198
+#: port/update-box.cc:239
 msgid "Asking the update server..."
 msgstr ""
 
-#: port/update-box.cc:203
+#: port/update-box.cc:244
 msgid "The update server did not answer."
 msgstr ""
 
-#: port/update-box.cc:205
+#: port/update-box.cc:246
 msgid "Update server not found."
 msgstr ""
 
-#: port/update-box.cc:207
+#: port/update-box.cc:248
 msgid "No TCP/IP stack (bsdsocket)."
 msgstr ""
 
-#: port/update-box.cc:209
+#: port/update-box.cc:250
 msgid "The answer of the update server came broken."
 msgstr ""
 
-#: port/update-box.cc:214
-msgid "A new version is out. Get it with the WARP program on the Workbench."
+#: port/update-box.cc:255
+msgid "A new version is out. Get it with WARP HUB."
 msgstr ""
 
-#: port/update-box.cc:217
+#: port/update-box.cc:257
 msgid "You have the newest version."
 msgstr ""
 
-#: port/update-box.cc:238
+#: port/update-box.cc:293
 msgid "CHECK"
 msgstr ""
 
